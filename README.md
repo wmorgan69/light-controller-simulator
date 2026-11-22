@@ -7,29 +7,16 @@ A .NET IoT demonstration for a four-floor office building. The solution combines
 This repository uses an agentic build-review-rebuild workflow:
 
 ```mermaid
-flowchart TD
-  A["Plan and inspect"]
-  B["Implement and test"]
-  C["Build and test"]
-  D["Code review"]
-  E["Security review<br/>if needed"]
-  F["UX review<br/>if needed"]
-  G["Fix and re-review"]
-  H["Merge"]
-  
-  A --> B
-  B --> C
-  C --> D
-  D --> E
-  E --> F
-  F --> G
-  G --> H
+flowchart LR
+  A["Plan"] --> B["Implement"] --> C["Build"] --> D["Code Review"]
+  D --> E["Security Review"]
+  E --> F["UX Review"] --> G["Merge"]
   
   classDef stage fill:#1E293B,stroke:#60A5FA,color:#F8FAFC;
   classDef outcome fill:#065F46,stroke:#10B981,color:#F8FAFC;
   
-  class A,B,C,D,E,F,G stage;
-  class H outcome;
+  class A,B,C,D,E,F stage;
+  class G outcome;
 ```
 
 Agent customization:
