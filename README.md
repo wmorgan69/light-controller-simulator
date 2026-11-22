@@ -8,12 +8,12 @@ This repository uses an agentic build-review-rebuild workflow:
 
 ```mermaid
 flowchart LR
-  A["Plan"] --> B["Implement"] --> C["Build"] --> D["Code Review"]
-  D --> E{"Security-sensitive?"}
-  E -->|Yes| F["Security Review"]
-  E -->|No| G{"UI changes?"}
+  A["Plan"] --> B["Implement"] --> C["Build"] --> D["Code<br/>Review"]
+  D --> E{"Security?"}
+  E -->|Yes| F["Security<br/>Review"]
+  E -->|No| G{"UI?"}
   F --> G
-  G -->|Yes| H["UX Review"]
+  G -->|Yes| H["UX<br/>Review"]
   G -->|No| I["Merge"]
   H --> I
   
