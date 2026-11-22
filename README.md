@@ -6,26 +6,7 @@ A .NET IoT demonstration for a four-floor office building. The solution combines
 
 This repository uses an agentic build-review-rebuild workflow:
 
-```mermaid
-%%{init: {'flowchart': {'curve': 'linear'}, 'theme': 'dark', 'themeVariables': {'primaryColor':'#1E293B', 'primaryBorderColor':'#60A5FA', 'fontSize':'16px'}}}%%
-flowchart LR
-  A["Plan"] --> B["Implement"] --> C["Build"] --> D["Code<br/>Review"]
-  D --> E{"Security?"}
-  E -->|Yes| F["Security<br/>Review"]
-  E -->|No| G{"UI?"}
-  F --> G
-  G -->|Yes| H["UX<br/>Review"]
-  G -->|No| I["Merge"]
-  H --> I
-  
-  classDef stage fill:#1E293B,stroke:#60A5FA,color:#F8FAFC;
-  classDef decision fill:#0F766E,stroke:#14B8A6,color:#F8FAFC;
-  classDef outcome fill:#065F46,stroke:#10B981,color:#F8FAFC;
-  
-  class A,B,C,D,F,H stage;
-  class E,G decision;
-  class I outcome;
-```
+![Agentic workflow diagram showing Plan, Implement, Build, Code Review, Security Review if needed, UX Review if needed, and Merge](docs/assets/diagrams/agentic-workflow.svg)
 
 Agent customization:
 

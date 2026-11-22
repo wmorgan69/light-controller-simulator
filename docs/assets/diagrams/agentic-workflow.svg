@@ -1,0 +1,93 @@
+<svg viewBox="0 0 1200 350" xmlns="http://www.w3.org/2000/svg">
+  <!-- Define styles -->
+  <defs>
+    <style>
+      .stage { fill: #1E293B; stroke: #60A5FA; stroke-width: 2; }
+      .decision { fill: #0F766E; stroke: #14B8A6; stroke-width: 2; }
+      .outcome { fill: #065F46; stroke: #10B981; stroke-width: 2; }
+      .label { fill: #F8FAFC; font-family: system-ui, sans-serif; font-size: 14px; text-anchor: middle; dominant-baseline: middle; }
+      .arrow { stroke: #60A5FA; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .arrowtext { fill: #60A5FA; font-family: system-ui, sans-serif; font-size: 12px; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#60A5FA"/>
+    </marker>
+  </defs>
+
+  <!-- Line 1: Plan -> Implement -> Build -> Code Review -->
+  
+  <!-- Plan box -->
+  <rect class="stage" x="20" y="40" width="100" height="60" rx="5"/>
+  <text class="label" x="70" y="70">Plan</text>
+  
+  <!-- Arrow -->
+  <path class="arrow" d="M 120 70 L 160 70"/>
+  
+  <!-- Implement box -->
+  <rect class="stage" x="160" y="40" width="100" height="60" rx="5"/>
+  <text class="label" x="210" y="70">Implement</text>
+  
+  <!-- Arrow -->
+  <path class="arrow" d="M 260 70 L 300 70"/>
+  
+  <!-- Build box -->
+  <rect class="stage" x="300" y="40" width="100" height="60" rx="5"/>
+  <text class="label" x="350" y="70">Build</text>
+  
+  <!-- Arrow -->
+  <path class="arrow" d="M 400 70 L 440 70"/>
+  
+  <!-- Code Review box -->
+  <rect class="stage" x="440" y="40" width="100" height="60" rx="5"/>
+  <text class="label" x="490" y="70">Code</text>
+  <text class="label" x="490" y="85">Review</text>
+  
+  <!-- Arrow down -->
+  <path class="arrow" d="M 490 100 L 490 140"/>
+  
+  <!-- Security-sensitive? diamond -->
+  <polygon class="decision" points="490,180 540,220 490,260 440,220"/>
+  <text class="label" x="490" y="215">Security</text>
+  <text class="label" x="490" y="230">?</text>
+  
+  <!-- Yes arrow to Security Review -->
+  <path class="arrow" d="M 440 220 L 320 220"/>
+  <text class="arrowtext" x="380" y="215">Yes</text>
+  
+  <!-- Security Review box -->
+  <rect class="stage" x="200" y="190" width="120" height="60" rx="5"/>
+  <text class="label" x="260" y="210">Security</text>
+  <text class="label" x="260" y="225">Review</text>
+  
+  <!-- Arrow from Security Review to UI? -->
+  <path class="arrow" d="M 260 250 L 440 260"/>
+  
+  <!-- No arrow to UI? -->
+  <path class="arrow" d="M 540 220 L 650 220"/>
+  <text class="arrowtext" x="590" y="215">No</text>
+  
+  <!-- UI changes? diamond -->
+  <polygon class="decision" points="700,180 750,220 700,260 650,220"/>
+  <text class="label" x="700" y="215">UI</text>
+  <text class="label" x="700" y="230">?</text>
+  
+  <!-- Yes arrow to UX Review -->
+  <path class="arrow" d="M 750 220 L 870 220"/>
+  <text class="arrowtext" x="810" y="215">Yes</text>
+  
+  <!-- UX Review box -->
+  <rect class="stage" x="870" y="190" width="100" height="60" rx="5"/>
+  <text class="label" x="920" y="210">UX</text>
+  <text class="label" x="920" y="225">Review</text>
+  
+  <!-- Arrow from UX Review to Merge -->
+  <path class="arrow" d="M 920 250 L 920 300 L 1050 300 L 1050 280"/>
+  
+  <!-- No arrow to Merge -->
+  <path class="arrow" d="M 700 260 L 700 300 L 1050 300 L 1050 280"/>
+  <text class="arrowtext" x="720" y="315">No</text>
+  
+  <!-- Merge box (outcome) -->
+  <rect class="outcome" x="1000" y="220" width="100" height="60" rx="5"/>
+  <text class="label" x="1050" y="250">Merge</text>
+</svg>
