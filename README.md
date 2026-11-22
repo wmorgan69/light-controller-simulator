@@ -6,15 +6,17 @@ A .NET IoT demonstration for a four-floor office building. The solution combines
 
 This repository uses an agentic build-review-rebuild workflow with staged changes and pull request review:
 
-![Agentic workflow diagram showing Plan, Implement, Build, Code Review, Security Review if needed, UX Review if needed, and Merge](docs/assets/diagrams/agentic-workflow.svg)
+![Agentic workflow showing implementation, validation, independent reviews, and feedback loops for fixes before merge](docs/assets/diagrams/agentic-workflow.svg)
 
 **Workflow process:**
 1. Agent plans, implements, builds, and validates changes
 2. Changes are staged (not auto-committed) and grouped by scope
 3. Pull request is created with implementation, build validation, and test results
-4. Required reviewers (code, security if applicable, UX if applicable) independently evaluate the PR
-5. Human approves, requests changes, or merges when ready
-6. Repository rules, when configured, enforce required checks and approvals before merge
+4. Required reviewers (code, security if applicable, UX if applicable) independently evaluate the changes
+5. Actionable findings return to implementation; repeat validation and affected reviews after fixes
+6. Report any review that could not be completed rather than treating it as passed
+7. Human approves, requests changes, or merges when ready
+8. Repository rules, when configured, enforce required checks and approvals before merge
 
 Agent customization:
 
