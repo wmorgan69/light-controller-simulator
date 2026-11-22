@@ -1,95 +1,87 @@
-<svg viewBox="0 0 1300 350" xmlns="http://www.w3.org/2000/svg">
-  <!-- Define styles -->
+<svg viewBox="0 0 780 1090" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title description">
+  <title id="title">Agentic build-review-rebuild workflow</title>
+  <desc id="description">Plan, implement and validate, then complete code review and applicable security and UX reviews. Create or update a pull request before human approval and required checks. Actionable findings, requested changes or failed checks return to implementation, validation and affected reviews. Required reviews that cannot be completed are reported as limitations, not passes.</desc>
   <defs>
     <style>
       .stage { fill: #1E293B; stroke: #60A5FA; stroke-width: 2; }
       .decision { fill: #0F766E; stroke: #14B8A6; stroke-width: 2; }
       .outcome { fill: #065F46; stroke: #10B981; stroke-width: 2; }
-      .label { fill: #F8FAFC; font-family: Arial, sans-serif; font-size: 15px; font-weight: bold; text-anchor: middle; dominant-baseline: middle; }
+      .label { fill: #F8FAFC; font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; text-anchor: middle; }
       .arrow { stroke: #60A5FA; stroke-width: 2; fill: none; }
-      .arrowtext { fill: #60A5FA; font-family: Arial, sans-serif; font-size: 12px; }
+      .feedback { stroke: #FBBF24; stroke-width: 2; fill: none; }
+      .arrowtext { fill: #F8FAFC; font-family: Arial, sans-serif; font-size: 14px; }
+      .note { fill: #F8FAFC; font-family: Arial, sans-serif; font-size: 14px; text-anchor: middle; }
     </style>
     <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
       <polygon points="0 0, 10 3, 0 6" fill="#60A5FA"/>
     </marker>
+    <marker id="feedback-arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#FBBF24"/>
+    </marker>
   </defs>
 
-  <!-- TOP LINE: Plan -> Implement -> Build -> Code Review -->
-  
-  <!-- Plan -->
-  <rect class="stage" x="10" y="30" width="90" height="60" rx="5"/>
-  <text class="label" x="55" y="60">Plan</text>
-  
-  <!-- Arrow 1 -->
-  <path class="arrow" d="M 100 60 L 125 60" marker-end="url(#arrowhead)"/>
-  
-  <!-- Implement -->
-  <rect class="stage" x="125" y="30" width="90" height="60" rx="5"/>
-  <text class="label" x="170" y="60">Implement</text>
-  
-  <!-- Arrow 2 -->
-  <path class="arrow" d="M 215 60 L 240 60" marker-end="url(#arrowhead)"/>
-  
-  <!-- Build -->
-  <rect class="stage" x="240" y="30" width="90" height="60" rx="5"/>
-  <text class="label" x="285" y="60">Build</text>
-  
-  <!-- Arrow 3 -->
-  <path class="arrow" d="M 330 60 L 355 60" marker-end="url(#arrowhead)"/>
-  
-  <!-- Code Review -->
-  <rect class="stage" x="355" y="30" width="100" height="60" rx="5"/>
-  <text class="label" x="405" y="50">Code</text>
-  <text class="label" x="405" y="65">Review</text>
-  
-  <!-- Arrow down to Security -->
-  <path class="arrow" d="M 405 90 L 405 130" marker-end="url(#arrowhead)"/>
-  
-  <!-- BOTTOM LINE: Security? -> UX? -> Merge -->
-  
-  <!-- Security-sensitive? diamond -->
-  <polygon class="decision" points="405,170 450,210 405,250 360,210"/>
-  <text class="label" x="405" y="205">Security</text>
-  <text class="label" x="405" y="223">?</text>
-  
-  <!-- Arrow YES to Security Review (left) -->
-  <path class="arrow" d="M 360 210 L 240 210" marker-end="url(#arrowhead)"/>
-  <text class="arrowtext" x="295" y="205">Yes</text>
-  
-  <!-- Security Review -->
-  <rect class="stage" x="140" y="180" width="100" height="60" rx="5"/>
-  <text class="label" x="190" y="200">Security</text>
-  <text class="label" x="190" y="218">Review</text>
-  
-  <!-- Arrow from Security Review back to UI? -->
-  <path class="arrow" d="M 240 210 L 360 210" marker-end="url(#arrowhead)"/>
-  
-  <!-- Arrow NO to UI changes? (right) -->
-  <path class="arrow" d="M 450 210 L 540 210" marker-end="url(#arrowhead)"/>
-  <text class="arrowtext" x="490" y="205">No</text>
-  
-  <!-- UI changes? diamond -->
-  <polygon class="decision" points="600,170 645,210 600,250 555,210"/>
-  <text class="label" x="600" y="205">UI</text>
-  <text class="label" x="600" y="223">?</text>
-  
-  <!-- Arrow YES to UX Review (top) -->
-  <path class="arrow" d="M 645 190 L 745 110" marker-end="url(#arrowhead)"/>
-  <text class="arrowtext" x="680" y="140">Yes</text>
-  
-  <!-- UX Review (top line) -->
-  <rect class="stage" x="745" y="80" width="80" height="60" rx="5"/>
-  <text class="label" x="785" y="100">UX</text>
-  <text class="label" x="785" y="118">Review</text>
-  
-  <!-- Arrow from UX to Merge -->
-  <path class="arrow" d="M 825 110 L 950 110 L 950 210 L 1050 210" marker-end="url(#arrowhead)"/>
-  
-  <!-- Arrow NO to Merge (right) -->
-  <path class="arrow" d="M 645 230 L 1050 230" marker-end="url(#arrowhead)"/>
-  <text class="arrowtext" x="840" y="250">No</text>
-  
-  <!-- Merge (outcome) -->
-  <rect class="outcome" x="1050" y="180" width="90" height="60" rx="5"/>
-  <text class="label" x="1095" y="210">Merge</text>
+  <rect width="780" height="1090" fill="#0F172A"/>
+
+  <rect class="stage" x="300" y="24" width="220" height="50" rx="5"/>
+  <text class="label" x="410" y="55">Plan</text>
+  <path class="arrow" d="M 410 74 V 104" marker-end="url(#arrowhead)"/>
+
+  <rect class="stage" x="300" y="104" width="220" height="50" rx="5"/>
+  <text class="label" x="410" y="135">Implement / fix</text>
+  <path class="arrow" d="M 410 154 V 184" marker-end="url(#arrowhead)"/>
+
+  <rect class="stage" x="300" y="184" width="220" height="50" rx="5"/>
+  <text class="label" x="410" y="215">Build and test</text>
+  <path class="arrow" d="M 410 234 V 264" marker-end="url(#arrowhead)"/>
+
+  <rect class="stage" x="300" y="264" width="220" height="50" rx="5"/>
+  <text class="label" x="410" y="295">Code review</text>
+  <path class="arrow" d="M 410 314 V 344" marker-end="url(#arrowhead)"/>
+
+  <polygon class="decision" points="410,344 470,384 410,424 350,384"/>
+  <text class="label" x="410" y="380">Security</text>
+  <text class="label" x="410" y="399">needed?</text>
+  <path class="arrow" d="M 410 424 V 464" marker-end="url(#arrowhead)"/>
+  <text class="arrowtext" x="420" y="449">Yes</text>
+  <path class="arrow" d="M 470 384 H 650 V 534 H 410 V 544" marker-end="url(#arrowhead)"/>
+  <text class="arrowtext" x="560" y="376">No / skip</text>
+
+  <rect class="stage" x="300" y="464" width="220" height="50" rx="5"/>
+  <text class="label" x="410" y="495">Security review</text>
+  <path class="arrow" d="M 410 514 V 544" marker-end="url(#arrowhead)"/>
+
+  <polygon class="decision" points="410,544 470,584 410,624 350,584"/>
+  <text class="label" x="410" y="580">UX review</text>
+  <text class="label" x="410" y="599">needed?</text>
+  <path class="arrow" d="M 410 624 V 664" marker-end="url(#arrowhead)"/>
+  <text class="arrowtext" x="420" y="649">Yes</text>
+  <path class="arrow" d="M 470 584 H 650 V 734 H 410 V 764" marker-end="url(#arrowhead)"/>
+  <text class="arrowtext" x="560" y="576">No / skip</text>
+
+  <rect class="stage" x="300" y="664" width="220" height="50" rx="5"/>
+  <text class="label" x="410" y="695">UX review</text>
+  <path class="arrow" d="M 410 714 V 764" marker-end="url(#arrowhead)"/>
+
+  <rect class="stage" x="300" y="764" width="220" height="50" rx="5"/>
+  <text class="label" x="410" y="795">Create / update PR</text>
+  <path class="arrow" d="M 410 814 V 844" marker-end="url(#arrowhead)"/>
+
+  <rect class="stage" x="300" y="844" width="220" height="60" rx="5"/>
+  <text class="label" x="410" y="868">Human decision</text>
+  <text class="label" x="410" y="888">and required CI checks</text>
+  <path class="arrow" d="M 410 904 V 934" marker-end="url(#arrowhead)"/>
+  <text class="arrowtext" x="425" y="924">Approved; checks pass</text>
+
+  <rect class="outcome" x="300" y="934" width="220" height="50" rx="5"/>
+  <text class="label" x="410" y="965">Merge</text>
+
+  <path class="feedback" d="M 300 209 H 100 M 300 289 H 100 M 300 489 H 100 M 300 689 H 100 M 300 874 H 100 M 100 874 V 129 H 300" marker-end="url(#feedback-arrowhead)"/>
+  <text class="arrowtext" x="110" y="180">Build/test failure or</text>
+  <text class="arrowtext" x="110" y="198">actionable finding</text>
+  <text class="arrowtext" x="110" y="825">Fix, revalidate and</text>
+  <text class="arrowtext" x="110" y="844">repeat affected reviews</text>
+  <text class="arrowtext" x="110" y="865">Changes requested / CI fails</text>
+
+  <text class="note" x="390" y="1030">Forward from a review means it is complete; skipped reviews are not passes.</text>
+  <text class="note" x="390" y="1055">If a required review cannot be completed, report the limitation; do not mark it passed.</text>
 </svg>
