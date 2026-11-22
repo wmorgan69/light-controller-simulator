@@ -11,21 +11,29 @@ flowchart LR
   Plan["Plan and inspect"] --> Build["Implement and test"]
   Build --> Validate["Build and test"]
   Validate --> CodeReview["Independent code review"]
-  CodeReview --> UXReview["UX review for UI changes"]
-  UXReview --> Rebuild["Fix findings"]
-  Rebuild --> FinalReview["Repeat validation and review"]
-  FinalReview --> Report["Report evidence and limitations"]
+  CodeReview --> SecurityReview{"Security-sensitive<br/>changes?"}
+  SecurityReview -->|Yes| SecReview["Security review<br/>OWASP Top 10"]
+  SecurityReview -->|No| UXReview{"UI changes?"}
+  SecReview --> UXReview
+  UXReview -->|Yes| UXCheck["UX review<br/>clarity, accessibility"]
+  UXReview -->|No| Rebuild["Fix findings"]
+  UXCheck --> Rebuild
+  Rebuild --> FinalReview["Repeat validation<br/>and review"]
+  FinalReview --> Report["Report evidence<br/>and limitations"]
   classDef default fill:#1E293B,stroke:#60A5FA,color:#F8FAFC;
+  classDef decision fill:#0F766E,stroke:#14B8A6,color:#F8FAFC;
+  class SecurityReview,UXReview decision;
 ```
 
 Agent customization:
 
 - [AGENTS.md](AGENTS.md) defines repository-wide clean-code, testing, documentation, review, and merge requirements.
 - [Build/review/rebuild agent](.github/agents/build-review-rebuild.agent.md) coordinates implementation and validation.
-- [Code reviewer](.github/agents/code-reviewer.agent.md) independently checks correctness, clean code, tests, and documentation accuracy.
+- [Code reviewer](.github/agents/code-reviewer.agent.md) independently checks correctness, clean code, tests, documentation accuracy, and **code coverage impact** (new code is tested; overall coverage is not regressing below phase threshold).
+- [Security reviewer](.github/agents/security-reviewer.agent.md) independently checks for OWASP Top 10 UI and API vulnerabilities (required for PRs that add external inputs, API endpoints, or authentication/authorization logic).
 - [UX reviewer](.github/agents/ux-reviewer.agent.md) independently checks UI clarity, accessibility, responsive behavior, and state rendering.
 - [Pull-request template](.github/PULL_REQUEST_TEMPLATE.md) records validation and reviewer evidence.
-- [CI workflow](.github/workflows/ci.yml) builds and tests pull requests.
+- [CI workflow](.github/workflows/ci.yml) builds, tests, enforces code coverage (≥50% Phase 1, phased to 90%), and validates pull requests.
 
 The instructions guide agents and create an auditable workflow. Final enforcement comes from protected-branch settings requiring CI and reviewer approval. Custom agents cannot, by themselves, prove that every review stage ran or block a merge.
 
