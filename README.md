@@ -61,7 +61,9 @@ The screenshots show the simulator and instrumentation dashboard. The video show
 
 ![Building Light Simulator showing floor navigation, a selected floor, and room controls](docs/assets/screenshots/building-light-simulator.png)
 
-![Building Light Simulator showing Floor 2, the selected Office A, room controls, and illustrative wiring](docs/assets/screenshots/building-light-simulator-selected-floor.png)
+![Building Light Simulator desktop view showing floor navigation on the left, Floor 2, the selected Office A, room controls, and illustrative wiring](docs/assets/screenshots/building-light-simulator-selected-floor.png)
+
+[View the selected-floor screenshot at full size](docs/assets/screenshots/building-light-simulator-selected-floor.png)
 
 ### Lighting Instrumentation
 
