@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 490" role="img" aria-labelledby="title description">
+  <title id="title">Telemetry architecture</title>
+  <desc id="description">The MQTT broker sends retained state messages to TelemetrySubscriber, which ingests telemetry into TelemetryStore. HTTP fallback requests controller states from the simulator and ingests changed states. The dashboard browser requests telemetry and events from the store, which returns snapshots and events.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#60A5FA"/>
+    </marker>
+    <style>
+      .node, .caption { fill: #1E293B; }
+      .node { stroke: #60A5FA; stroke-width: 2; }
+      .label { fill: #F8FAFC; font: 16px "Segoe UI", Arial, sans-serif; text-anchor: middle; }
+      .edge-label { fill: #F8FAFC; font: 14px "Segoe UI", Arial, sans-serif; text-anchor: middle; }
+      .edge { fill: none; stroke: #60A5FA; stroke-width: 2; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <g class="edge">
+    <path d="M180 76 L350 76"/>
+    <path d="M550 76 L730 76 L730 193"/>
+    <path d="M200 225 L350 225"/>
+    <path d="M350 251 L200 251"/>
+    <path d="M200 263 L200 315 L730 315 L730 267"/>
+    <path d="M985 193 L985 140 L730 140 L730 193"/>
+    <path d="M820 246 L860 246 L860 350 L985 350 L985 267"/>
+  </g>
+  <g class="node">
+    <rect x="30" y="46" width="150" height="60" rx="8"/>
+    <rect x="350" y="46" width="200" height="60" rx="8"/>
+    <rect x="30" y="207" width="170" height="70" rx="8"/>
+    <rect x="350" y="207" width="200" height="70" rx="8"/>
+    <rect x="640" y="193" width="180" height="74" rx="8"/>
+    <rect x="900" y="193" width="170" height="74" rx="8"/>
+  </g>
+  <g class="label">
+    <text x="105" y="82">MQTT broker</text>
+    <text x="450" y="82">TelemetrySubscriber</text>
+    <text x="115" y="248">HTTP fallback</text>
+    <text x="450" y="248">Building simulator</text>
+    <text x="730" y="236">TelemetryStore</text>
+    <text x="985" y="226"><tspan x="985">Dashboard</tspan><tspan x="985" dy="20">browser</tspan></text>
+  </g>
+  <g class="caption">
+    <rect x="187" y="61" width="156" height="23" rx="3"/>
+    <rect x="563" y="61" width="137" height="23" rx="3"/>
+    <rect x="205" y="210" width="140" height="23" rx="3"/>
+    <rect x="215" y="238" width="120" height="23" rx="3"/>
+    <rect x="320" y="303" width="160" height="23" rx="3"/>
+    <rect x="744" y="120" width="220" height="43" rx="3"/>
+    <rect x="877" y="339" width="170" height="23" rx="3"/>
+  </g>
+  <g class="edge-label">
+    <text x="265" y="77">Retained state messages</text>
+    <text x="631" y="77">Ingest telemetry</text>
+    <text x="275" y="226">GET /api/controllers</text>
+    <text x="275" y="254">ControllerState[]</text>
+    <text x="400" y="319">Ingest changed state</text>
+    <text x="854" y="136"><tspan x="854">GET /api/telemetry</tspan><tspan x="854" dy="17">and /api/events</tspan></text>
+    <text x="962" y="355">Snapshot and events</text>
+  </g>
+</svg>

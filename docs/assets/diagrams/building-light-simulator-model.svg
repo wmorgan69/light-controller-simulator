@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 440" role="img" aria-labelledby="title description">
+  <title id="title">Building model</title>
+  <desc id="description">The building has four floors. Floor 1 has one floor controller, a main room with four light strips, Office A with one strip, and Office B with one strip.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#60A5FA"/>
+    </marker>
+    <style>
+      .node { fill: #1E293B; stroke: #60A5FA; stroke-width: 2; }
+      .label { fill: #F8FAFC; font: 16px "Segoe UI", Arial, sans-serif; text-anchor: middle; }
+      .edge { fill: none; stroke: #60A5FA; stroke-width: 2; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <g class="edge">
+    <path d="M180 210 L300 65"/>
+    <path d="M180 210 L300 165"/>
+    <path d="M180 210 L300 265"/>
+    <path d="M180 210 L300 365"/>
+    <path d="M460 65 L570 55"/>
+    <path d="M460 65 L570 135"/>
+    <path d="M460 65 L570 215"/>
+    <path d="M460 65 L570 295"/>
+  </g>
+  <g class="node">
+    <rect x="30" y="182" width="150" height="56" rx="8"/>
+    <rect x="300" y="37" width="160" height="56" rx="8"/>
+    <rect x="300" y="137" width="160" height="56" rx="8"/>
+    <rect x="300" y="237" width="160" height="56" rx="8"/>
+    <rect x="300" y="337" width="160" height="56" rx="8"/>
+    <rect x="570" y="27" width="240" height="56" rx="8"/>
+    <rect x="570" y="107" width="240" height="56" rx="8"/>
+    <rect x="570" y="187" width="240" height="56" rx="8"/>
+    <rect x="570" y="267" width="240" height="56" rx="8"/>
+  </g>
+  <g class="label">
+    <text x="105" y="216">Building</text>
+    <text x="380" y="71">Floor 1</text>
+    <text x="380" y="171">Floor 2</text>
+    <text x="380" y="271">Floor 3</text>
+    <text x="380" y="371">Floor 4</text>
+    <text x="690" y="61">Floor controller</text>
+    <text x="690" y="141">Main room + 4 strips</text>
+    <text x="690" y="221">Office A + 1 strip</text>
+    <text x="690" y="301">Office B + 1 strip</text>
+  </g>
+</svg>

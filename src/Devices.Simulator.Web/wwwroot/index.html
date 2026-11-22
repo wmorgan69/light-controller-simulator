@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Building Light Simulator</title>
+  <link rel="stylesheet" href="/styles.css?v=floor-navigation-12">
+</head>
+<body>
+  <header>
+    <h1>Building Light Simulator</h1>
+    <p>Four-floor controller simulation</p>
+    <p id="floorSelectionHint" class="wiring-legend">Choose a floor; select it again to reset the camera.</p>
+    <p id="transportStatus" class="transport-status" role="status">Checking MQTT...</p>
+  </header>
+  <main>
+    <nav class="floor-navigation" aria-label="Building floors">
+      <h2>Building</h2>
+      <div class="floor-options">
+        <button id="showAllFloors" class="floor-button" type="button" aria-pressed="true" disabled>All floors</button>
+        <div id="floorButtons" class="floor-buttons"></div>
+      </div>
+      <p id="floorLoading" role="status">Loading floors...</p>
+      <div class="scenario-controls" role="group" aria-labelledby="scenarioHeading">
+        <h3 id="scenarioHeading">Scenarios</h3>
+        <button id="scenarioReset" type="button">Reset building</button>
+        <button id="scenarioOccupied" type="button" title="Randomly occupy 1–2 rooms on each floor">Occupancy demo</button>
+        <p id="scenarioError" role="alert" hidden></p>
+        <p id="scenarioStatusWarning" role="alert" hidden></p>
+      </div>
+    </nav>
+    <section class="canvas-panel" aria-label="3D building view">
+      <canvas id="buildingCanvas" role="img" aria-label="Interactive 3D view of the four-floor building. Use the accessible controls below to select rooms and trigger sensors or faults."></canvas>
+      <div class="scene-overlays">
+        <div class="scene-messages">
+          <div class="view-help">
+            <div id="viewStatus" role="status"></div>
+            <p id="wiringLegend" class="wiring-legend" hidden>Wiring: <span class="sensor-wire">blue = sensors</span> · <span class="light-wire">amber = lights</span></p>
+          </div>
+          <div id="loadError" class="load-error" role="alert" hidden></div>
+        </div>
+        <section id="roomInspector" class="room-inspector" aria-label="Room controls" hidden>
+          <div class="room-inspector-heading">
+            <span id="roomInspectorTitle">Room controls</span>
+            <button id="closeRoomInspector" type="button" aria-label="Close room controls">×</button>
+          </div>
+          <div class="room-inspector-controls">
+            <label class="inspector-switch" for="inspectorPresence">
+              <span>Presence</span>
+              <input id="inspectorPresence" type="checkbox" role="switch">
+            </label>
+            <label class="inspector-switch" for="inspectorFault">
+              <span>Sensor fault</span>
+              <input id="inspectorFault" type="checkbox" role="switch">
+            </label>
+          </div>
+          <p id="inspectorError" role="alert" hidden></p>
+        </section>
+      </div>
+    </section>
+  </main>
+  <section class="status-panel">
+    <h2>Live status</h2>
+    <div id="statusTable"></div>
+    <details class="accessible-controls">
+      <summary>Accessible controls</summary>
+      <label for="accessibleFloor">Floor view</label>
+      <select id="accessibleFloor" disabled><option value="">All floors</option></select>
+      <label for="accessibleRoom">Room sensor</label>
+      <select id="accessibleRoom"></select>
+      <button id="accessibleTrigger" type="button">Trigger selected room sensor</button>
+      <label for="accessibleFaultScope">Fault type</label>
+      <select id="accessibleFaultScope">
+        <option value="sensor">Sensor</option>
+        <option value="light">Light strip</option>
+        <option value="controller">Controller</option>
+      </select>
+      <select id="accessibleFaultTarget" aria-label="Accessible fault target"></select>
+      <button id="accessibleInjectFault" type="button">Inject selected fault</button>
+      <div id="accessibleFaults" aria-label="All active faults"></div>
+      <p id="accessibleError" role="alert" hidden></p>
+      <div id="refreshWarning" class="load-error" hidden>
+        <span id="refreshWarningText" role="alert"></span>
+        <button id="dismissRefreshWarning" type="button">Dismiss</button>
+      </div>
+    </details>
+  </section>
+  <script type="importmap">
+    { "imports": { "three": "/vendor/three.module.js" } }
+  </script>
+  <script type="module" src="/app.js?v=ceiling-sensors-5"></script>
+</body>
+</html>

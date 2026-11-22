@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f7fb">
+  <title>Lighting Instrumentation</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Lighting instrumentation home">
+      <span class="brand-mark" aria-hidden="true">L</span>
+      <span class="brand-copy"><span class="brand-parent">Building systems <span class="brand-divider">/</span></span> Lighting</span>
+    </a>
+    <p id="connectionStatus" class="connection-status" role="status">
+      <span class="status-dot" aria-hidden="true"></span>
+      Waiting for telemetry
+    </p>
+  </header>
+  <main>
+    <section class="page-heading" aria-labelledby="pageTitle">
+      <div>
+        <p class="eyebrow">LIVE MONITORING</p>
+        <h1 id="pageTitle">Lighting overview</h1>
+        <p class="page-intro">Controller health, room occupancy and lighting activity across the building.</p>
+      </div>
+      <p class="updated-label"><span class="live-pulse" aria-hidden="true"></span> Updates automatically</p>
+    </section>
+
+    <section id="summaryCards" class="summary-grid" aria-label="Building summary"></section>
+
+    <div class="dashboard-grid">
+      <div class="primary-column">
+        <section class="panel activity-panel" aria-labelledby="activityTitle">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">BUILDING TOTAL</p>
+              <h2 id="activityTitle">Lighting activity</h2>
+            </div>
+            <p id="activityCaption" class="muted-caption"></p>
+          </div>
+          <div id="lightingSummary"></div>
+        </section>
+
+        <section class="controllers-section" aria-labelledby="controllersTitle">
+          <div class="section-heading controllers-heading">
+            <div>
+              <p class="eyebrow">FLOOR BY FLOOR</p>
+              <h2 id="controllersTitle">Controllers</h2>
+            </div>
+            <span id="controllerCount" class="section-count"></span>
+          </div>
+          <div id="controllers" class="controller-grid"></div>
+        </section>
+      </div>
+
+      <aside class="panel events-panel" aria-labelledby="eventsTitle">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">SYSTEM ACTIVITY</p>
+            <h2 id="eventsTitle">Recent events</h2>
+          </div>
+          <span id="eventCount" class="section-count"></span>
+        </div>
+        <div id="events" class="event-list"></div>
+      </aside>
+    </div>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>

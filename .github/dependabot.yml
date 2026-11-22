@@ -1,0 +1,27 @@
+version: 2
+updates:
+  # NuGet dependency updates
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "wmorgan69"
+    allow:
+      - dependency-type: "all"
+
+  # npm dependency updates (for Node.js test files)
+  - package-ecosystem: "npm"
+    directory: "/tests"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "wmorgan69"
+    allow:
+      - dependency-type: "all"

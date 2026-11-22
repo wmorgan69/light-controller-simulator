@@ -1,0 +1,83 @@
+:root { font-family: system-ui, sans-serif; color: #e9eef7; background: #111827; }
+body { margin: 0; }
+[hidden] { display: none !important; }
+header { position: relative; padding: 1rem 1.25rem; border-bottom: 1px solid #334155; }
+header h1, header p { margin: 0; }
+header p { color: #aab7ca; margin-top: .25rem; }
+.wiring-legend { font-size: .85rem; }
+.sensor-wire { color: #7dd3fc; }
+.light-wire { color: #fcd34d; }
+.transport-status { position: absolute; right: 1.25rem; top: 1.05rem; color: #86efac !important; font-size: .85rem; }
+.transport-status.offline { color: #fca5a5 !important; }
+main { min-height: 600px; display: grid; grid-template-columns: 220px minmax(0, 1fr); }
+.floor-navigation { padding: 1rem; background: #172033; border-right: 1px solid #334155; }
+.floor-navigation h2 { margin: 0 0 .75rem; font-size: 1rem; }
+.floor-options, .floor-buttons { display: grid; gap: .4rem; }
+.floor-button { width: 100%; text-align: left; background: #1e293b; border: 1px solid #475569; }
+.floor-button:hover, .floor-button:focus-visible { background: #334155; }
+.floor-button:focus-visible { outline: 2px solid #f8fafc; outline-offset: 2px; }
+.floor-button[aria-pressed="true"] { background: #1d4ed8; border-color: #93c5fd; }
+.floor-button-name { display: block; }
+.floor-button-status, .floor-button-occupancy { display: flex; align-items: baseline; gap: .3rem; margin-top: .2rem; color: #cbd5e1; font-size: .75rem; }
+.floor-button-status.faulted { color: #fecaca; }
+.floor-fault-icon, .floor-occupancy-icon { flex: 0 0 auto; }
+#floorLoading { color: #cbd5e1; font-size: .85rem; }
+.scenario-controls { display: grid; gap: .4rem; margin-top: 1.25rem; }
+.scenario-controls h3 { margin: 0 0 .25rem; font-size: .9rem; }
+.scenario-controls button { background: #1e293b; border: 1px solid #475569; }
+.scenario-controls button:hover, .scenario-controls button:focus-visible { background: #334155; }
+.scenario-controls button:focus-visible { outline: 2px solid #f8fafc; outline-offset: 2px; }
+#scenarioError, #scenarioStatusWarning { margin: 0; color: #fecaca; background: #7f1d1d; border-radius: 6px; padding: .55rem; overflow-wrap: anywhere; }
+.canvas-panel { position: relative; min-width: 0; height: min(76vh, 850px); min-height: 560px; background: radial-gradient(circle at center, #273449, #0d1320); overflow: hidden; }
+#buildingCanvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+#buildingCanvas:active { cursor: grabbing; }
+.scene-overlays { position: absolute; inset: 1rem; display: flex; flex-direction: column; align-items: flex-start; gap: .75rem; pointer-events: none; }
+.scene-messages { max-width: 100%; flex-shrink: 0; }
+.view-help { color: #e2e8f0; background: #0f172acc; border-radius: 6px; padding: .55rem .75rem; }
+.view-help p { margin: .3rem 0 0; }
+.load-error { margin-top: .5rem; max-width: 460px; color: #fecaca; background: #7f1d1d; border-radius: 6px; padding: .65rem .8rem; overflow-wrap: anywhere; }
+.room-inspector { z-index: 4; flex: 0 1 auto; min-height: 0; width: min(330px, 100%); margin-top: auto; overflow-y: auto; pointer-events: auto; box-sizing: border-box; background: #0f172af2; border: 1px solid #64748b; border-radius: 10px; box-shadow: 0 12px 28px #0008; }
+.room-inspector-heading { display: flex; justify-content: space-between; align-items: center; padding: .55rem .65rem; border-bottom: 1px solid #334155; font-weight: 700; }
+.room-inspector-heading button { width: 32px; height: 32px; padding: 0; background: transparent; color: #cbd5e1; font-size: 1.25rem; }
+.room-inspector-controls { display: grid; grid-template-columns: 1fr 1fr; }
+.inspector-switch { min-height: 58px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .35rem; color: #cbd5e1; font-size: .82rem; cursor: pointer; }
+.inspector-switch + .inspector-switch { border-left: 1px solid #334155; }
+.inspector-switch input { width: 44px; height: 24px; accent-color: #22c55e; cursor: pointer; }
+.inspector-switch input[id="inspectorFault"] { accent-color: #ef4444; }
+#inspectorError { color: #fecaca; background: #7f1d1d; border-radius: 0 0 10px 10px; padding: .5rem .65rem; margin: 0; overflow-wrap: anywhere; }
+select, button { padding: .6rem; border-radius: 6px; }
+select { width: 100%; color: #e9eef7; background: #1e293b; border: 1px solid #475569; }
+button { border: 0; background: #2563eb; color: white; cursor: pointer; }
+button:hover, button:focus-visible { background: #1d4ed8; }
+button:disabled, select:disabled { opacity: .48; cursor: not-allowed; }
+.status-panel { border-top: 1px solid #334155; overflow-x: auto; background: #172033; padding: 1rem; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; border-bottom: 1px solid #334155; padding: .55rem; }
+tr.selected-floor { background: #1d3558; box-shadow: inset 4px 0 #38bdf8; }
+.fault { display: flex; gap: .5rem; justify-content: space-between; align-items: center; border-top: 1px solid #334155; padding: .5rem 0; font-size: .85rem; }
+.fault button { flex: 0 0 auto; background: #b45309; }
+#actionError { color: #fecaca; background: #7f1d1d; border-radius: 6px; padding: .55rem; }
+.accessible-controls { margin-top: 1rem; border-top: 1px solid #334155; padding-top: .75rem; }
+.accessible-controls summary { cursor: pointer; font-weight: 650; }
+.accessible-controls label { display: block; margin-top: .75rem; }
+.accessible-controls select, .accessible-controls button { max-width: 420px; margin-top: .35rem; }
+.accessible-controls button { display: block; }
+.accessible-controls .fault { max-width: 560px; }
+.accessible-controls:has(#refreshWarning:not([hidden])) { padding-bottom: calc(30vh + 2rem); }
+#refreshWarning { position: fixed; left: 1rem; right: 1rem; bottom: 1rem; z-index: 5; max-width: 560px; max-height: 30vh; box-sizing: border-box; overflow-y: auto; display: flex; align-items: center; gap: .75rem; }
+#refreshWarning button { flex: 0 0 auto; margin: 0; }
+@media (max-width: 760px) {
+  main { display: block; }
+  .floor-navigation { padding: .75rem; border-right: 0; border-bottom: 1px solid #334155; }
+  .floor-options, .floor-buttons { display: contents; }
+  .floor-navigation { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .4rem; }
+  .floor-navigation h2, #floorLoading { grid-column: 1 / -1; margin: 0; }
+  .scenario-controls { grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: .5rem; }
+  .scenario-controls h3 { grid-column: 1 / -1; }
+  #scenarioError, #scenarioStatusWarning { grid-column: 1 / -1; }
+  .canvas-panel { height: 72vh; min-height: 620px; }
+  .scene-overlays { inset: .75rem; }
+  .view-help { font-size: .8rem; }
+  .transport-status { position: static; margin-top: .35rem !important; }
+  th, td { padding: .4rem; font-size: .85rem; }
+}

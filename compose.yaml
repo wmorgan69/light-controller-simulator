@@ -1,0 +1,26 @@
+services:
+  simulator:
+    build:
+      context: .
+      target: simulator
+    command: ["--urls", "http://0.0.0.0:8080"]
+    ports:
+      - "5080:8080"
+
+  instrumentation:
+    build:
+      context: .
+      target: instrumentation
+    command: ["--urls", "http://0.0.0.0:8080"]
+    environment:
+      Telemetry__SimulatorBaseUrl: http://simulator:8080
+      Telemetry__SqlitePath: /data/telemetry.db
+    ports:
+      - "5081:8080"
+    volumes:
+      - telemetry-data:/data
+    depends_on:
+      - simulator
+
+volumes:
+  telemetry-data:

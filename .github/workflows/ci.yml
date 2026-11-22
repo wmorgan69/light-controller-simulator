@@ -1,0 +1,93 @@
+name: .NET validation
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 11.0.x
+
+      - name: Restore
+        run: dotnet restore Devices.slnx
+
+      - name: Build
+        run: dotnet build Devices.slnx --no-restore
+
+      - name: Test
+        run: dotnet test Devices.slnx --no-build --no-restore --collect:"XPlat Code Coverage" --logger "trx"
+
+      - name: Enforce code coverage >= 50%
+        run: |
+          # Collect coverage results
+          coverage_files=$(find . -name "coverage.cobertura.xml" -type f)
+          if [ -z "$coverage_files" ]; then
+            echo "ERROR: No coverage files found. Build with --collect:'XPlat Code Coverage'"
+            exit 1
+          fi
+          
+          # Extract line coverage percentage from first coverage file
+          line_coverage=$(grep -oP 'line-rate="\K[^"]+' $(echo "$coverage_files" | head -1) | head -1)
+          line_coverage_pct=$(echo "scale=2; $line_coverage * 100" | bc)
+          
+          echo "Code Coverage: ${line_coverage_pct}%"
+          
+          # Phase 1: Enforce 50% threshold (baseline; can be raised to 60%, 75%, 90% over time)
+          # See docs/quality-and-security.md for phased enforcement strategy
+          if (( $(echo "$line_coverage_pct < 50" | bc -l) )); then
+            echo "ERROR: Code coverage ${line_coverage_pct}% is below 50% threshold"
+            exit 1
+          fi
+          echo "✓ Code coverage ${line_coverage_pct}% meets 50% threshold (Phase 1 of multi-phase approach)"
+        shell: bash
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          files: ./coverage.cobertura.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Test simulator view logic
+        run: node --test tests/wiring-routes.test.mjs tests/floor-view.test.mjs tests/room-state.test.mjs
+
+      - name: Smoke test Docker Compose
+        shell: bash
+        run: |
+          set -euo pipefail
+          cleanup() {
+            docker compose logs
+            docker compose down --volumes
+          }
+          trap cleanup EXIT
+          docker compose up --build -d
+          curl --fail --silent --show-error --retry 30 --retry-delay 1 --retry-connrefused http://localhost:5080/api/controllers | jq -e 'length == 4'
+          curl --fail --silent --show-error --retry 30 --retry-delay 1 --retry-connrefused http://localhost:5081/api/status > /dev/null
+          curl --fail --silent --show-error -X POST http://localhost:5080/api/rooms/floor-1-main/sensor/trigger > /dev/null
+          observed=false
+          for attempt in {1..30}; do
+            if curl --fail --silent http://localhost:5081/api/telemetry/controller-floor-1 | jq -e '.rooms[] | select(.id == "floor-1-main" and .presence == true)' > /dev/null; then
+              observed=true
+              break
+            fi
+            sleep 1
+          done
+          test "$observed" = true
+          docker compose stop instrumentation simulator
+          docker compose up -d --no-deps --force-recreate instrumentation
+          curl --fail --silent --show-error --retry 30 --retry-delay 1 --retry-connrefused http://localhost:5081/api/telemetry/controller-floor-1 | jq -e '.rooms[] | select(.id == "floor-1-main" and .presence == true)'

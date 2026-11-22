@@ -1,0 +1,33 @@
+    # .NET build output
+**/bin/
+**/obj/
+
+# Test and coverage output
+**/TestResults/
+**/coverage/
+*.coverage
+*.coveragexml
+*.trx
+
+# IDE and user-specific files
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.bak
+*.tar
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Runtime SQLite data
+*.db
+*.db-shm
+*.db-wal

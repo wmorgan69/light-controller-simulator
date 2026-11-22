@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 570" role="img" aria-labelledby="title description">
+  <title id="title">Lighting Instrumentation design</title>
+  <desc id="description">MQTT subscriber and simulator HTTP fallback feed TelemetryStore. The store feeds building summary cards, lighting activity, floor controller cards, the recent-event timeline and SQLite. Latest controller states feed the first three views, and recent device events feed the timeline.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#60A5FA"/>
+    </marker>
+    <style>
+      .node { fill: #1E293B; stroke: #60A5FA; stroke-width: 2; }
+      .label { fill: #F8FAFC; font: 16px "Segoe UI", Arial, sans-serif; text-anchor: middle; }
+      .edge { fill: none; stroke: #60A5FA; stroke-width: 2; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <g class="edge">
+    <path d="M250 183 L345 253"/>
+    <path d="M250 263 L345 267"/>
+    <path d="M515 243 L660 64"/>
+    <path d="M515 253 L660 164"/>
+    <path d="M515 263 L660 264"/>
+    <path d="M515 273 L660 364"/>
+    <path d="M515 283 L660 464"/>
+    <path d="M250 63 L660 55"/>
+    <path d="M250 72 L580 72 L580 155 L660 155"/>
+    <path d="M250 81 L565 81 L565 255 L660 255"/>
+    <path d="M250 463 L570 463 L570 355 L660 355"/>
+  </g>
+  <g class="node">
+    <rect x="30" y="35" width="220" height="56" rx="8"/>
+    <rect x="30" y="155" width="220" height="56" rx="8"/>
+    <rect x="30" y="235" width="220" height="56" rx="8"/>
+    <rect x="30" y="435" width="220" height="56" rx="8"/>
+    <rect x="345" y="235" width="170" height="56" rx="8"/>
+    <rect x="660" y="35" width="260" height="56" rx="8"/>
+    <rect x="660" y="135" width="260" height="56" rx="8"/>
+    <rect x="660" y="235" width="260" height="56" rx="8"/>
+    <rect x="660" y="335" width="260" height="56" rx="8"/>
+    <rect x="660" y="435" width="260" height="56" rx="8"/>
+  </g>
+  <g class="label">
+    <text x="140" y="69">Latest controller states</text>
+    <text x="140" y="189">MQTT subscriber</text>
+    <text x="140" y="269">Simulator HTTP fallback</text>
+    <text x="140" y="469">Recent device events</text>
+    <text x="430" y="269">TelemetryStore</text>
+    <text x="790" y="69">Building summary cards</text>
+    <text x="790" y="169">Lighting activity bar</text>
+    <text x="790" y="269">Floor controller cards</text>
+    <text x="790" y="369">Recent-event timeline</text>
+    <text x="790" y="469">telemetry.db</text>
+  </g>
+</svg>

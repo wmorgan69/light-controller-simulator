@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 360" role="img" aria-labelledby="title description">
+  <title id="title">Building Light Simulator system architecture</title>
+  <desc id="description">Browser users access the simulator and instrumentation dashboard. Simulator state reaches the telemetry store through HTTP fallback or optional MQTT, and the store persists data in SQLite.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#60A5FA"/>
+    </marker>
+    <style>
+      .node { fill: #1E293B; stroke: #60A5FA; stroke-width: 2; }
+      .label { fill: #F8FAFC; font: 15px "Segoe UI", Arial, sans-serif; text-anchor: middle; }
+      .edge { fill: none; stroke: #60A5FA; stroke-width: 2; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <g class="edge">
+    <path d="M160 171 C185 171 190 95 220 95"/>
+    <path d="M160 189 C185 189 190 288 220 288"/>
+    <path d="M405 95 L450 81"/>
+    <path d="M405 95 L425 95 L425 220 L450 220"/>
+    <path d="M605 81 L645 81"/>
+    <path d="M820 81 L845 81"/>
+    <path d="M980 81 L995 81"/>
+    <path d="M640 220 L645 220"/>
+    <path d="M800 220 L830 220"/>
+    <path d="M930 190 L930 145 L912 107"/>
+  </g>
+  <g class="node">
+    <rect x="30" y="154" width="130" height="52" rx="8"/>
+    <rect x="220" y="63" width="185" height="64" rx="8"/>
+    <rect x="220" y="256" width="185" height="64" rx="8"/>
+    <rect x="450" y="55" width="155" height="52" rx="8"/>
+    <rect x="450" y="190" width="190" height="60" rx="8"/>
+    <rect x="645" y="55" width="175" height="52" rx="8"/>
+    <rect x="645" y="190" width="155" height="60" rx="8"/>
+    <rect x="830" y="190" width="200" height="60" rx="8"/>
+    <rect x="845" y="55" width="135" height="52" rx="8"/>
+    <rect x="995" y="55" width="100" height="52" rx="8"/>
+  </g>
+  <g class="label">
+    <text x="95" y="185">Browser user</text>
+    <text x="312" y="91">
+      <tspan x="312" dy="0">Building Light</tspan>
+      <tspan x="312" dy="20">Simulator</tspan>
+    </text>
+    <text x="312" y="284">
+      <tspan x="312" dy="0">Lighting</tspan>
+      <tspan x="312" dy="20">Instrumentation</tspan>
+    </text>
+    <text x="527" y="87">HTTP state API</text>
+    <text x="545" y="216">
+      <tspan x="545" dy="0">MQTT telemetry</tspan>
+      <tspan x="545" dy="20">and commands</tspan>
+    </text>
+    <text x="732" y="87">
+      <tspan x="732" dy="0">Dashboard</tspan>
+      <tspan x="732" dy="18">HTTP fallback</tspan>
+    </text>
+    <text x="722" y="216">
+      <tspan x="722" dy="0">Optional MQTT</tspan>
+      <tspan x="722" dy="20">broker</tspan>
+    </text>
+    <text x="930" y="216">
+      <tspan x="930" dy="0">Dashboard MQTT</tspan>
+      <tspan x="930" dy="20">subscriber</tspan>
+    </text>
+    <text x="912" y="87">
+      <tspan x="912" dy="0">Telemetry</tspan>
+      <tspan x="912" dy="18">store</tspan>
+    </text>
+    <text x="1045" y="87">
+      <tspan x="1045" dy="0">SQLite</tspan>
+      <tspan x="1045" dy="18">telemetry.db</tspan>
+    </text>
+  </g>
+</svg>

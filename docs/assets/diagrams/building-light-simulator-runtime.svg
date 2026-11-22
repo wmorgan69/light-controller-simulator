@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 500" role="img" aria-labelledby="title description">
+  <title id="title">Simulator runtime architecture</title>
+  <desc id="description">A browser user triggers a sensor or fault through the UI. The UI posts a command to the simulator HTTP API, which mutates BuildingSimulator and returns revised controller state. BuildingSimulator queues state publication; the MQTT publisher sends retained telemetry to the broker and instrumentation subscriber.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#60A5FA"/>
+    </marker>
+    <style>
+      .node, .caption { fill: #1E293B; }
+      .node { stroke: #60A5FA; stroke-width: 2; }
+      .label { fill: #F8FAFC; font: 15px "Segoe UI", Arial, sans-serif; text-anchor: middle; }
+      .edge-label { fill: #F8FAFC; font: 13px "Segoe UI", Arial, sans-serif; text-anchor: middle; }
+      .edge { fill: none; stroke: #60A5FA; stroke-width: 2; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <g class="edge">
+    <path d="M170 100 L300 100"/>
+    <path d="M460 85 L590 85"/>
+    <path d="M590 115 L460 115"/>
+    <path d="M770 85 L900 85"/>
+    <path d="M900 115 L770 115"/>
+    <path d="M980 135 L980 260 L820 260"/>
+    <path d="M620 260 L510 260"/>
+    <path d="M350 260 L240 260"/>
+  </g>
+  <g class="node">
+    <rect x="20" y="65" width="150" height="70" rx="8"/>
+    <rect x="300" y="65" width="160" height="70" rx="8"/>
+    <rect x="590" y="65" width="180" height="70" rx="8"/>
+    <rect x="900" y="65" width="160" height="70" rx="8"/>
+    <rect x="620" y="225" width="200" height="70" rx="8"/>
+    <rect x="350" y="225" width="160" height="70" rx="8"/>
+    <rect x="20" y="225" width="220" height="70" rx="8"/>
+  </g>
+  <g class="label">
+    <text x="95" y="105">Browser user</text>
+    <text x="380" y="105">Browser UI</text>
+    <text x="680" y="95"><tspan x="680">Simulator</tspan><tspan x="680" dy="19">HTTP API</tspan></text>
+    <text x="980" y="105">BuildingSimulator</text>
+    <text x="720" y="265">MqttTelemetryPublisher</text>
+    <text x="430" y="265">MQTT broker</text>
+    <text x="130" y="255"><tspan x="130">Instrumentation</tspan><tspan x="130" dy="19">subscriber</tspan></text>
+  </g>
+  <g class="caption">
+    <rect x="175" y="78" width="120" height="42" rx="3"/>
+    <rect x="475" y="60" width="100" height="22" rx="3"/>
+    <rect x="468" y="117" width="114" height="36" rx="3"/>
+    <rect x="779" y="48" width="112" height="36" rx="3"/>
+    <rect x="782" y="118" width="106" height="36" rx="3"/>
+    <rect x="833" y="192" width="140" height="35" rx="3"/>
+    <rect x="513" y="248" width="105" height="22" rx="3"/>
+    <rect x="243" y="248" width="104" height="22" rx="3"/>
+  </g>
+  <g class="edge-label">
+    <text x="235" y="94"><tspan x="235">Trigger sensor</tspan><tspan x="235" dy="16">or fault</tspan></text>
+    <text x="525" y="76">POST command</text>
+    <text x="525" y="131"><tspan x="525">ControllerState</tspan><tspan x="525" dy="16">response</tspan></text>
+    <text x="835" y="62"><tspan x="835">Mutate authoritative</tspan><tspan x="835" dy="16">state</tspan></text>
+    <text x="835" y="132"><tspan x="835">Revised</tspan><tspan x="835" dy="16">ControllerState</tspan></text>
+    <text x="903" y="206"><tspan x="903">Queue state</tspan><tspan x="903" dy="16">publication</tspan></text>
+    <text x="565" y="264">Retained telemetry</text>
+    <text x="295" y="264">Telemetry</text>
+  </g>
+</svg>
