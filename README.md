@@ -20,9 +20,9 @@ flowchart TD
   H --> I
   I --> J["Merge"]
   
-  classDef stage fill:#1E293B,stroke:#60A5FA,color:#F8FAFC,font-size:12px;
-  classDef decision fill:#0F766E,stroke:#14B8A6,color:#F8FAFC,font-size:11px;
-  classDef outcome fill:#065F46,stroke:#10B981,color:#F8FAFC,font-size:12px;
+  classDef stage fill:#1E293B,stroke:#60A5FA,color:#F8FAFC;
+  classDef decision fill:#0F766E,stroke:#14B8A6,color:#F8FAFC;
+  classDef outcome fill:#065F46,stroke:#10B981,color:#F8FAFC;
   
   class A,B,C,D,F,H,I stage;
   class E,G decision;
