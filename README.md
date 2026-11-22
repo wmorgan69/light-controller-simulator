@@ -8,38 +8,25 @@ This repository uses an agentic build-review-rebuild workflow:
 
 ```mermaid
 flowchart TD
-  Plan["Plan and inspect"]
-  Build["Implement and test"]
-  Validate["Build and test"]
-  CodeReview["Independent code review"]
+  A["Plan & inspect"] --> B["Implement & test"]
+  B --> C["Build & test"]
+  C --> D["Code review"]
+  D --> E{"Security-sensitive?"}
+  E -->|Yes| F["Security review"]
+  E -->|No| G{"UI changes?"}
+  F --> G
+  G -->|Yes| H["UX review"]
+  G -->|No| I["Fix & re-review"]
+  H --> I
+  I --> J["Merge"]
   
-  Plan --> Build
-  Build --> Validate
-  Validate --> CodeReview
+  classDef stage fill:#1E293B,stroke:#60A5FA,color:#F8FAFC,font-size:12px;
+  classDef decision fill:#0F766E,stroke:#14B8A6,color:#F8FAFC,font-size:11px;
+  classDef outcome fill:#065F46,stroke:#10B981,color:#F8FAFC,font-size:12px;
   
-  CodeReview --> SecurityDecision{"Security-sensitive?"}
-  
-  SecurityDecision -->|Yes| SecurityReview["Security review<br/>OWASP Top 10"]
-  SecurityDecision -->|No| UXDecision{"UI changes?"}
-  SecurityReview --> UXDecision
-  
-  UXDecision -->|Yes| UXReview["UX review<br/>clarity, accessibility,<br/>responsive behavior"]
-  UXDecision -->|No| Findings["Any findings?"]
-  UXReview --> Findings
-  
-  Findings -->|No| Merge["Ready to merge"]
-  Findings -->|Yes| Rebuild["Fix findings"]
-  
-  Rebuild --> Revalidate["Revalidate and<br/>re-review affected stages"]
-  Revalidate --> Report["Report evidence<br/>and final status"]
-  
-  classDef stage fill:#1E293B,stroke:#60A5FA,color:#F8FAFC;
-  classDef decision fill:#0F766E,stroke:#14B8A6,color:#F8FAFC;
-  classDef outcome fill:#065F46,stroke:#10B981,color:#F8FAFC;
-  
-  class Plan,Build,Validate,CodeReview,SecurityReview,UXReview,Rebuild,Revalidate,Report stage;
-  class SecurityDecision,UXDecision,Findings decision;
-  class Merge outcome;
+  class A,B,C,D,F,H,I stage;
+  class E,G decision;
+  class J outcome;
 ```
 
 Agent customization:
