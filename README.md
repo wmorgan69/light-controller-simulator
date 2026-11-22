@@ -14,7 +14,7 @@ This repository uses an agentic build-review-rebuild workflow with staged change
 3. Pull request is created with implementation, build validation, and test results
 4. Required reviewers (code, security if applicable, UX if applicable) independently evaluate the PR
 5. Human approves, requests changes, or merges when ready
-6. Branch protection rules enforce CI pass and reviewer approval before merge
+6. Repository rules, when configured, enforce required checks and approvals before merge
 
 Agent customization:
 
@@ -24,9 +24,9 @@ Agent customization:
 - [Security reviewer](.github/agents/security-reviewer.agent.md) independently checks for OWASP Top 10 UI and API vulnerabilities (required for PRs that add external inputs, API endpoints, or authentication/authorization logic).
 - [UX reviewer](.github/agents/ux-reviewer.agent.md) independently checks UI clarity, accessibility, responsive behavior, and state rendering.
 - [Pull-request template](.github/PULL_REQUEST_TEMPLATE.md) records validation and reviewer evidence.
-- [CI workflow](.github/workflows/ci.yml) builds, tests, enforces code coverage (≥50% Phase 1, phased to 90%), and validates pull requests.
+- [CI workflow](.github/workflows/ci.yml) builds and tests pull requests, checks the first collected coverage report against a 50% threshold, and runs Node.js and Docker Compose checks.
 
-**Branch protection:** The `main` branch requires CI workflow success and at least one approval before merge. Changes are staged as working branches and must go through PR review before merging. Automated agents validate code but cannot unilaterally approve merges—human review is required.
+**Branch protection:** The intended workflow uses pull requests, CI, and human review. Enforcement depends on the repository's branch protection or rulesets; the workflow and agent instructions alone do not enforce approvals or prevent direct pushes.
 
 ## Overview
 
@@ -42,6 +42,8 @@ The project demonstrates:
 
 ![System architecture: browser users access the simulator and dashboard; HTTP fallback and optional MQTT telemetry flow into the telemetry store and SQLite.](docs/assets/diagrams/architecture.svg)
 
+Simulator state reaches the instrumentation telemetry store through HTTP polling or an optional MQTT broker; the store persists data in SQLite.
+
 ## Applications
 
 | Application | URL | Purpose |
@@ -51,7 +53,7 @@ The project demonstrates:
 
 ## Screenshots and demo
 
-The screenshots show the simulator and instrumentation dashboard. The video walks through camera pan and rotation, floor and room selection, presence and sensor-fault changes, and their live instrumentation updates, followed by the occupancy demo.
+The screenshots show the simulator and instrumentation dashboard. The video shows all floors with camera pan and rotation, then floor selection, zooming and room selection, followed by presence and sensor-fault changes, live instrumentation updates, and the occupancy demo.
 
 ### Building Light Simulator
 
@@ -122,6 +124,6 @@ AGENTS.md                        Repository-wide agent instructions
 ## Build and test
 
 ```powershell
-dotnet build Devices.slnx --no-restore
+dotnet build Devices.slnx
 dotnet test Devices.slnx --no-build --no-restore
 ```

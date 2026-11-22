@@ -5,9 +5,9 @@ This guide shows you how to work with the new code coverage and security review 
 ## Before You Start
 
 Make sure you understand:
-- **Code coverage ≥ 50%** is now enforced by CI (Phase 1; will increase to 60%, 75%, then 90%)
-- **Security review** is required for PRs touching APIs, authentication, or external inputs
-- **Dependabot** will scan dependencies weekly and open PRs for security updates
+- **Code coverage ≥ 50%** is enforced on the first report discovered by CI; higher thresholds are proposed, not scheduled.
+- **Security review** is requested for changes touching APIs, authentication, or external inputs; repository rules determine what is enforced.
+- **Dependabot** is configured for weekly NuGet and npm version updates; npm updates require a manifest in `tests/`. Security alerts are configured separately.
 
 ## Working on Code Changes
 
@@ -15,15 +15,24 @@ Make sure you understand:
 
 ```bash
 # Build and run all tests with coverage
-dotnet build Devices.slnx --no-restore
+dotnet build Devices.slnx
 dotnet test Devices.slnx --no-build --no-restore --collect:"XPlat Code Coverage"
 ```
 
 Coverage XML files appear in: `tests/**/TestResults/*/coverage.cobertura.xml`
 
+The CI workflow adds simulator view-logic and recording-helper Node tests and a Docker Compose smoke test:
+
+```powershell
+node --test tests/wiring-routes.test.mjs tests/floor-view.test.mjs tests/room-state.test.mjs tests/record-demo.test.mjs
+docker compose up --build -d
+```
+
+The CI smoke test starts both Compose services, verifies the simulator controller count and instrumentation status, triggers room presence, confirms the telemetry update, then stops and recreates only the instrumentation service to verify persisted presence remains visible. The CI job cleans up its disposable Compose resources after the check.
+
 ### 2. Add Focused Tests (If Coverage Drops)
 
-If your change drops overall coverage below 50%, add tests:
+If the report checked by CI drops below 50%, add tests:
 
 ```bash
 # Tests are in tests/Devices.*.Tests/
@@ -31,8 +40,8 @@ If your change drops overall coverage below 50%, add tests:
 ```
 
 **Where to add tests:**
-- **API controllers**: `tests/Devices.Simulator.Tests/Controllers/` or `tests/Devices.Instrumentation.Tests/Controllers/`
-- **State logic**: `tests/Devices.Simulator.Tests/Models/` or similar
+- **Simulator tests**: `tests/Devices.Simulator.Tests/BuildingSimulatorTests.cs`
+- **Instrumentation tests**: `tests/Devices.Instrumentation.Tests/TelemetryStoreTests.cs`
 - **Input validation**: Create a new test class named `*ValidationTests.cs`
 
 **Test style** (follow existing patterns):
@@ -54,28 +63,7 @@ public void MyNewFeature_WithValidInput_ReturnsExpected()
 
 ### 3. Create a Pull Request
 
-Fill out `.github/PULL_REQUEST_TEMPLATE.md`:
-
-```markdown
-## Summary
-Brief description of the change
-
-## Validation
-- [x] Relevant tests pass
-- [x] `dotnet build Devices.slnx` passes
-- [x] `dotnet test Devices.slnx` passes  
-- [x] Code coverage is >= 50% (checked in CI)
-
-## Security & Dependencies
-- [x] Security review completed OR this change is not security-sensitive
-- [x] No secrets committed
-- [x] New inputs are validated (if applicable)
-
-## Independent reviews
-- [ ] Code review completed
-- [ ] Security review completed (if security-sensitive)
-- [ ] UX review completed (if UI changes)
-```
+Fill out `.github/PULL_REQUEST_TEMPLATE.md`, retaining its headings and recording actual validation and review results.
 
 ### 4. Request Code Review
 
@@ -92,10 +80,7 @@ Mention that the change has been tested and coverage is maintained.
 
 **Then request security review:**
 
-Comment in the PR:
-```
-@security-reviewer Please review this change for OWASP Top 10 vulnerabilities.
-```
+Select the `security-reviewer` agent in an environment that supports the repository's custom agents, and record its findings in the PR. A GitHub comment alone does not guarantee that the agent runs.
 
 **What the security reviewer will check:**
 - Input validation and sanitization
@@ -107,11 +92,11 @@ Comment in the PR:
 **If vulnerabilities are found:**
 1. The agent will post findings with severity and suggested fixes
 2. Fix the issues
-3. Comment: `@security-reviewer Please re-review`
+3. Request an independent re-review and record the result
 
 ### 6. Address Dependabot PRs
 
-If Dependabot opens a PR with security updates:
+If Dependabot opens a dependency update PR:
 - Review the PR description
 - Check the CI workflow passes
 - Approve and merge (Dependabot PRs run full CI)
@@ -120,25 +105,25 @@ If Dependabot opens a PR with security updates:
 
 You don't need to reach 90% immediately. The phased approach is:
 
-1. **Phase 1 (Now - 1 month)**: 50% threshold
-   - Prevents coverage regression
+1. **Phase 1 (current)**: 50% threshold
+   - Checks the first discovered coverage report
    - Establishes CI/coverage-collection workflows
 
-2. **Phase 2 (1-2 months)**: 60% threshold
+2. **Phase 2 (proposed)**: 60% threshold
    - Add tests for critical business logic paths
    - Focus on API contracts and state mutations
 
-3. **Phase 3 (2-3 months)**: 75% threshold
+3. **Phase 3 (proposed)**: 75% threshold
    - More comprehensive coverage
    - Add integration tests for complex scenarios
 
-4. **Phase 4 (3+ months)**: 90% threshold
+4. **Phase 4 (proposed)**: 90% threshold
    - Full coverage of business logic
    - May exclude hard-to-test UI/rendering code with documentation
 
 **Strategy for reaching 90%:**
 - Focus on **business logic first** (easiest to test, highest impact)
-- **Skip 3D/animation code** if truly untestable (mark with `[ExcludeFromCodeCoverage]`)
+- **Test browser logic separately**: the .NET coverage report does not measure JavaScript 3D rendering.
 - **Add integration tests** for critical scenarios (room selection → presence → fault → state update)
 - **Incrementally add** unit tests as you change code
 
@@ -146,27 +131,17 @@ You don't need to reach 90% immediately. The phased approach is:
 
 ### "My change is infrastructure-only (e.g., dependency update). Can I skip coverage?"
 
-No, CI will still check. But if you don't add new logic, coverage should not drop (CI will pass).
+CI still checks its first discovered report. A change without new logic does not by itself guarantee that the check passes.
 
 ### "Coverage dropped 1% due to my change. Do I need to add tests?"
 
 Depends on the threshold:
-- If total coverage is still ≥ 50%, CI passes, no action needed.
-- If total coverage dropped below 50%, add tests for your code paths.
+- If the first report discovered by CI is ≥ 50%, the coverage gate passes; it does not check combined solution coverage or detect every regression.
+- If that report is below 50%, add tests for your code paths.
 
 ### "Can I exclude code from coverage?"
 
-Yes, for truly untestable code:
-
-```csharp
-[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
-public class ComplexAnimationRenderer
-{
-    // This class renders WebGL animation; has no testable logic
-}
-```
-
-Then document **why** it's excluded in a code comment or in `docs/quality-and-security.md`.
+For C# code, consider exclusions only when justified and document the reason. Verify the exclusion configuration against the Coverlet collector used by CI. JavaScript rendering is not part of the .NET coverage report.
 
 ### "I disagree with a security finding. Can I ignore it?"
 
@@ -182,7 +157,7 @@ You can override with code review approval, but:
          ↓
 2. Add focused tests (if needed)
          ↓
-3. `dotnet test` passes, coverage ≥ 60%
+3. `dotnet test` passes, coverage ≥ 50%
          ↓
 4. Push PR (CI will verify coverage automatically)
          ↓

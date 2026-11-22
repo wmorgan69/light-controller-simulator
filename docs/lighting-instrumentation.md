@@ -68,7 +68,7 @@ The HTTP fallback polls:
 GET http://localhost:5080/api/controllers
 ```
 
-The refresh loop only publishes changed HTTP states as events and uses the same `TelemetryStore` as MQTT ingestion.
+The refresh loop runs once per second. It only publishes changed HTTP states as events and uses the same `TelemetryStore` as MQTT ingestion.
 
 ## Persistence
 

@@ -63,8 +63,8 @@ jobs:
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
 
-      - name: Test simulator view logic
-        run: node --test tests/wiring-routes.test.mjs tests/floor-view.test.mjs tests/room-state.test.mjs
+      - name: Test simulator view logic and recording helper
+        run: node --test tests/wiring-routes.test.mjs tests/floor-view.test.mjs tests/room-state.test.mjs tests/record-demo.test.mjs
 
       - name: Smoke test Docker Compose
         shell: bash

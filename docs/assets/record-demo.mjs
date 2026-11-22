@@ -3,7 +3,8 @@
  * Both apps must be running, and outputDirectory must contain writable screenshots and videos directories.
  */
 export async function captureBuildingLightingDemo(page, outputDirectory) {
-  if (!page || !page.screencast || typeof page.screencast.start !== 'function') {
+  if (!page || !page.screencast || ['start', 'stop', 'showActions', 'showChapter']
+    .some(method => typeof page.screencast[method] !== 'function')) {
     throw new Error('A Playwright page with screencast support is required.');
   }
   if (typeof outputDirectory !== 'string' || outputDirectory.trim().length === 0) {
@@ -59,7 +60,8 @@ export async function captureBuildingLightingDemo(page, outputDirectory) {
   );
   const postAndWait = async (button, path, label) => {
     const responsePromise = page.waitForResponse(
-      response => response.request().method() === 'POST' && new URL(response.url()).pathname === path,
+      response => response.request().method() === 'POST'
+        && response.url().replace(/^https?:\/\/[^/]+/, '').split(/[?#]/, 1)[0] === path,
       { timeout: 10000 }
     );
     const [, response] = await Promise.all([button.click(), responsePromise]);
@@ -201,23 +203,51 @@ export async function captureBuildingLightingDemo(page, outputDirectory) {
     recordingStarted = true;
     try {
       await page.screencast.showActions();
-      await page.screencast.showChapter('Pan, rotate, and select a room');
-      await page.waitForTimeout(1800);
+      await page.screencast.showChapter('All-floors view');
+      await page.getByRole('button', { name: 'All floors' }).click();
+      await page.waitForTimeout(1500);
+
       const canvas = page.locator('#buildingCanvas');
+      await canvas.scrollIntoViewIfNeeded();
       const box = await canvas.boundingBox();
+      if (!box) {
+        throw new Error('The building canvas is not visible.');
+      }
       const centerX = box.x + box.width * 0.5;
       const centerY = box.y + box.height * 0.52;
+
+      await page.screencast.showChapter('Pan and rotate the building');
+      await page.waitForTimeout(1000);
       await page.mouse.move(centerX, centerY);
       await page.mouse.down({ button: 'left' });
       await page.mouse.move(centerX + 90, centerY + 35, { steps: 10 });
       await page.mouse.up({ button: 'left' });
-      await page.waitForTimeout(700);
+      await page.waitForTimeout(1000);
       await page.mouse.move(centerX, centerY);
       await page.mouse.down({ button: 'right' });
       await page.mouse.move(centerX + 55, centerY + 25, { steps: 8 });
       await page.mouse.up({ button: 'right' });
-      await page.waitForTimeout(700);
+      await page.waitForTimeout(1000);
 
+      await page.screencast.showChapter('Select a floor and zoom in and out');
+      await page.waitForTimeout(1000);
+      await page.getByRole('button', { name: /^Floor 2/ }).click();
+      if (await page.getByRole('button', { name: /^Floor 2/ }).getAttribute('aria-pressed') !== 'true') {
+        throw new Error('Floor 2 selection failed.');
+      }
+      await page.waitForTimeout(1000);
+      await canvas.scrollIntoViewIfNeeded();
+      const floorBox = await canvas.boundingBox();
+      if (!floorBox) {
+        throw new Error('The building canvas is not visible.');
+      }
+      await page.mouse.move(floorBox.x + floorBox.width * 0.5, floorBox.y + floorBox.height * 0.52);
+      await page.mouse.wheel(0, -400);
+      await page.waitForTimeout(1000);
+      await page.mouse.wheel(0, 400);
+      await page.waitForTimeout(1000);
+
+      await page.screencast.showChapter('Select a room');
       await selectFloor2OfficeA();
       await page.waitForTimeout(1000);
 
@@ -240,11 +270,12 @@ export async function captureBuildingLightingDemo(page, outputDirectory) {
       await page.goto(instrumentationUrl, { waitUntil: 'domcontentloaded' });
       await page.getByRole('heading', { name: 'Lighting overview' }).waitFor();
       await waitForDashboardCounts({ occupied: 1, faults: 1, lights: 5 }, 'Showing the fault update');
-      await page.waitForTimeout(1600);
+      await page.waitForTimeout(5000);
 
+      await page.goto(simulatorUrl, { waitUntil: 'domcontentloaded' });
+      await page.getByRole('button', { name: 'Occupancy demo' }).waitFor({ state: 'visible' });
       await page.screencast.showChapter('Run the occupancy demo');
       await page.waitForTimeout(1600);
-      await page.goto(simulatorUrl, { waitUntil: 'domcontentloaded' });
       await page.getByRole('button', { name: 'Occupancy demo' }).click();
       const occupancyCounts = await waitForState(
         counts => counts.occupied >= 4 && counts.occupied <= 8 && counts.faults === 0,

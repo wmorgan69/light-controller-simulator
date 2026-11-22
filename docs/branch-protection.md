@@ -16,19 +16,21 @@ This document describes the recommended GitHub branch protection settings for en
 Enable the following checkboxes:
 
 - [x] **Require a pull request before merging**
-  - Require approval from at least 1 (or more) code owners
+  - Require approval from at least one reviewer
   - Dismiss stale pull request approvals when new commits are pushed
 
 - [x] **Require status checks to pass before merging**
   - Require branches to be up to date before merging
 
 **Required status checks:**
-- `.NET validation` (from CI workflow: `ci.yml`)
-  - This includes build, test, code coverage >= 90%, and smoke tests
+- `Build and test` (job name from the `.NET validation` workflow in `ci.yml`)
+  - This includes build, test, the 50% coverage gate, Node.js view-logic tests, and Docker Compose smoke tests
+
+  Branch protection status names should be confirmed from an actual pull-request check run. The workflow is named `.NET validation`; its current job is named `Build and test`.
 
 **Future additions (once configured):**
-- Security vulnerability scanning (Dependabot)
-- Code coverage badge (Codecov)
+- Security vulnerability scanning (Dependabot alerts; configure separately from Dependabot version updates)
+- Code coverage badge or status check (Codecov; optional and not currently required by CI)
 
 ### 3. Restrict Who Can Push
 
@@ -40,28 +42,31 @@ Enable the following checkboxes:
 - [x] **Require code reviews before merging**
   - Number of reviewers: 1
   - Dismiss stale pull request approvals: Yes
-  - Require review from code owners: Yes (if `CODEOWNERS` file exists)
+  - Require review from code owners: only if a `CODEOWNERS` file is added; none is present in the current repository
 
 - [x] **Require conversation resolution before merging**
   - Ensures all comments/discussions are resolved
 
 ## CI/CD Enforcement
 
-### Code Coverage (>= 90%)
+### Code Coverage (>= 50%, currently Phase 1)
 
 The CI workflow (`ci.yml`) will:
 1. Run all tests with code coverage collection: `dotnet test Devices.slnx --collect:"XPlat Code Coverage"`
 2. Extract coverage percentage from `coverage.cobertura.xml`
-3. Fail the build if coverage < 90%
-4. Upload results to Codecov for tracking and visualization
+3. Fail the build if the first discovered coverage report is below 50%
+4. Attempt a non-blocking Codecov upload; the configured path needs correction as described below
 
-**Status check name:** `.NET validation` (includes coverage enforcement)
+**Status check name:** `Build and test` (includes coverage enforcement)
+
+The 50% gate is a local threshold in CI. It checks the first `coverage.cobertura.xml` found, not combined solution coverage. Raising the threshold remains a future repository change. Codecov is optional and does not currently supply a required threshold.
 
 ### Security Scanning
 
 #### Dependabot (GitHub Native)
-- Automatically scans NuGet and npm dependencies for vulnerabilities
-- Opens PRs for security updates
+- Configures NuGet update PRs for `/` and npm update PRs for `/tests`
+- The npm entry requires an npm manifest such as `package.json`; the repository currently has no npm manifest
+- Security alerts are a separate GitHub security feature and are not enabled by `.github/dependabot.yml`
 - Configured via `.github/dependabot.yml`
 
 #### Manual Security Reviews
@@ -88,15 +93,17 @@ Once you set up Codecov:
    - GitHub Settings → Branches → Branch protection rule
    - Add `codecov/patch` and/or `codecov/project` as required status checks
 
+Before relying on Codecov uploads, update the CI action's `files` setting to cover the generated reports at `tests/**/TestResults/*/coverage.cobertura.xml`. The current `./coverage.cobertura.xml` path does not match the repository's dotnet-test output location; upload failures are non-blocking because `fail_ci_if_error` is false.
+
 ## Merge Checklist
 
 Before merging a PR, verify:
 
-- [ ] All CI status checks pass (`.NET validation`)
+- [ ] All CI status checks pass (`Build and test`)
 - [ ] Code review is approved
 - [ ] Security review is approved (if applicable)
 - [ ] UX review is approved (if UI changes)
-- [ ] Code coverage is >= 90%
+- [ ] Code coverage meets the current 50% CI threshold
 - [ ] No unresolved conversations
 - [ ] PR description clearly explains the change and testing performed
 - [ ] No secrets or sensitive data committed
@@ -134,7 +141,7 @@ Shows:
 
 ## Troubleshooting
 
-### "Coverage enforcement failed: 85% < 90%"
+### "Coverage enforcement failed: 45% < 50%"
 
 This means your test suite is not covering enough code paths. Options:
 
@@ -147,11 +154,11 @@ To view coverage locally:
 dotnet test Devices.slnx --collect:"XPlat Code Coverage"
 ```
 
-Coverage XML files are in: `tests/**/coverage.cobertura.xml`
+Coverage XML files are in: `tests/**/TestResults/*/coverage.cobertura.xml`
 
 ### "No CODECOV_TOKEN found"
 
-The CI step will not upload to Codecov without the token, but coverage enforcement is still local. To enable Codecov:
+Codecov may require a token, depending on repository and Codecov configuration. Coverage enforcement is local to CI regardless of upload success. To set up the token:
 
 1. Set up account at https://codecov.io
 2. Add `CODECOV_TOKEN` to GitHub repository secrets
@@ -159,13 +166,7 @@ The CI step will not upload to Codecov without the token, but coverage enforceme
 
 ### "Security-reviewer agent not found"
 
-The agent is defined in `.github/agents/security-reviewer.agent.md`. When requesting a review:
-
-```
-@security-reviewer Please review this change for OWASP vulnerabilities
-```
-
-The agent will analyze the diff and report findings.
+The agent is defined in `.github/agents/security-reviewer.agent.md`. Select it in an environment that supports the repository's custom agents, then record its findings in the PR. A GitHub comment alone does not guarantee that the agent runs.
 
 ## References
 

@@ -72,7 +72,7 @@ flowchart LR
 - **Corner pillars** provide a faint, non-interactive building frame in the overview; they are hidden when a floor is selected.
 - **Sensors** sit at the illustrative ceiling height. Office sensors are offset from the light strips so both remain visible and selectable. A faulted sensor is shown in red even when its room is not selected.
 - **Room selection** is available by clicking or tapping a room in the 3D view, as indicated in the view's interaction help.
-- **Wiring** automatically connects the selected floor's controller to its sensors and light strips in an illustrative overlay. No wiring is shown in All floors view. A key below the 3D view's interaction instructions identifies blue wiring as sensors and amber wiring as lights; the routes are not actual cable layouts.
+- **Wiring** automatically connects the selected floor's controller to its sensors and light strips in an illustrative overlay. No wiring is shown in All floors view. A key below the 3D view's interaction instructions identifies blue wiring as sensors and yellow wiring as lights; the routes are not actual cable layouts.
 - **Room inspector** controls presence and sensor-fault state for the selected room only. A floor remains faulted while any fault on its controller remains active.
 - **Reset building** clears presence, triggered state, lights, and faults.
 - **Occupancy demo** randomly selects 1–2 rooms per floor and turns on their current strips. Scenario controls are disabled while a scenario is running. Errors are displayed below the controls, including when a scenario succeeds but its status refresh fails.
@@ -97,6 +97,7 @@ The 3D view is built from local Three.js modules in `wwwroot/vendor`; it does no
 ## MQTT protocol
 
 The publisher uses `building/controllers/{controllerId}/telemetry` for retained state telemetry.
+Commands are received on `building/controllers/{controllerId}/commands`; accepted or rejected commands return a non-retained acknowledgement on `building/controllers/{controllerId}/commands/{commandId}/ack`.
 
 ![MQTT command flow: DeviceCommand reaches the command handler via the controller commands topic. The resulting state mutation produces an acknowledgement and controller telemetry.](assets/diagrams/building-light-simulator-mqtt.svg)
 

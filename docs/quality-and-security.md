@@ -1,12 +1,12 @@
-# Implementation Summary: Code Coverage (≥90%) and Security Review (OWASP Top 10)
+# Implementation Summary: Code Coverage, Security Review, and Dependency Updates
 
 ## Overview
 
-Three new quality gates have been added to your CI/CD pipeline and development workflow:
+The repository currently provides these quality and security mechanisms:
 
-1. **Code Coverage Enforcement (≥90%)**
-2. **Security Review Agent (OWASP Top 10 UI & API)**
-3. **Dependency Scanning (Dependabot)**
+1. **Code Coverage Phase 1 Enforcement (≥50%)**
+2. **Security Review Agent Guidance (OWASP Top 10 UI & API)**
+3. **Dependency Update Configuration (Dependabot)**
 
 ## Files Created/Modified
 
@@ -22,20 +22,20 @@ Three new quality gates have been added to your CI/CD pipeline and development w
 
 | File | Changes |
 |---|---|
-| `.github/workflows/ci.yml` | Added code coverage collection, enforcement (≥90%), and Codecov upload |
+| `.github/workflows/ci.yml` | Collects coverage, enforces the current ≥50% Phase 1 threshold, and attempts a Codecov upload |
 | `.github/PULL_REQUEST_TEMPLATE.md` | Added security review, coverage, and Dependabot checklists |
 | `AGENTS.md` | Updated workflow to include security-reviewer agent for security-sensitive changes |
 | `docs/README.md` | Added Quality and security section; linked branch protection guide |
 
 ## Current State
 
-### Coverage Baseline
-- **Devices.Simulator.Tests**: 44% line coverage
-- **Devices.Instrumentation.Tests**: 51.29% line coverage
-- **Initial Threshold**: 50% (baseline; will increase over time)
-- **Target**: 90% (phased approach)
+### Coverage Enforcement
+- **Enforced threshold**: 50% line coverage
+- **Current phase**: 1
+- **Future target**: 90%, with 60% and 75% intermediate phases proposed
+- **Measurement**: CI reads the first discovered `coverage.cobertura.xml`, not combined solution coverage
 
-The low coverage reflects the challenge of testing UI-heavy and simulation components. See **Recommended Approach** below.
+Raising the threshold is a proposed repository change until the workflow is updated.
 
 ## Recommended Approach to Reach 90%
 
@@ -43,18 +43,18 @@ The low coverage reflects the challenge of testing UI-heavy and simulation compo
 
 Gradually increase the coverage threshold as the team adds tests:
 
-1. **Phase 1 (Now - 1 month)**: Set threshold to **50%** (baseline to prevent regression)
+1. **Phase 1 (current)**: Set threshold to **50%**
    - Establishes coverage-collection habit
-   - Prevents coverage from getting worse
+   - Does not check combined solution coverage or detect every regression
    - No immediate pressure to add tests
 
-2. **Phase 2 (1-2 months)**: Increase to **60%**
+2. **Phase 2 (proposed)**: Increase to **60%**
    - Add focused tests for critical paths (API validation, state mutations, faults)
 
-3. **Phase 3 (2-3 months)**: Increase to **75%**
+3. **Phase 3 (proposed)**: Increase to **75%**
    - More comprehensive coverage of business logic
 
-4. **Phase 4 (3+ months)**: Reach **90%**
+4. **Phase 4 (proposed)**: Reach **90%**
    - Full coverage of business logic
    - May exclude complex 3D rendering or animation code with documented reasons
 
@@ -62,35 +62,13 @@ Gradually increase the coverage threshold as the team adds tests:
 ```bash
 # Change this line
 if (( $(echo "$line_coverage_pct < 50" | bc -l) )); then
-# to (after 1 month)
+# to (when the threshold is raised)
 if (( $(echo "$line_coverage_pct < 60" | bc -l) )); then
 ```
 
 ### Option 2: Exclude Hard-to-Test Code
 
-Add a `.runsettings` file to exclude unrealistic coverage targets:
-
-```xml
-<?xml version="1.0" encoding="utf-8"?>
-<RunSettings>
-  <CodeCoverage>
-    <!-- Exclude property getters/setters -->
-    <Exclude>
-      <Source>.*Properties\.cs$</Source>
-    </Exclude>
-    <!-- Exclude UI-heavy classes -->
-    <Exclude>
-      <Source>.*\.cs$</Source>
-      <Attribute>.*ExcludeFromCodeCoverage.*</Attribute>
-    </Exclude>
-  </CodeCoverage>
-</RunSettings>
-```
-
-Then mark untestable code with `[ExcludeFromCodeCoverage]` attribute and reference in tests command:
-```bash
-dotnet test ... --settings .runsettings
-```
+Consider narrowly scoped, documented C# exclusions only when justified, and verify any configuration against the Coverlet collector used by CI. The .NET coverage report does not measure the JavaScript 3D renderer.
 
 ### Option 3: Incremental PR-by-PR Enforcement
 
@@ -103,7 +81,7 @@ dotnet test ... --settings .runsettings
 
 **Implementation**: Skip the coverage enforcement step in CI for now:
 ```bash
-# Comment out or remove the "Enforce code coverage >= 90%" step in ci.yml
+# Comment out or remove the "Enforce code coverage >= 50%" step in ci.yml
 # Keep the Codecov upload step for visibility
 ```
 
@@ -120,8 +98,8 @@ dotnet test ... --settings .runsettings
 
 **How to request:**
 1. After implementation and code review
-2. Comment in the PR: `@security-reviewer Please review this change for OWASP vulnerabilities`
-3. The agent will analyze the diff and report findings
+2. Select the `security-reviewer` agent in an environment that supports repository custom agents
+3. Record its findings in the PR; a GitHub comment alone does not guarantee that the agent runs
 4. Address any reported vulnerabilities
 5. Request re-review
 
@@ -149,15 +127,16 @@ dotnet test ... --settings .runsettings
 **File**: `.github/dependabot.yml`
 
 **What it does**:
-- Scans `Devices.*.csproj` files for vulnerable NuGet packages
-- Scans `package.json` for vulnerable npm packages
-- Opens PRs automatically with security updates
-- Runs weekly on Mondays at 4 AM UTC
+- Configures NuGet update PRs for the repository root
+- Configures npm update PRs for `/tests`
+- Opens update PRs automatically; GitHub security alerts are a separate feature
+- Runs on the configured weekly Monday 4 AM UTC schedules
 
 **To activate**:
 1. The `.github/dependabot.yml` file is already created
-2. GitHub automatically reads this on push
-3. Dependabot will start scanning and opening PRs within 24 hours
+2. GitHub must read and enable the configuration for the repository
+3. The npm entry needs a supported npm manifest in `/tests` before it can produce npm updates
+4. Enable Dependabot alerts and security updates separately if the repository should receive vulnerability alerts
 
 **To monitor**:
 - Go to your GitHub repo → Security → Dependabot alerts
@@ -175,8 +154,9 @@ dotnet test ... --settings .runsettings
    - [x] Require code reviews (1+ reviewer)
    - [x] Require conversation resolution
 
-4. Select required status check: `.NET validation`
-   - This includes build, test, and coverage enforcement
+4. Select required status check: `Build and test`
+   - This is the job name in the `.NET validation` workflow
+   - It includes build, test, coverage enforcement, Node.js tests, and Docker Compose smoke tests
 
 5. Click **Create**
 
@@ -188,10 +168,12 @@ dotnet test ... --settings .runsettings
 
 1. Visit https://codecov.io
 2. Sign up with GitHub
-3. Add your repository (`devices`)
+3. Add your repository (`light-controller-simulator`)
 4. Copy the **repository token** (Settings → Repositories → Your Repo)
 5. Add to GitHub: Settings → Secrets and variables → Repository secrets
 6. Create secret: `CODECOV_TOKEN` = (paste token)
+
+The workflow currently requests `./coverage.cobertura.xml`, but dotnet-test writes reports under `tests/**/TestResults/*/coverage.cobertura.xml`. A reliable setup should change the Codecov `files` setting or copy the reports to the expected path; the existing upload is non-blocking.
 
 ### Benefits
 
@@ -212,7 +194,7 @@ dotnet test ... --settings .runsettings
 ### Immediate (Today)
 
 1. **Decide on coverage threshold approach**:
-   - Option 1 (Recommended): Start with 60%, phase up to 90%
+   - Option 1 (Future phase): Raise from 50% to 60%, then 75%, then 90%
    - Option 2: Exclude hard-to-test code with `[ExcludeFromCodeCoverage]`
    - Option 3: Use Codecov for visibility, no hard threshold yet
 
@@ -223,11 +205,12 @@ dotnet test ... --settings .runsettings
 ### This Week
 
 1. **Set up GitHub branch protection** (see [branch-protection.md](../docs/branch-protection.md))
-   - Enable `.NET validation` as required status check
+   - Enable `Build and test` as the required status check
    - Require code reviews
    
 2. **Monitor Dependabot PRs**
-   - They'll start appearing within 24 hours
+   - NuGet updates will follow the Monday 4 AM UTC schedule once GitHub accepts the configuration
+   - npm updates require a `/tests/package.json`
    - Merge security updates promptly
 
 3. **Plan coverage improvement**
@@ -241,7 +224,7 @@ dotnet test ... --settings .runsettings
    - Plan next batch of tests
 
 2. **Increase coverage threshold** (if using phased approach)
-   - Move from 60% → 75% (or your chosen increment)
+   - Move from the current 50% to the next agreed threshold
 
 3. **Train team on security review**
    - Share the OWASP checklist
@@ -276,9 +259,9 @@ If you disagree with a finding:
 Adjust `.github/dependabot.yml`:
 - Change `interval` from `"weekly"` to `"monthly"`
 - Change `open-pull-requests-limit` from `10` to `3`
-- Group similar updates with `allow` rules
+- Use Dependabot `groups` rules to group similar updates
 
-### "Coverage is stuck at 44%"
+### "Coverage is below 50%"
 
 This is normal for UI-heavy code. Consider:
 
@@ -291,9 +274,8 @@ This is normal for UI-heavy code. Consider:
    - Room selection, presence/fault injection, telemetry flow
    - These are more realistic than unit tests for simulation code
 
-3. **Exclude UI rendering code**
-   - Use `[ExcludeFromCodeCoverage]` on complex 3D or animation code
-   - Document exclusions with comments
+3. **Test UI rendering separately**
+   - The .NET coverage report does not measure the JavaScript renderer
 
 ## References
 
