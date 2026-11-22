@@ -1,6 +1,6 @@
-<svg viewBox="0 0 780 1010" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title description">
+<svg viewBox="0 0 780 1090" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title description">
   <title id="title">Agentic build-review-rebuild workflow</title>
-  <desc id="description">Plan, implement and validate, then complete code review and applicable security and UX reviews. Actionable findings, requested changes or failed checks return to implementation, validation and affected reviews. Required reviews that cannot be completed are reported as limitations, not passes. Human approval and required checks precede merge.</desc>
+  <desc id="description">Plan, implement and validate, then complete code review and applicable security and UX reviews. Create or update a pull request before human approval and required checks. Actionable findings, requested changes or failed checks return to implementation, validation and affected reviews. Required reviews that cannot be completed are reported as limitations, not passes.</desc>
   <defs>
     <style>
       .stage { fill: #1E293B; stroke: #60A5FA; stroke-width: 2; }
@@ -20,7 +20,7 @@
     </marker>
   </defs>
 
-  <rect width="780" height="1010" fill="#0F172A"/>
+  <rect width="780" height="1090" fill="#0F172A"/>
 
   <rect class="stage" x="300" y="24" width="220" height="50" rx="5"/>
   <text class="label" x="410" y="55">Plan</text>
@@ -62,22 +62,26 @@
   <text class="label" x="410" y="695">UX review</text>
   <path class="arrow" d="M 410 714 V 764" marker-end="url(#arrowhead)"/>
 
-  <rect class="stage" x="300" y="764" width="220" height="60" rx="5"/>
-  <text class="label" x="410" y="788">Human decision</text>
-  <text class="label" x="410" y="808">and required CI checks</text>
-  <path class="arrow" d="M 410 824 V 854" marker-end="url(#arrowhead)"/>
-  <text class="arrowtext" x="425" y="844">Approved; checks pass</text>
+  <rect class="stage" x="300" y="764" width="220" height="50" rx="5"/>
+  <text class="label" x="410" y="795">Create / update PR</text>
+  <path class="arrow" d="M 410 814 V 844" marker-end="url(#arrowhead)"/>
 
-  <rect class="outcome" x="300" y="854" width="220" height="50" rx="5"/>
-  <text class="label" x="410" y="885">Merge</text>
+  <rect class="stage" x="300" y="844" width="220" height="60" rx="5"/>
+  <text class="label" x="410" y="868">Human decision</text>
+  <text class="label" x="410" y="888">and required CI checks</text>
+  <path class="arrow" d="M 410 904 V 934" marker-end="url(#arrowhead)"/>
+  <text class="arrowtext" x="425" y="924">Approved; checks pass</text>
 
-  <path class="feedback" d="M 300 209 H 100 M 300 289 H 100 M 300 489 H 100 M 300 689 H 100 M 300 794 H 100 M 100 794 V 129 H 300" marker-end="url(#feedback-arrowhead)"/>
+  <rect class="outcome" x="300" y="934" width="220" height="50" rx="5"/>
+  <text class="label" x="410" y="965">Merge</text>
+
+  <path class="feedback" d="M 300 209 H 100 M 300 289 H 100 M 300 489 H 100 M 300 689 H 100 M 300 874 H 100 M 100 874 V 129 H 300" marker-end="url(#feedback-arrowhead)"/>
   <text class="arrowtext" x="110" y="180">Build/test failure or</text>
   <text class="arrowtext" x="110" y="198">actionable finding</text>
-  <text class="arrowtext" x="110" y="745">Fix, revalidate and</text>
-  <text class="arrowtext" x="110" y="764">repeat affected reviews</text>
-  <text class="arrowtext" x="110" y="785">Changes requested / CI fails</text>
+  <text class="arrowtext" x="110" y="825">Fix, revalidate and</text>
+  <text class="arrowtext" x="110" y="844">repeat affected reviews</text>
+  <text class="arrowtext" x="110" y="865">Changes requested / CI fails</text>
 
-  <text class="note" x="390" y="950">Forward from a review means it is complete; skipped reviews are not passes.</text>
-  <text class="note" x="390" y="975">If a required review cannot be completed, report the limitation; do not mark it passed.</text>
+  <text class="note" x="390" y="1030">Forward from a review means it is complete; skipped reviews are not passes.</text>
+  <text class="note" x="390" y="1055">If a required review cannot be completed, report the limitation; do not mark it passed.</text>
 </svg>
