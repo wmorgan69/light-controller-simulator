@@ -28,7 +28,7 @@ node --test tests/wiring-routes.test.mjs tests/floor-view.test.mjs tests/room-st
 docker compose up --build -d
 ```
 
-The CI smoke test starts both Compose services, verifies the simulator controller count and instrumentation status, triggers room presence, confirms the telemetry update, then stops and recreates only the instrumentation service to verify persisted presence remains visible. The CI job cleans up its disposable Compose resources after the check.
+The CI smoke test starts both Compose services, verifies the simulator controller count and instrumentation status, triggers room presence, confirms the telemetry update, then stops both services and recreates only the instrumentation service to verify persisted presence remains visible. Readiness GET requests have bounded retries, including connection resets; the presence-changing POST is not retried. The CI job cleans up its disposable Compose resources after the check.
 
 ### 2. Add Focused Tests (If Coverage Drops)
 
