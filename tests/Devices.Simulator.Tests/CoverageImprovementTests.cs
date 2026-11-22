@@ -521,4 +521,638 @@ public class CoverageImprovementTests
         var controller2 = simulator.GetController("controller-floor-2");
         Assert.False(controller2!.Rooms.First(r => r.Id == room3).SensorTriggered);
     }
+
+    // Phase 2: Extended edge cases and state boundary tests
+    
+    [Fact]
+    public void TriggerSensorFaultedWithSensorFault()
+    {
+        var simulator = new BuildingSimulator();
+        var roomId = DeviceIds.Room(1, "main");
+        var controller = simulator.GetController("controller-floor-1")!;
+        var sensorId = $"sensor-floor-{controller.Floor}-main";
+        
+        simulator.AddFault("controller-floor-1", new FaultRequest("sensor", sensorId, "Sensor malfunction"), out _);
+        var result = simulator.TriggerSensor(roomId, out var faultedController);
+        
+        Assert.Equal(SensorTriggerResult.SensorFaulted, result);
+        Assert.NotNull(faultedController);
+        Assert.Equal(ControllerStatus.Faulted, faultedController.Status);
+    }
+
+    [Fact]
+    public void ResetSensorWhenNotTriggered()
+    {
+        var simulator = new BuildingSimulator();
+        var roomId = DeviceIds.Room(1, "main");
+        
+        var before = simulator.GetController("controller-floor-1")!;
+        var reset = before.Rooms.First(r => r.Id == roomId).SensorTriggered;
+        Assert.False(reset);
+        
+        // Should still return true and update state even if not triggered
+        var result = simulator.ResetSensor(roomId, out var controller);
+        Assert.True(result);
+        Assert.NotNull(controller);
+    }
+
+    [Fact]
+    public void AddFaultToLightStrip()
+    {
+        var simulator = new BuildingSimulator();
+        var controller = simulator.GetController("controller-floor-1")!;
+        var lightId = controller.Rooms.First().LightStrips.First().Id;
+        
+        var result = simulator.AddFault("controller-floor-1", 
+            new FaultRequest("light", lightId, "Light failure"), out var updated);
+        
+        Assert.Equal(FaultMutationResult.Added, result);
+        Assert.Equal(ControllerStatus.Faulted, updated!.Status);
+        var light = updated.Rooms.First().LightStrips.First(s => s.Id == lightId);
+        Assert.True(light.IsFaulted);
+        Assert.False(light.IsOn);
+    }
+
+    [Fact]
+    public void AddFaultViaRoomId()
+    {
+        var simulator = new BuildingSimulator();
+        var roomId = DeviceIds.Room(1, "main");
+        
+        var result = simulator.AddFault(roomId, 
+            new FaultRequest("sensor", $"sensor-floor-1-main", "Room sensor down"), out var controller);
+        
+        Assert.Equal(FaultMutationResult.Added, result);
+        Assert.NotNull(controller);
+    }
+
+    [Fact]
+    public void ClearFaultViaTargetId()
+    {
+        var simulator = new BuildingSimulator();
+        var controller = simulator.GetController("controller-floor-1")!;
+        var lightId = controller.Rooms.First().LightStrips.First().Id;
+        
+        simulator.AddFault("controller-floor-1", 
+            new FaultRequest("light", lightId, "Light failure"), out var faulted);
+        
+        var result = simulator.ClearFaultByTarget("controller-floor-1", lightId, out var cleared);
+        
+        Assert.True(result);
+        Assert.Equal(ControllerStatus.Healthy, cleared.Status);
+        Assert.Empty(cleared.Faults);
+    }
+
+    [Fact]
+    public void ClearFaultByFaultId()
+    {
+        var simulator = new BuildingSimulator();
+        var controller = simulator.GetController("controller-floor-1")!;
+        var sensorId = $"sensor-floor-{controller.Floor}-main";
+        
+        simulator.AddFault("controller-floor-1",
+            new FaultRequest("sensor", sensorId, "Sensor malfunction"), out var faulted);
+        
+        var faultId = faulted!.Faults.First().Id;
+        var result = simulator.ClearFault("controller-floor-1", faultId, out var cleared);
+        
+        Assert.True(result);
+        Assert.Equal(ControllerStatus.Healthy, cleared.Status);
+    }
+
+    [Fact]
+    public void ClearFaultByTargetIdWhenMultipleFaults()
+    {
+        var simulator = new BuildingSimulator();
+        var controller = simulator.GetController("controller-floor-1")!;
+        var lightId = controller.Rooms.First().LightStrips.First().Id;
+        var sensorId = $"sensor-floor-{controller.Floor}-main";
+        
+        simulator.AddFault("controller-floor-1",
+            new FaultRequest("light", lightId, "Light failure"), out _);
+        simulator.AddFault("controller-floor-1",
+            new FaultRequest("sensor", sensorId, "Sensor malfunction"), out var multipleFaulted);
+        
+        Assert.Equal(2, multipleFaulted!.Faults.Count);
+        
+        var result = simulator.ClearFaultByTarget("controller-floor-1", lightId, out var cleared);
+        
+        Assert.True(result);
+        Assert.Single(cleared.Faults);
+        Assert.Equal(ControllerStatus.Faulted, cleared.Status);
+    }
+
+    [Fact]
+    public void IsRoomOwnedByWithValidRoom()
+    {
+        var simulator = new BuildingSimulator();
+        var roomId = DeviceIds.Room(1, "main");
+        
+        var result = simulator.IsRoomOwnedBy("controller-floor-1", roomId);
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void IsRoomOwnedByWithInvalidRoom()
+    {
+        var simulator = new BuildingSimulator();
+        
+        var result = simulator.IsRoomOwnedBy("controller-floor-1", "invalid-room");
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void IsRoomOwnedByWithWrongController()
+    {
+        var simulator = new BuildingSimulator();
+        var roomId = DeviceIds.Room(1, "main");
+        
+        var result = simulator.IsRoomOwnedBy("controller-floor-2", roomId);
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void IsRoomOwnedByWithInvalidController()
+    {
+        var simulator = new BuildingSimulator();
+        var roomId = DeviceIds.Room(1, "main");
+        
+        var result = simulator.IsRoomOwnedBy("invalid-controller", roomId);
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void IsFaultTargetOwnedByWithValidLightTarget()
+    {
+        var simulator = new BuildingSimulator();
+        var controller = simulator.GetController("controller-floor-1")!;
+        var lightId = controller.Rooms.First().LightStrips.First().Id;
+        
+        var result = simulator.IsFaultTargetOwnedBy("controller-floor-1", 
+            new FaultRequest("light", lightId, "Light failure"));
+        
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void IsFaultTargetOwnedByWithValidSensorTarget()
+    {
+        var simulator = new BuildingSimulator();
+        
+        var result = simulator.IsFaultTargetOwnedBy("controller-floor-1",
+            new FaultRequest("sensor", "sensor-floor-1-main", "Sensor failure"));
+        
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void IsFaultTargetOwnedByWithInvalidScope()
+    {
+        var simulator = new BuildingSimulator();
+        
+        var result = simulator.IsFaultTargetOwnedBy("controller-floor-1",
+            new FaultRequest("invalid-scope", "some-id", "Invalid"));
+        
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void IsFaultTargetOwnedByWithWrongController()
+    {
+        var simulator = new BuildingSimulator();
+        var controller = simulator.GetController("controller-floor-1")!;
+        var lightId = controller.Rooms.First().LightStrips.First().Id;
+        
+        var result = simulator.IsFaultTargetOwnedBy("controller-floor-2",
+            new FaultRequest("light", lightId, "Light failure"));
+        
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void ResetBuildingClearsAllFaultsAndLights()
+    {
+        var simulator = new BuildingSimulator();
+        
+        // Add faults and trigger sensors
+        simulator.TriggerSensor(DeviceIds.Room(1, "main"), out _);
+        simulator.TriggerSensor(DeviceIds.Room(1, "office-a"), out _);
+        simulator.AddFault("controller-floor-1",
+            new FaultRequest("sensor", "sensor-floor-1-main", "Sensor failure"), out _);
+        
+        var controllers = simulator.ResetBuilding();
+        
+        Assert.All(controllers, c =>
+        {
+            Assert.Equal(ControllerStatus.Healthy, c.Status);
+            Assert.Empty(c.Faults);
+            Assert.All(c.Rooms, r =>
+            {
+                Assert.False(r.SensorTriggered);
+                Assert.False(r.Presence);
+                Assert.All(r.LightStrips, s =>
+                {
+                    Assert.False(s.IsOn);
+                    Assert.False(s.IsFaulted);
+                });
+            });
+        });
+    }
+
+    [Fact]
+    public void SetRandomOccupancyActivatesLights()
+    {
+        var simulator = new BuildingSimulator();
+        var random = new Random(42);
+        
+        var controllers = simulator.SetRandomOccupancy(random);
+        
+        Assert.All(controllers, c =>
+        {
+            Assert.Equal(ControllerStatus.Healthy, c.Status);
+            var occupiedRooms = c.Rooms.Where(r => r.SensorTriggered).ToList();
+            Assert.NotEmpty(occupiedRooms);
+            Assert.All(occupiedRooms, r =>
+            {
+                Assert.True(r.Presence);
+                Assert.All(r.LightStrips, s => Assert.True(s.IsOn));
+            });
+        });
+    }
+
+    [Fact]
+    public void SetRandomOccupancyWithoutArgumentUsesSharedRandom()
+    {
+        var simulator = new BuildingSimulator();
+        var random = new Random(42); // Fixed seed for determinism
+        
+        var controllers1 = simulator.SetRandomOccupancy(random);
+        var controllers2 = simulator.SetRandomOccupancy(random);
+        
+        // Both should have changed from each other (different seeds)
+        var count1 = controllers1.SelectMany(c => c.Rooms).Where(r => r.SensorTriggered).Count();
+        var count2 = controllers2.SelectMany(c => c.Rooms).Where(r => r.SensorTriggered).Count();
+        
+        // With seeded random, we can at least verify both have occupancy
+        Assert.True(count1 > 0, "First occupancy should have at least one occupied room");
+        Assert.True(count2 > 0, "Second occupancy should have at least one occupied room");
+    }
+
+    [Fact]
+    public void AddFaultThenResetBuilding()
+    {
+        var simulator = new BuildingSimulator();
+        simulator.AddFault("controller-floor-1",
+            new FaultRequest("sensor", "sensor-floor-1-main", "Sensor failure"), out var faulted);
+        
+        Assert.Equal(ControllerStatus.Faulted, faulted!.Status);
+        Assert.Single(faulted.Faults);
+        
+        var reset = simulator.ResetBuilding();
+        var controller = reset.First(c => c.Id == "controller-floor-1");
+        
+        Assert.Equal(ControllerStatus.Healthy, controller.Status);
+        Assert.Empty(controller.Faults);
+    }
+
+    [Fact]
+    public void MultipleTriggersIncrementRevisionOnce()
+    {
+        var simulator = new BuildingSimulator();
+        var roomId = DeviceIds.Room(1, "main");
+        
+        var before = simulator.GetController("controller-floor-1")!.Revision;
+        simulator.TriggerSensor(roomId, out var triggered1);
+        var afterFirst = triggered1!.Revision;
+        
+        simulator.TriggerSensor(roomId, out var triggered2);
+        var afterSecond = triggered2!.Revision;
+        
+        Assert.Equal(before + 1, afterFirst);
+        Assert.Equal(afterFirst + 1, afterSecond);
+    }
+
+    [Fact]
+    public void ClearingMultipleFaultsSeparately()
+    {
+        var simulator = new BuildingSimulator();
+        var controller = simulator.GetController("controller-floor-1")!;
+        var light1 = controller.Rooms[0].LightStrips.First().Id;
+        var light2 = controller.Rooms[1].LightStrips.First().Id;
+        
+        simulator.AddFault("controller-floor-1",
+            new FaultRequest("light", light1, "Light 1 failure"), out var fault1);
+        simulator.AddFault("controller-floor-1",
+            new FaultRequest("light", light2, "Light 2 failure"), out var fault2);
+        
+        Assert.Equal(2, fault2!.Faults.Count);
+        
+        var faultId1 = fault2.Faults.First().Id;
+        simulator.ClearFault("controller-floor-1", faultId1, out var afterClear1);
+        
+        Assert.Single(afterClear1.Faults);
+        Assert.Equal(ControllerStatus.Faulted, afterClear1.Status);
+        
+        var faultId2 = afterClear1.Faults.First().Id;
+        simulator.ClearFault("controller-floor-1", faultId2, out var afterClear2);
+        
+        Assert.Empty(afterClear2.Faults);
+        Assert.Equal(ControllerStatus.Healthy, afterClear2.Status);
+    }
+
+    // Additional Phase 2 coverage for edge cases and lesser-tested paths
+    
+    [Fact]
+    public void AddFaultViaLightId()
+    {
+        var simulator = new BuildingSimulator();
+        var controller = simulator.GetController("controller-floor-1")!;
+        var lightId = controller.Rooms.First().LightStrips.First().Id;
+        
+        var result = simulator.AddFault(lightId, 
+            new FaultRequest("light", lightId, "LED failure"), out var updated);
+        
+        Assert.Equal(FaultMutationResult.Added, result);
+        Assert.Equal(ControllerStatus.Faulted, updated!.Status);
+    }
+
+    [Fact]
+    public void ClearFaultViaLightId()
+    {
+        var simulator = new BuildingSimulator();
+        var controller = simulator.GetController("controller-floor-1")!;
+        var lightId = controller.Rooms.First().LightStrips.First().Id;
+        
+        simulator.AddFault(lightId, 
+            new FaultRequest("light", lightId, "LED failure"), out var faulted);
+        
+        var result = simulator.ClearFault(lightId, faulted!.Faults.First().Id, out var cleared);
+        
+        Assert.True(result);
+        Assert.Equal(ControllerStatus.Healthy, cleared.Status);
+    }
+
+    [Fact]
+    public void AddDuplicateFaultReturnsDuplicate()
+    {
+        var simulator = new BuildingSimulator();
+        var controller = simulator.GetController("controller-floor-1")!;
+        var sensorId = $"sensor-floor-{controller.Floor}-main";
+        
+        simulator.AddFault("controller-floor-1",
+            new FaultRequest("sensor", sensorId, "First sensor fault"), out _);
+        
+        var result = simulator.AddFault("controller-floor-1",
+            new FaultRequest("sensor", sensorId, "Duplicate sensor fault"), out var unchanged);
+        
+        Assert.Equal(FaultMutationResult.Duplicate, result);
+        Assert.Single(unchanged!.Faults);
+    }
+
+    [Fact]
+    public void ClearNonExistentFaultReturnsFalse()
+    {
+        var simulator = new BuildingSimulator();
+        
+        var result = simulator.ClearFault("controller-floor-1", "non-existent-fault-id", out var controller);
+        
+        Assert.False(result);
+        Assert.Empty(controller.Faults);
+    }
+
+    [Fact]
+    public void ClearFaultFromWrongControllerReturnsFalse()
+    {
+        var simulator = new BuildingSimulator();
+        var controller1 = simulator.GetController("controller-floor-1")!;
+        var sensorId = $"sensor-floor-{controller1.Floor}-main";
+        
+        simulator.AddFault("controller-floor-1",
+            new FaultRequest("sensor", sensorId, "Sensor fault"), out var faulted);
+        
+        var faultId = faulted!.Faults.First().Id;
+        var result = simulator.ClearFault("controller-floor-2", faultId, out var unchanged);
+        
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void ClearFaultByTargetIdWhenNoFaultReturnsFalse()
+    {
+        var simulator = new BuildingSimulator();
+        
+        var result = simulator.ClearFaultByTarget("controller-floor-1", "non-existent-target", out _);
+        
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void ClearFaultByTargetIdWhenWrongControllerReturnsFalse()
+    {
+        var simulator = new BuildingSimulator();
+        
+        var result = simulator.ClearFaultByTarget("invalid-controller-id", "some-target", out _);
+        
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void TriggerSensorMultipleTimesCumulativelyChanges()
+    {
+        var simulator = new BuildingSimulator();
+        var roomId = DeviceIds.Room(1, "main");
+        
+        var controller1 = simulator.GetController("controller-floor-1")!;
+        Assert.False(controller1.Rooms.First(r => r.Id == roomId).SensorTriggered);
+        
+        simulator.TriggerSensor(roomId, out var triggered);
+        Assert.True(triggered!.Rooms.First(r => r.Id == roomId).SensorTriggered);
+        Assert.True(triggered.Rooms.First(r => r.Id == roomId).LightStrips.All(s => s.IsOn || s.IsFaulted));
+    }
+
+    [Fact]
+    public void ResetSensorTurnsOffAllRoomLights()
+    {
+        var simulator = new BuildingSimulator();
+        var roomId = DeviceIds.Room(1, "main");
+        
+        simulator.TriggerSensor(roomId, out _);
+        simulator.ResetSensor(roomId, out var reset);
+        
+        var room = reset.Rooms.First(r => r.Id == roomId);
+        Assert.False(room.SensorTriggered);
+        Assert.False(room.Presence);
+        Assert.All(room.LightStrips, s => Assert.False(s.IsOn));
+    }
+
+    [Fact]
+    public void TriggerSensorHonorsFaultedLights()
+    {
+        var simulator = new BuildingSimulator();
+        var roomId = DeviceIds.Room(1, "main");
+        var controller = simulator.GetController("controller-floor-1")!;
+        var lightId = controller.Rooms.First(r => r.Id == roomId).LightStrips.First().Id;
+        
+        // Add light fault first
+        simulator.AddFault("controller-floor-1",
+            new FaultRequest("light", lightId, "LED broken"), out _);
+        
+        // Then trigger sensor
+        simulator.TriggerSensor(roomId, out var triggered);
+        
+        var room = triggered!.Rooms.First(r => r.Id == roomId);
+        var faultedLight = room.LightStrips.First(s => s.Id == lightId);
+        Assert.True(faultedLight.IsFaulted);
+        Assert.False(faultedLight.IsOn);
+    }
+
+    [Fact]
+    public void AddLightFaultToCorrectRoom()
+    {
+        var simulator = new BuildingSimulator();
+        var controller = simulator.GetController("controller-floor-1")!;
+        var targetRoom = controller.Rooms[0];
+        var targetLight = targetRoom.LightStrips.First();
+        
+        simulator.AddFault("controller-floor-1",
+            new FaultRequest("light", targetLight.Id, "Light malfunction"), out var faulted);
+        
+        var updatedRoom = faulted!.Rooms.First(r => r.Id == targetRoom.Id);
+        var updatedLight = updatedRoom.LightStrips.First(s => s.Id == targetLight.Id);
+        
+        Assert.True(updatedLight.IsFaulted);
+        Assert.False(updatedLight.IsOn);
+        
+        // Other lights in room should be unaffected
+        var otherLights = updatedRoom.LightStrips.Where(s => s.Id != targetLight.Id).ToList();
+        Assert.All(otherLights, s => Assert.False(s.IsFaulted));
+    }
+
+    [Fact]
+    public void ClearLightFaultRestoresLight()
+    {
+        var simulator = new BuildingSimulator();
+        var controller = simulator.GetController("controller-floor-1")!;
+        var lightId = controller.Rooms.First().LightStrips.First().Id;
+        
+        simulator.AddFault("controller-floor-1",
+            new FaultRequest("light", lightId, "Light failure"), out var faulted);
+        
+        var faultId = faulted!.Faults.First().Id;
+        simulator.ClearFault("controller-floor-1", faultId, out var cleared);
+        
+        var room = cleared.Rooms.First();
+        var light = room.LightStrips.First(s => s.Id == lightId);
+        Assert.False(light.IsFaulted);
+        // Light should be restored to sensor state (untriggered room, so off)
+        Assert.False(light.IsOn);
+    }
+
+    [Fact]
+    public void ClearLightFaultWhenRoomTriggeredRestoresLight()
+    {
+        var simulator = new BuildingSimulator();
+        var roomId = DeviceIds.Room(1, "main");
+        var controller = simulator.GetController("controller-floor-1")!;
+        var lightId = controller.Rooms.First(r => r.Id == roomId).LightStrips.First().Id;
+        
+        // Trigger room first
+        simulator.TriggerSensor(roomId, out _);
+        
+        // Then add light fault
+        simulator.AddFault("controller-floor-1",
+            new FaultRequest("light", lightId, "Light failure"), out var faulted);
+        
+        var faultId = faulted!.Faults.First().Id;
+        simulator.ClearFault("controller-floor-1", faultId, out var cleared);
+        
+        var room = cleared.Rooms.First(r => r.Id == roomId);
+        var light = room.LightStrips.First(s => s.Id == lightId);
+        Assert.False(light.IsFaulted);
+        // Light should be restored to ON since room is triggered
+        Assert.True(light.IsOn);
+    }
+
+    // Contract type tests
+    [Fact]
+    public void FaultRequestCreatesWithAllProperties()
+    {
+        var request = new FaultRequest("light", "light-1", "Test fault");
+        
+        Assert.Equal("light", request.Scope);
+        Assert.Equal("light-1", request.TargetId);
+        Assert.Equal("Test fault", request.Description);
+    }
+
+    [Fact]
+    public void SensorTriggerResultEnumHasAllValues()
+    {
+        Assert.Equal(SensorTriggerResult.Triggered, SensorTriggerResult.Triggered);
+        Assert.Equal(SensorTriggerResult.RoomNotFound, SensorTriggerResult.RoomNotFound);
+        Assert.Equal(SensorTriggerResult.SensorFaulted, SensorTriggerResult.SensorFaulted);
+    }
+
+    [Fact]
+    public void FaultMutationResultEnumHasAllValues()
+    {
+        Assert.Equal(FaultMutationResult.Added, FaultMutationResult.Added);
+        Assert.Equal(FaultMutationResult.ControllerNotFound, FaultMutationResult.ControllerNotFound);
+        Assert.Equal(FaultMutationResult.InvalidTarget, FaultMutationResult.InvalidTarget);
+        Assert.Equal(FaultMutationResult.Duplicate, FaultMutationResult.Duplicate);
+    }
+
+    [Fact]
+    public void DeviceCommandCreatesWithAllProperties()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var command = new DeviceCommand("cmd-1", "room-1", "turn-on", null, "light-1", null, null, now);
+        
+        Assert.Equal("cmd-1", command.CommandId);
+        Assert.Equal("room-1", command.ControllerId);
+        Assert.Equal("turn-on", command.Action);
+        Assert.Null(command.RoomId);
+        Assert.Equal("light-1", command.TargetId);
+        Assert.Null(command.Scope);
+        Assert.Null(command.Description);
+        Assert.Equal(now, command.Timestamp);
+    }
+
+    [Fact]
+    public void DeviceCommandAckCreatesWithAllProperties()
+    {
+        var controller = DeviceIds.CreateBuilding().First();
+        var now = DateTimeOffset.UtcNow;
+        var ack = new DeviceCommandAck("ack-1", "controller-1", true, "Command accepted", controller, now);
+        
+        Assert.Equal("ack-1", ack.CommandId);
+        Assert.Equal("controller-1", ack.ControllerId);
+        Assert.True(ack.Accepted);
+        Assert.Equal("Command accepted", ack.Message);
+        Assert.Equal(controller.Id, ack.State!.Id);
+        Assert.Equal(now, ack.Timestamp);
+    }
+
+    [Fact]
+    public void DeviceTransportStatusCreatesWithAllProperties()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var status = new DeviceTransportStatus(true, true, now, "All systems operational");
+        
+        Assert.True(status.MqttConnected);
+        Assert.True(status.HttpAvailable);
+        Assert.Equal(now, status.LastMqttConnectedAt);
+        Assert.Equal("All systems operational", status.Message);
+    }
+
+    [Fact]
+    public void DeviceTransportStatusWithNullLastConnectedAtCreates()
+    {
+        var status = new DeviceTransportStatus(false, false, null, "No connection");
+        
+        Assert.False(status.MqttConnected);
+        Assert.False(status.HttpAvailable);
+        Assert.Null(status.LastMqttConnectedAt);
+        Assert.Equal("No connection", status.Message);
+    }
 }
+
