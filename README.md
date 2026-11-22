@@ -7,22 +7,39 @@ A .NET IoT demonstration for a four-floor office building. The solution combines
 This repository uses an agentic build-review-rebuild workflow:
 
 ```mermaid
-flowchart LR
-  Plan["Plan and inspect"] --> Build["Implement and test"]
-  Build --> Validate["Build and test"]
-  Validate --> CodeReview["Independent code review"]
-  CodeReview --> SecurityReview{"Security-sensitive<br/>changes?"}
-  SecurityReview -->|Yes| SecReview["Security review<br/>OWASP Top 10"]
-  SecurityReview -->|No| UXReview{"UI changes?"}
-  SecReview --> UXReview
-  UXReview -->|Yes| UXCheck["UX review<br/>clarity, accessibility"]
-  UXReview -->|No| Rebuild["Fix findings"]
-  UXCheck --> Rebuild
-  Rebuild --> FinalReview["Repeat validation<br/>and review"]
-  FinalReview --> Report["Report evidence<br/>and limitations"]
-  classDef default fill:#1E293B,stroke:#60A5FA,color:#F8FAFC;
+flowchart TD
+  Plan["Plan and inspect"]
+  Build["Implement and test"]
+  Validate["Build and test"]
+  CodeReview["Independent code review"]
+  
+  Plan --> Build
+  Build --> Validate
+  Validate --> CodeReview
+  
+  CodeReview --> SecurityDecision{"Security-sensitive?"}
+  
+  SecurityDecision -->|Yes| SecurityReview["Security review<br/>OWASP Top 10"]
+  SecurityDecision -->|No| UXDecision{"UI changes?"}
+  SecurityReview --> UXDecision
+  
+  UXDecision -->|Yes| UXReview["UX review<br/>clarity, accessibility,<br/>responsive behavior"]
+  UXDecision -->|No| Findings["Any findings?"]
+  UXReview --> Findings
+  
+  Findings -->|No| Merge["Ready to merge"]
+  Findings -->|Yes| Rebuild["Fix findings"]
+  
+  Rebuild --> Revalidate["Revalidate and<br/>re-review affected stages"]
+  Revalidate --> Report["Report evidence<br/>and final status"]
+  
+  classDef stage fill:#1E293B,stroke:#60A5FA,color:#F8FAFC;
   classDef decision fill:#0F766E,stroke:#14B8A6,color:#F8FAFC;
-  class SecurityReview,UXReview decision;
+  classDef outcome fill:#065F46,stroke:#10B981,color:#F8FAFC;
+  
+  class Plan,Build,Validate,CodeReview,SecurityReview,UXReview,Rebuild,Revalidate,Report stage;
+  class SecurityDecision,UXDecision,Findings decision;
+  class Merge outcome;
 ```
 
 Agent customization:
