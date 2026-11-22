@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A walkthrough of the Building Light Simulator and Lighting Instrumentation dashboard.">
+  <title>Building Lighting Demo</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: system-ui, sans-serif;
+      background: #0b1220;
+      color: #f8fafc;
+    }
+
+    body {
+      box-sizing: border-box;
+      margin: 0 auto;
+      max-width: 960px;
+      padding: clamp(1rem, 4vw, 2.5rem);
+    }
+
+    h1 {
+      font-size: clamp(1.75rem, 5vw, 2.5rem);
+    }
+
+    p {
+      color: #cbd5e1;
+      line-height: 1.6;
+    }
+
+    video {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 0.5rem;
+      background: #000;
+    }
+
+    a {
+      color: #93c5fd;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Building Lighting Demo</h1>
+    <p>See the simulator’s building navigation and room controls, then follow sensor and fault changes in the live instrumentation dashboard.</p>
+    <video controls preload="metadata" playsinline aria-label="Building Light Simulator walkthrough">
+      <source src="assets/videos/building-lighting-demo.webm" type="video/webm">
+    </video>
+    <p>If the video doesn't play, <a href="assets/videos/building-lighting-demo.webm">download the demo video</a>.</p>
+    <details>
+      <summary>Text summary of the walkthrough</summary>
+      <ol>
+        <li>Pan and rotate the camera around the four-floor building.</li>
+        <li>Select floors and rooms, then explore the room controls.</li>
+        <li>Change presence and sensor-fault states in the simulator.</li>
+        <li>Observe the resulting live updates in the instrumentation dashboard.</li>
+        <li>Run the occupancy demo and see room occupancy updates.</li>
+      </ol>
+    </details>
+    <p><a href="https://github.com/wmorgan69/light-controller-simulator">View the project on GitHub</a></p>
+  </main>
+</body>
+</html>

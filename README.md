@@ -63,7 +63,7 @@ The screenshots show the simulator and instrumentation dashboard. The video walk
 
 ![Lighting Instrumentation showing building status, lighting activity, controllers, and recent events](docs/assets/screenshots/lighting-instrumentation.png)
 
-[Watch the building lighting demo](docs/assets/videos/building-lighting-demo.webm)
+[Watch the building lighting demo on GitHub Pages](https://wmorgan69.github.io/light-controller-simulator/demo.html)
 
 ## Quick start
 
