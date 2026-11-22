@@ -8,25 +8,28 @@ This repository uses an agentic build-review-rebuild workflow:
 
 ```mermaid
 flowchart TD
-  A["Plan and inspect"] --> B["Implement and test"]
-  B --> C["Build and test"]
-  C --> D["Code review"]
-  D --> E{"Security-sensitive?"}
-  E -->|Yes| F["Security review"]
-  E -->|No| G{"UI changes?"}
+  A["Plan and inspect"]
+  B["Implement and test"]
+  C["Build and test"]
+  D["Code review"]
+  E["Security review<br/>if needed"]
+  F["UX review<br/>if needed"]
+  G["Fix and re-review"]
+  H["Merge"]
+  
+  A --> B
+  B --> C
+  C --> D
+  D --> E
+  E --> F
   F --> G
-  G -->|Yes| H["UX review"]
-  G -->|No| I["Fix and re-review"]
-  H --> I
-  I --> J["Merge"]
+  G --> H
   
   classDef stage fill:#1E293B,stroke:#60A5FA,color:#F8FAFC;
-  classDef decision fill:#0F766E,stroke:#14B8A6,color:#F8FAFC;
   classDef outcome fill:#065F46,stroke:#10B981,color:#F8FAFC;
   
-  class A,B,C,D,F,H,I stage;
-  class E,G decision;
-  class J outcome;
+  class A,B,C,D,E,F,G stage;
+  class H outcome;
 ```
 
 Agent customization:
