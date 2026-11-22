@@ -15,7 +15,7 @@
 5. If a reviewer identifies an actionable issue, fix it, rerun affected tests/build checks, and repeat the affected review. Do not report a review as complete if it could not be run; report the limitation instead.
 6. Summarize changed files, validation results, review findings, and any remaining limitations.
 
-Reviewers are read-only and must not review their own changes. Code review checks correctness and regression risk; UX review checks task clarity, visual hierarchy, responsive behavior, accessibility, and status/error states; security review checks OWASP Top 10 UI and API vulnerabilities.
+Reviewers are read-only and must not review their own changes. Code review checks correctness, regression risk, and **code coverage impact** (new code is tested and overall coverage doesn't regress below phase threshold); UX review checks task clarity, visual hierarchy, responsive behavior, accessibility, and status/error states; security review checks OWASP Top 10 UI and API vulnerabilities.
 
 ## Documentation standards
 
@@ -81,6 +81,7 @@ The code reviewer must check each applicable item and report:
 - Whether state mutation and fault/status transitions are correct and race-safe.
 - Whether all external and invalid inputs are handled explicitly.
 - Whether focused tests cover the new behavior and meaningful edge/failure cases.
+- **Whether code coverage impact is acceptable** (new code is tested; overall coverage is not regressing below current phase threshold ≥50%). Reference Codecov PR comments or request coverage report from developer.
 - Whether the change follows existing structure, dependency boundaries, and clean-code conventions.
 - Whether secrets, unnecessary dependencies, duplicated logic, blocking calls, or unrelated changes are introduced.
 
