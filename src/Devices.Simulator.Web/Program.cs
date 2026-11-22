@@ -404,7 +404,7 @@ public sealed class BuildingSimulator
         if (fault.Scope == "light" && room.LightStrips.Any(strip => strip.Id == fault.TargetId))
         {
             var strips = room.LightStrips.Select(strip => strip.Id == fault.TargetId
-                ? strip with { IsFaulted = false }
+                ? strip with { IsFaulted = false, IsOn = room.SensorTriggered }
                 : strip).ToArray();
             return room with { LightStrips = strips };
         }

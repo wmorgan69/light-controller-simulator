@@ -4,9 +4,17 @@ A .NET IoT demonstration for a four-floor office building. The solution combines
 
 ## Agentic workflow
 
-This repository uses an agentic build-review-rebuild workflow:
+This repository uses an agentic build-review-rebuild workflow with staged changes and pull request review:
 
 ![Agentic workflow diagram showing Plan, Implement, Build, Code Review, Security Review if needed, UX Review if needed, and Merge](docs/assets/diagrams/agentic-workflow.svg)
+
+**Workflow process:**
+1. Agent plans, implements, builds, and validates changes
+2. Changes are staged (not auto-committed) and grouped by scope
+3. Pull request is created with implementation, build validation, and test results
+4. Required reviewers (code, security if applicable, UX if applicable) independently evaluate the PR
+5. Human approves, requests changes, or merges when ready
+6. Branch protection rules enforce CI pass and reviewer approval before merge
 
 Agent customization:
 
@@ -18,7 +26,7 @@ Agent customization:
 - [Pull-request template](.github/PULL_REQUEST_TEMPLATE.md) records validation and reviewer evidence.
 - [CI workflow](.github/workflows/ci.yml) builds, tests, enforces code coverage (≥50% Phase 1, phased to 90%), and validates pull requests.
 
-The instructions guide agents and create an auditable workflow. Final enforcement comes from protected-branch settings requiring CI and reviewer approval. Custom agents cannot, by themselves, prove that every review stage ran or block a merge.
+**Branch protection:** The `main` branch requires CI workflow success and at least one approval before merge. Changes are staged as working branches and must go through PR review before merging. Automated agents validate code but cannot unilaterally approve merges—human review is required.
 
 ## Overview
 
