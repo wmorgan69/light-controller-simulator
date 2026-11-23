@@ -26,9 +26,9 @@ The UI prioritizes building-wide health and lighting activity, then floor detail
 
 ## Telemetry architecture
 
-![Telemetry architecture: MQTT broker messages reach the telemetry store through the subscriber. HTTP fallback polls the simulator and ingests changed states. The dashboard requests telemetry and events from the store.](assets/diagrams/lighting-instrumentation-telemetry.svg)
+![Telemetry architecture: MQTT broker messages and the HTTP poller feed the telemetry store. The dashboard requests telemetry and events from the store.](assets/diagrams/lighting-instrumentation-telemetry.svg)
 
-MQTT is preferred, while the HTTP fallback keeps the dashboard usable when no broker is running.
+The service runs an HTTP poller alongside the MQTT subscriber. The dashboard reports MQTT when connected and reports HTTP fallback otherwise; it remains usable without a broker.
 
 ## Dashboard information hierarchy
 
@@ -42,6 +42,10 @@ MQTT is preferred, while the HTTP fallback keeps the dashboard usable when no br
 8. Recent events
 
 Status is conveyed with text and color. The dashboard does not infer unsupported energy, cost, or historical utilization metrics.
+
+Room names and fixture markers wrap when a controller card is too narrow to show them side by side.
+
+The **Active faults** summary counts active device faults, including sensor faults. The **Lighting activity** legend's **Faulted** count includes only faulted light fixtures. Therefore, a sensor fault can produce 1 active fault while the fixture legend reports 0 faulted lights.
 
 ## State and offline semantics
 
@@ -62,13 +66,13 @@ The subscriber listens to:
 building/controllers/+/telemetry
 ```
 
-The HTTP fallback polls:
+The HTTP poller requests:
 
 ```text
 GET http://localhost:5080/api/controllers
 ```
 
-The refresh loop runs once per second. It only publishes changed HTTP states as events and uses the same `TelemetryStore` as MQTT ingestion.
+The poller runs once per second, ingests changed HTTP states as events, and uses the same `TelemetryStore` as MQTT ingestion. It continues polling while MQTT is connected.
 
 ## Persistence
 

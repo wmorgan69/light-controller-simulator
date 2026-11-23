@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 390" role="img" aria-labelledby="title description">
+  <title id="title">Building floor layouts</title>
+  <desc id="description">Floor 1 has Open Workspace with six strips, Reception Office and Support Office with one each. Floor 2 has Boardroom with eight strips and Meeting Office with one. Floor 3 has Collaboration Space with six strips, Project Office and Focus Office with one each. Floor 4 has The Forum with twelve strips.</desc>
+  <rect width="900" height="390" rx="12" fill="#0F172A"/>
+  <g font-family="system-ui, sans-serif" fill="#F8FAFC">
+    <text x="30" y="46" font-size="24" font-weight="700">Building floor layouts</text>
+    <g font-size="17" font-weight="600">
+      <text x="30" y="102">Floor 4</text>
+      <text x="30" y="182">Floor 3</text>
+      <text x="30" y="262">Floor 2</text>
+      <text x="30" y="342">Floor 1</text>
+    </g>
+  </g>
+  <g fill="#1E293B" stroke="#60A5FA" stroke-width="2">
+    <rect x="150" y="65" width="720" height="58" rx="6"/>
+    <rect x="150" y="145" width="360" height="58" rx="6"/>
+    <rect x="520" y="145" width="170" height="58" rx="6"/>
+    <rect x="700" y="145" width="170" height="58" rx="6"/>
+    <rect x="150" y="225" width="540" height="58" rx="6"/>
+    <rect x="700" y="225" width="170" height="58" rx="6"/>
+    <rect x="150" y="305" width="360" height="58" rx="6"/>
+    <rect x="520" y="305" width="170" height="58" rx="6"/>
+    <rect x="700" y="305" width="170" height="58" rx="6"/>
+  </g>
+  <g font-family="system-ui, sans-serif" font-size="14" fill="#F8FAFC" text-anchor="middle">
+    <text x="510" y="100">The Forum - 12 strips</text>
+    <text x="330" y="180">Collaboration Space - 6 strips</text>
+    <text x="605" y="180">Project Office - 1 strip</text>
+    <text x="785" y="180">Focus Office - 1 strip</text>
+    <text x="420" y="260">Boardroom - 8 strips</text>
+    <text x="785" y="260">Meeting Office - 1 strip</text>
+    <text x="330" y="340">Open Workspace - 6 strips</text>
+    <text x="605" y="340">Reception Office - 1 strip</text>
+    <text x="785" y="340">Support Office - 1 strip</text>
+  </g>
+</svg>

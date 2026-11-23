@@ -288,6 +288,7 @@ h2 { margin: 0; font-size: 1.06rem; letter-spacing: -.02em; }
 
 .room-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: .5rem;
@@ -296,8 +297,8 @@ h2 { margin: 0; font-size: 1.06rem; letter-spacing: -.02em; }
 }
 
 .room-row:last-child { border-bottom: 0; }
-.room-info { display: flex; min-width: 0; align-items: center; gap: .45rem; }
-.room-name { overflow: hidden; color: #435169; font-size: .72rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.room-info { display: flex; flex: 1 1 10rem; min-width: 0; align-items: center; gap: .45rem; }
+.room-name { color: #435169; font-size: .72rem; font-weight: 600; overflow-wrap: anywhere; }
 
 .room-presence {
   display: inline-flex;
@@ -384,7 +385,8 @@ h2 { margin: 0; font-size: 1.06rem; letter-spacing: -.02em; }
   .activity-panel .muted-caption { text-align: left; }
   .controller-card { padding: .85rem; }
   .status-pill { padding: .28rem .4rem; font-size: .58rem; }
-  .room-info { gap: .3rem; }
+  .room-row { padding: .35rem 0; }
+  .room-info { flex: 1 1 100%; gap: .3rem; }
   .room-presence { font-size: .55rem; }
 }
 

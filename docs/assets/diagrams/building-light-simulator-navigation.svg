@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 330" role="img" aria-labelledby="title description">
+  <title id="title">Building navigation flow</title>
+  <desc id="description">The Building floor list chooses a selected floor and its main room or the full building overview. Selecting a floor in the overview opens the selected floor. Selecting a room opens its controls.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#60A5FA"/>
+    </marker>
+    <style>
+      .node { fill: #1E293B; stroke: #60A5FA; stroke-width: 2; }
+      .edge { fill: none; stroke: #60A5FA; stroke-width: 2; marker-end: url(#arrow); }
+      .label { fill: #F8FAFC; font: 16px "Segoe UI", Arial, sans-serif; text-anchor: middle; }
+      .edge-label { fill: #F8FAFC; font: 14px "Segoe UI", Arial, sans-serif; text-anchor: middle; }
+    </style>
+  </defs>
+  <rect width="900" height="330" rx="12" fill="#0F172A"/>
+  <g class="edge">
+    <path d="M190 165 H235"/>
+    <path d="M345 165 H365 V77 H445"/>
+    <path d="M345 165 H365 V245 H445"/>
+    <path d="M565 105 V210"/>
+    <path d="M685 245 H720"/>
+  </g>
+  <g class="node">
+    <rect x="20" y="135" width="170" height="60" rx="8"/>
+    <path d="M290 115 L345 165 L290 215 L235 165 Z"/>
+    <rect x="445" y="45" width="240" height="60" rx="8"/>
+    <rect x="445" y="215" width="240" height="60" rx="8"/>
+    <rect x="720" y="215" width="160" height="60" rx="8"/>
+  </g>
+  <g class="label">
+    <text x="105" y="171">Building floor list</text>
+    <text x="290" y="171">View</text>
+    <text x="565" y="81">Full building overview</text>
+    <text x="565" y="240">Selected floor</text>
+    <text x="565" y="259">and main room</text>
+    <text x="800" y="251">Room controls</text>
+  </g>
+  <g class="edge-label">
+    <text x="410" y="68">All floors</text>
+    <text x="405" y="234">Select a floor</text>
+    <text x="575" y="151" text-anchor="start">Select a floor</text>
+    <text x="575" y="170" text-anchor="start">in 3D</text>
+    <text x="703" y="203">Select</text>
+    <text x="703" y="220">a room</text>
+  </g>
+</svg>

@@ -24,7 +24,7 @@ Coverage XML files appear in: `tests/**/TestResults/*/coverage.cobertura.xml`
 The CI workflow adds simulator view-logic and recording-helper Node tests and a Docker Compose smoke test:
 
 ```powershell
-node --test tests/wiring-routes.test.mjs tests/floor-view.test.mjs tests/room-state.test.mjs tests/record-demo.test.mjs
+node --test tests/building-access.test.mjs tests/wiring-routes.test.mjs tests/floor-view.test.mjs tests/room-state.test.mjs tests/record-demo.test.mjs
 docker compose up --build -d
 ```
 
@@ -90,7 +90,7 @@ Select the `security-reviewer` agent in an environment that supports the reposit
 - Dependencies are secure
 
 **If vulnerabilities are found:**
-1. The agent will post findings with severity and suggested fixes
+1. The reviewer reports findings with severity and suggested fixes; record them in the PR
 2. Fix the issues
 3. Request an independent re-review and record the result
 

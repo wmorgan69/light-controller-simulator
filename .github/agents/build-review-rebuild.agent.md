@@ -29,6 +29,7 @@ Run this workflow:
    - Run the smallest relevant tests while iterating.
    - Run `dotnet build Devices.slnx --no-restore`.
    - Run `dotnet test Devices.slnx --no-build --no-restore`.
+   - For simulator browser view-logic and recording-helper changes, run `node --test tests/building-access.test.mjs tests/wiring-routes.test.mjs tests/floor-view.test.mjs tests/room-state.test.mjs tests/record-demo.test.mjs`.
 
 4. **Independent code review**
    - Invoke `code-reviewer` for the implemented diff and relevant tests.

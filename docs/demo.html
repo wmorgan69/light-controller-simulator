@@ -53,11 +53,11 @@
     <details>
       <summary>Text summary of the walkthrough</summary>
       <ol>
-        <li>Show all floors, then pan and rotate the camera around the building.</li>
-        <li>Select a floor, zoom in and out, then select a room.</li>
-        <li>Change presence and sensor-fault states in the simulator.</li>
-        <li>Observe the resulting live updates in the instrumentation dashboard.</li>
-        <li>Run the occupancy demo and see room occupancy updates.</li>
+        <li>Show all floors, then pan, rotate 360 degrees and zoom the building. Floor 1's Open Workspace is occupied, with six lights on.</li>
+        <li>Cycle through Floors 1–4: Floors 1 and 3 have a main room and two offices, Floor 2 has a larger main room and one office, and Floor 4 has one large room. Return to Floor 3, zoom, pan and rotate it 360 degrees.</li>
+        <li>Select Floor 2's Meeting Office and turn on presence. Its presence control is checked, its sensor turns green and its light comes on; the dashboard shows two occupied rooms and seven lights on.</li>
+        <li>Turn on the office sensor fault. The fault control is checked and the sensor turns red; the dashboard shows one active fault and one occupied room, with seven lights still on.</li>
+        <li>Select all floors and run the occupancy demo. See lights come on across the building, then see the dashboard update with several occupied rooms and no active faults. The dashboard stays visible for five seconds after each update.</li>
       </ol>
     </details>
     <p><a href="https://github.com/wmorgan69/light-controller-simulator">View the project on GitHub</a></p>

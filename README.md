@@ -42,9 +42,9 @@ The project demonstrates:
 - Live controller health, occupancy, lighting activity, faults, events, and SQLite persistence.
 - Unit-tested state transitions, revision handling, stale/offline behavior, and event persistence.
 
-![System architecture: browser users access the simulator and dashboard; HTTP fallback and optional MQTT telemetry flow into the telemetry store and SQLite.](docs/assets/diagrams/architecture.svg)
+![System architecture: browser users access the simulator and dashboard; HTTP polling and optional MQTT telemetry feed the telemetry store and SQLite.](docs/assets/diagrams/architecture.svg)
 
-Simulator state reaches the instrumentation telemetry store through HTTP polling or an optional MQTT broker; the store persists data in SQLite.
+The instrumentation service polls simulator state over HTTP and can also ingest MQTT telemetry; both inputs feed the telemetry store, which persists data in SQLite.
 
 ## Applications
 
@@ -55,19 +55,21 @@ Simulator state reaches the instrumentation telemetry store through HTTP polling
 
 ## Screenshots and demo
 
-The screenshots show the simulator and instrumentation dashboard. The video shows all floors with camera pan and rotation, then floor selection, zooming and room selection, followed by presence and sensor-fault changes, live instrumentation updates, and the occupancy demo.
+The walkthrough cycles through all four floor layouts before returning to Floor 3.
 
 ### Building Light Simulator
 
-![Building Light Simulator showing floor navigation, a selected floor, and room controls](docs/assets/screenshots/building-light-simulator.png)
+![Building Light Simulator showing the All floors overview with all four floors visible](docs/assets/screenshots/building-light-simulator.png)
 
-![Building Light Simulator desktop view showing floor navigation on the left, Floor 2, the selected Office A, room controls, and illustrative wiring](docs/assets/screenshots/building-light-simulator-selected-floor.png)
+![Building Light Simulator showing Floor 2 Boardroom selected with a sensor fault and all eight lights off](docs/assets/screenshots/building-light-simulator-selected-floor.png)
 
 [View the selected-floor screenshot at full size](docs/assets/screenshots/building-light-simulator-selected-floor.png)
 
 ### Lighting Instrumentation
 
-![Lighting Instrumentation showing building status, lighting activity, controllers, and recent events](docs/assets/screenshots/lighting-instrumentation.png)
+![Lighting Instrumentation using HTTP fallback with 4 controllers, 1 active sensor fault, 6 lights on, 1 of 9 rooms occupied, and 37 fixtures; the lighting activity legend shows 0 faulted light fixtures](docs/assets/screenshots/lighting-instrumentation.png)
+
+The active-fault total includes sensor faults; the lighting-activity fault count includes only faulted light fixtures. This screenshot's 1 active sensor fault therefore coexists with 0 faulted light fixtures.
 
 [Watch the building lighting demo on GitHub Pages](https://wmorgan69.github.io/light-controller-simulator/demo.html)
 
@@ -85,7 +87,7 @@ Run the instrumentation dashboard:
 dotnet run --project src/Devices.Instrumentation.Web/Devices.Instrumentation.Web.csproj --urls http://localhost:5081
 ```
 
-The default simulator startup view selects Floor 3 and its Main Room. MQTT is optional; the dashboard polls the simulator over HTTP when no broker is available.
+The default simulator startup view selects Floor 3 and its Collaboration Space. MQTT is optional; the instrumentation service polls the simulator over HTTP and can also ingest MQTT telemetry.
 
 ### Docker Compose
 
@@ -95,7 +97,7 @@ With Docker and Docker Compose available, start both applications from the repos
 docker compose up --build
 ```
 
-Open `http://localhost:5080/` for the simulator and `http://localhost:5081/` for the dashboard. The dashboard polls `http://simulator:8080` over the Compose network; no MQTT broker is required. Its SQLite database is stored in the `telemetry-data` named volume and persists when the containers are stopped or recreated. Stop the applications with `docker compose down`.
+Open `http://localhost:5080/` for the simulator and `http://localhost:5081/` for the dashboard. The dashboard polls `http://simulator:8080` over the Compose network and can also ingest MQTT telemetry; no MQTT broker is required. Its SQLite database is stored in the `telemetry-data` named volume and persists when the containers are stopped or recreated. Stop the applications with `docker compose down`.
 
 In CodeSandbox, this requires a server environment with a working Docker engine and Compose; forward ports 5080 and 5081 to access the applications.
 
@@ -117,6 +119,7 @@ src/
   Devices.Simulator.Web/         Simulator API and 3D browser UI
   Devices.Instrumentation.Web/   Telemetry subscriber and dashboard
 tests/
+  *.test.mjs                     Simulator view-logic and recording-helper tests
   Devices.Simulator.Tests/       Simulator state-transition tests
   Devices.Instrumentation.Tests/ Telemetry store tests
 docs/                            Project and application documentation
@@ -130,4 +133,5 @@ AGENTS.md                        Repository-wide agent instructions
 ```powershell
 dotnet build Devices.slnx
 dotnet test Devices.slnx --no-build --no-restore
+node --test tests/building-access.test.mjs tests/wiring-routes.test.mjs tests/floor-view.test.mjs tests/room-state.test.mjs tests/record-demo.test.mjs
 ```

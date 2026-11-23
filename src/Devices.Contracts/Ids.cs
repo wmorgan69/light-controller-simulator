@@ -13,10 +13,25 @@ public static class DeviceIds
         {
             var rooms = new List<RoomState>
             {
-                CreateRoom(floor, "main", "Main room", 4),
-                CreateRoom(floor, "office-a", "Office A", 1),
-                CreateRoom(floor, "office-b", "Office B", 1)
+                CreateRoom(floor, "main", floor switch
+                {
+                    1 => "Open Workspace",
+                    2 => "Boardroom",
+                    3 => "Collaboration Space",
+                    4 => "The Forum",
+                    _ => throw new InvalidOperationException($"Unexpected floor {floor}.")
+                }, floor switch { 2 => 8, 4 => 12, _ => 6 })
             };
+            if (floor != 4)
+                rooms.Add(CreateRoom(floor, "office-a", floor switch
+                {
+                    1 => "Reception Office",
+                    2 => "Meeting Office",
+                    3 => "Project Office",
+                    _ => throw new InvalidOperationException($"Unexpected floor {floor}.")
+                }, 1));
+            if (floor is 1 or 3)
+                rooms.Add(CreateRoom(floor, "office-b", floor == 1 ? "Support Office" : "Focus Office", 1));
             yield return new ControllerState(Controller(floor), floor, ControllerStatus.Healthy, DateTimeOffset.UtcNow, rooms, Array.Empty<ControllerFault>());
         }
     }

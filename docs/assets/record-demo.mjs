@@ -1,8 +1,61 @@
+export async function rotateFullTurn(page, box) {
+  const distance = box.height;
+  if (distance + 20 > box.width) {
+    throw new Error('The building canvas is too narrow for a full rotation.');
+  }
+  const x = box.x + 10;
+  const y = box.y + box.height * 0.52;
+  await page.mouse.move(x, y);
+  await page.mouse.down({ button: 'left' });
+  for (let step = 1; step <= 6; step++) {
+    await page.mouse.move(x + distance * step / 6, y);
+    await page.waitForTimeout(60);
+  }
+  await page.mouse.up({ button: 'left' });
+  await page.waitForTimeout(100);
+}
+
+export async function showFloorLayouts(page) {
+  for (const floor of [1, 2, 3, 4, 3]) {
+    const button = page.getByRole('button', { name: new RegExp(`^Floor ${floor}`) });
+    await button.click();
+    if (await button.getAttribute('aria-pressed') !== 'true') {
+      throw new Error(`Floor ${floor} selection failed.`);
+    }
+    await page.waitForTimeout(500);
+  }
+}
+
+export async function showDashboardUpdate(page, waitForDashboardCounts, expected, label) {
+  await waitForDashboardCounts(expected, label);
+  await page.waitForTimeout(5000);
+}
+
+export async function showOccupancyScenario(page, postAndWait, waitForState) {
+  await page.getByRole('button', { name: 'All floors' }).click();
+  await page.screencast.showChapter('Occupancy demo');
+  await postAndWait(
+    page.getByRole('button', { name: 'Occupancy demo' }),
+    '/api/scenarios/occupancy',
+    'Running the occupancy demo'
+  );
+  const counts = await waitForState(
+    actual => actual.occupied >= 4 && actual.occupied <= 7 && actual.faults === 0,
+    '4 to 7 occupied rooms and no faults',
+    'Running the occupancy demo'
+  );
+  await page.waitForTimeout(2000);
+  return counts;
+}
+
 /**
  * Capture the app screenshots and walkthrough from a visible Playwright page with screencast support.
  * Both apps must be running, and outputDirectory must contain writable screenshots and videos directories.
  */
-export async function captureBuildingLightingDemo(page, outputDirectory) {
+export async function captureBuildingLightingDemo(page, outputDirectory, {
+  simulatorUrl = 'http://127.0.0.1:5080/',
+  instrumentationUrl = 'http://127.0.0.1:5081/'
+} = {}) {
   if (!page || !page.screencast || ['start', 'stop', 'showActions', 'showChapter']
     .some(method => typeof page.screencast[method] !== 'function')) {
     throw new Error('A Playwright page with screencast support is required.');
@@ -12,8 +65,6 @@ export async function captureBuildingLightingDemo(page, outputDirectory) {
   }
 
   const outputPath = filename => `${outputDirectory.replace(/[\\/]+$/, '')}/${filename}`;
-  const simulatorUrl = 'http://127.0.0.1:5080/';
-  const instrumentationUrl = 'http://127.0.0.1:5081/';
   const getControllers = async (timeoutMs = 10000) => page.evaluate(async timeout => {
     const abortController = new AbortController();
     const timer = setTimeout(() => abortController.abort(), timeout);
@@ -102,6 +153,22 @@ export async function captureBuildingLightingDemo(page, outputDirectory) {
     }
     return roomSelect;
   };
+  const showSiteAddress = () => page.evaluate(() => {
+    const frame = document.createElement('div');
+    frame.style.cssText = 'position:sticky;top:0;z-index:10000;box-sizing:border-box;'
+      + 'height:46px;padding:7px 14px;background:#d6deea;display:flex;'
+      + 'align-items:center;gap:12px;font:14px system-ui,sans-serif;';
+    const label = document.createElement('span');
+    label.textContent = 'Demo';
+    label.style.cssText = 'color:#40516a;font-weight:700;';
+    const address = document.createElement('div');
+    address.textContent = window.location.href;
+    address.setAttribute('aria-label', 'Site address');
+    address.style.cssText = 'flex:1;min-width:0;padding:6px 12px;border-radius:6px;'
+      + 'background:#fff;color:#17243a;overflow:hidden;white-space:nowrap;';
+    frame.append(label, address);
+    document.body.prepend(frame);
+  });
   const selectFloor2OfficeA = async () => {
     const canvas = page.locator('#buildingCanvas');
     const clickPosition = async (point, selectedFloor) => {
@@ -129,9 +196,9 @@ export async function captureBuildingLightingDemo(page, outputDirectory) {
     if (await page.getByRole('button', { name: /^Floor 2/ }).getAttribute('aria-pressed') !== 'true') {
       throw new Error('Floor 2 selection failed.');
     }
-    await clickPosition([1.25, 3.1, 1.67], true);
-    if ((await page.locator('#roomInspectorTitle').textContent()).trim() !== 'Floor 2 — Office A') {
-      throw new Error('Floor 2 Office A selection failed.');
+    await clickPosition([3.8, 3.1, 1.47], true);
+    if ((await page.locator('#roomInspectorTitle').textContent()).trim() !== 'Floor 2 — Meeting Office') {
+      throw new Error('Floor 2 Meeting Office selection failed.');
     }
   };
   const restoreBaseline = async () => {
@@ -143,13 +210,13 @@ export async function captureBuildingLightingDemo(page, outputDirectory) {
     );
     await waitForCounts({ occupied: 0, faults: 0, lights: 0 }, 'Verifying the building reset');
     const roomSelect = await ensureRoomControls();
-    await roomSelect.selectOption({ label: 'controller-floor-1 — Main room' });
+    await roomSelect.selectOption('floor-1-main');
     await postAndWait(
       page.getByRole('button', { name: 'Trigger selected room sensor' }),
       '/api/rooms/floor-1-main/sensor/trigger',
       'Triggering the baseline room sensor'
     );
-    await waitForCounts({ occupied: 1, faults: 0, lights: 4 }, 'Restoring the baseline building state');
+    await waitForCounts({ occupied: 1, faults: 0, lights: 6 }, 'Restoring the baseline building state');
   };
 
   let stateMayHaveChanged = false;
@@ -168,14 +235,15 @@ export async function captureBuildingLightingDemo(page, outputDirectory) {
     );
     await waitForCounts({ occupied: 0, faults: 0, lights: 0 }, 'Verifying the building reset');
     const roomSelect = await ensureRoomControls();
-    await roomSelect.selectOption({ label: 'controller-floor-1 — Main room' });
+    await roomSelect.selectOption('floor-1-main');
     await postAndWait(
       page.getByRole('button', { name: 'Trigger selected room sensor' }),
       '/api/rooms/floor-1-main/sensor/trigger',
       'Triggering the baseline room sensor'
     );
-    await waitForCounts({ occupied: 1, faults: 0, lights: 4 }, 'Preparing the initial state');
+    await waitForCounts({ occupied: 1, faults: 0, lights: 6 }, 'Preparing the initial state');
 
+    await page.getByRole('button', { name: 'All floors' }).click();
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.screenshot({
       path: outputPath('screenshots/building-light-simulator.png'),
@@ -184,7 +252,7 @@ export async function captureBuildingLightingDemo(page, outputDirectory) {
     await page.goto(instrumentationUrl, { waitUntil: 'domcontentloaded' });
     await page.getByRole('heading', { name: 'Lighting overview' }).waitFor();
     await page.getByText('4 FLOORS', { exact: true }).waitFor();
-    await waitForDashboardCounts({ occupied: 1, faults: 0 }, 'Preparing the dashboard screenshot');
+    await waitForDashboardCounts({ occupied: 1, faults: 0, lights: 6 }, 'Preparing the dashboard screenshot');
     await page.screenshot({
       path: outputPath('screenshots/lighting-instrumentation.png'),
       fullPage: true,
@@ -192,7 +260,9 @@ export async function captureBuildingLightingDemo(page, outputDirectory) {
     });
 
     await page.goto(simulatorUrl, { waitUntil: 'domcontentloaded' });
+    await showSiteAddress();
     await page.getByRole('button', { name: 'All floors' }).waitFor({ state: 'visible' });
+    await page.getByRole('button', { name: 'All floors' }).click();
     const viewport = await page.evaluate(() => ({ width: innerWidth, height: innerHeight }));
     const even = value => Math.max(2, Math.floor(value / 2) * 2);
     const scale = Math.min(1, 1280 / viewport.width);
@@ -203,10 +273,6 @@ export async function captureBuildingLightingDemo(page, outputDirectory) {
     recordingStarted = true;
     try {
       await page.screencast.showActions();
-      await page.screencast.showChapter('All-floors view');
-      await page.getByRole('button', { name: 'All floors' }).click();
-      await page.waitForTimeout(1500);
-
       const canvas = page.locator('#buildingCanvas');
       await canvas.scrollIntoViewIfNeeded();
       const box = await canvas.boundingBox();
@@ -216,26 +282,19 @@ export async function captureBuildingLightingDemo(page, outputDirectory) {
       const centerX = box.x + box.width * 0.5;
       const centerY = box.y + box.height * 0.52;
 
-      await page.screencast.showChapter('Pan and rotate the building');
-      await page.waitForTimeout(1000);
-      await page.mouse.move(centerX, centerY);
-      await page.mouse.down({ button: 'left' });
-      await page.mouse.move(centerX + 90, centerY + 35, { steps: 10 });
-      await page.mouse.up({ button: 'left' });
-      await page.waitForTimeout(1000);
+      await rotateFullTurn(page, box);
       await page.mouse.move(centerX, centerY);
       await page.mouse.down({ button: 'right' });
       await page.mouse.move(centerX + 55, centerY + 25, { steps: 8 });
       await page.mouse.up({ button: 'right' });
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(100);
+      await page.mouse.wheel(0, -400);
+      await page.waitForTimeout(100);
+      await page.mouse.wheel(0, 400);
+      await page.waitForTimeout(100);
 
-      await page.screencast.showChapter('Select a floor and zoom in and out');
-      await page.waitForTimeout(1000);
-      await page.getByRole('button', { name: /^Floor 2/ }).click();
-      if (await page.getByRole('button', { name: /^Floor 2/ }).getAttribute('aria-pressed') !== 'true') {
-        throw new Error('Floor 2 selection failed.');
-      }
-      await page.waitForTimeout(1000);
+      await showFloorLayouts(page);
+      await page.waitForTimeout(200);
       await canvas.scrollIntoViewIfNeeded();
       const floorBox = await canvas.boundingBox();
       if (!floorBox) {
@@ -243,52 +302,64 @@ export async function captureBuildingLightingDemo(page, outputDirectory) {
       }
       await page.mouse.move(floorBox.x + floorBox.width * 0.5, floorBox.y + floorBox.height * 0.52);
       await page.mouse.wheel(0, -400);
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(100);
       await page.mouse.wheel(0, 400);
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(100);
+      const floorX = floorBox.x + floorBox.width * 0.5;
+      const floorY = floorBox.y + floorBox.height * 0.52;
+      await rotateFullTurn(page, floorBox);
+      await page.mouse.move(floorX, floorY);
+      await page.mouse.down({ button: 'right' });
+      await page.mouse.move(floorX + 45, floorY + 20, { steps: 8 });
+      await page.mouse.up({ button: 'right' });
+      await page.waitForTimeout(200);
 
-      await page.screencast.showChapter('Select a room');
       await selectFloor2OfficeA();
-      await page.waitForTimeout(1000);
+      await page.locator('.room-inspector').scrollIntoViewIfNeeded();
+      await page.waitForTimeout(200);
 
       await page.screencast.showChapter('Presence updates instrumentation');
-      await page.waitForTimeout(1600);
       await page.getByRole('switch', { name: 'Presence' }).check();
-      await waitForCounts({ occupied: 2, faults: 0, lights: 5 }, 'Activating presence');
+      await waitForCounts({ occupied: 2, faults: 0, lights: 7 }, 'Activating presence');
+      if (!await page.getByRole('switch', { name: 'Presence' }).isChecked()) {
+        throw new Error('Presence did not remain selected.');
+      }
+      await page.waitForTimeout(1300);
       await page.goto(instrumentationUrl, { waitUntil: 'domcontentloaded' });
+      await showSiteAddress();
       await page.getByRole('heading', { name: 'Lighting overview' }).waitFor();
-      await waitForDashboardCounts({ occupied: 2, faults: 0, lights: 5 }, 'Showing the presence update');
-      await page.waitForTimeout(1600);
+      await showDashboardUpdate(page, waitForDashboardCounts,
+        { occupied: 2, faults: 0, lights: 7 }, 'Showing the presence update');
 
-      await page.screencast.showChapter('Sensor fault updates instrumentation');
-      await page.waitForTimeout(1600);
       await page.goto(simulatorUrl, { waitUntil: 'domcontentloaded' });
+      await showSiteAddress();
       await page.getByRole('button', { name: 'All floors' }).waitFor({ state: 'visible' });
       await selectFloor2OfficeA();
+      await page.locator('.room-inspector').scrollIntoViewIfNeeded();
+      await page.screencast.showChapter('Sensor fault updates instrumentation');
       await page.getByRole('switch', { name: 'Sensor fault' }).check();
       await waitForCounts({ occupied: 1, faults: 1 }, 'Activating the sensor fault');
+      if (!await page.getByRole('switch', { name: 'Sensor fault' }).isChecked()) {
+        throw new Error('Sensor fault did not remain selected.');
+      }
+      await page.waitForTimeout(1300);
       await page.goto(instrumentationUrl, { waitUntil: 'domcontentloaded' });
+      await showSiteAddress();
       await page.getByRole('heading', { name: 'Lighting overview' }).waitFor();
-      await waitForDashboardCounts({ occupied: 1, faults: 1, lights: 5 }, 'Showing the fault update');
-      await page.waitForTimeout(5000);
+      await showDashboardUpdate(page, waitForDashboardCounts,
+        { occupied: 1, faults: 1, lights: 7 }, 'Showing the fault update');
 
       await page.goto(simulatorUrl, { waitUntil: 'domcontentloaded' });
+      await showSiteAddress();
       await page.getByRole('button', { name: 'Occupancy demo' }).waitFor({ state: 'visible' });
-      await page.screencast.showChapter('Run the occupancy demo');
-      await page.waitForTimeout(1600);
-      await page.getByRole('button', { name: 'Occupancy demo' }).click();
-      const occupancyCounts = await waitForState(
-        counts => counts.occupied >= 4 && counts.occupied <= 8 && counts.faults === 0,
-        '4 to 8 occupied rooms and no faults',
-        'Running the occupancy demo'
-      );
+      const occupancyCounts = await showOccupancyScenario(page, postAndWait, waitForState);
       await page.goto(instrumentationUrl, { waitUntil: 'domcontentloaded' });
+      await showSiteAddress();
       await page.getByRole('heading', { name: 'Lighting overview' }).waitFor();
-      await waitForDashboardCounts(
+      await showDashboardUpdate(page, waitForDashboardCounts,
         { occupied: occupancyCounts.occupied, faults: 0 },
         'Showing the occupancy demo'
       );
-      await page.waitForTimeout(2800);
     } finally {
       if (recordingStarted) {
         await page.screencast.stop();
