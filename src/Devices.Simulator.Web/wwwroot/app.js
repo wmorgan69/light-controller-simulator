@@ -7,6 +7,9 @@ import { createFloorSlab, createFloorStairLandings, createFloorStairs, createInc
 import { createFloorWalkway, createOpenDoor, roomWallSegments } from './building-access.mjs?v=access-2';
 import { floorRoomLayout, roomFixturePositions, sensorRadius } from './room-fixtures.mjs?v=room-access-4';
 import { lightEmits, lightVisualState, roomIllumination, selectedRoomVisualState, sensorFaultForRoom, sensorPulseAmount } from './room-state.mjs?v=7';
+import { controllerStatusLabel, localizeMarkup, t } from './localization.en.mjs?v=1';
+
+localizeMarkup(document);
 
 const canvas = document.querySelector('#buildingCanvas');
 const building = new THREE.Group();
@@ -199,7 +202,7 @@ function rebuildBuilding() {
 
     const floorLabel = new THREE.Mesh(
       new THREE.PlaneGeometry(1.35, 0.42),
-      new THREE.MeshBasicMaterial({ map: textTexture(`FLOOR ${controller.floor}`), side: THREE.DoubleSide }));
+      new THREE.MeshBasicMaterial({ map: textTexture(t('floorSceneLabel', { floor: controller.floor })), side: THREE.DoubleSide }));
     floorLabel.position.set(-4.45, y + 0.62, 4.06);
     addSelectable(floorLabel, { type: 'floor', controllerId: controller.id, floor: controller.floor });
 
@@ -374,7 +377,7 @@ function textTexture(text) {
 
 function updateFloorStatus() {
   document.querySelector('#wiringLegend').hidden = floorView.current === null;
-  document.querySelector('#floorSelectionHint').textContent = 'Choose a floor; select it again to reset the camera.';
+  document.querySelector('#floorSelectionHint').textContent = t('floorSelectionHint');
   const floorButtons = document.querySelector('#floorButtons');
   const orderedControllers = floorNavigation(controllers, floorView.current);
   const existingButtons = [...floorButtons.children];
@@ -387,7 +390,7 @@ function updateFloorStatus() {
       button.dataset.controllerId = controller.id;
       const name = document.createElement('span');
       name.className = 'floor-button-name';
-      name.textContent = `Floor ${controller.floor}`;
+      name.textContent = t('floorName', { floor: controller.floor });
       const status = document.createElement('span');
       status.className = 'floor-button-status';
       const faultIcon = document.createElement('span');
@@ -415,19 +418,19 @@ function updateFloorStatus() {
     const selected = controller.selected;
     button.setAttribute('aria-pressed', String(selected));
     const status = button.querySelector('.floor-button-status');
-    status.querySelector('.floor-status-text').textContent = controller.status;
+    status.querySelector('.floor-status-text').textContent = controllerStatusLabel(controller.status);
     status.querySelector('.floor-fault-icon').hidden = controller.status !== 'Faulted';
     status.classList.toggle('faulted', controller.status === 'Faulted');
     button.querySelector('.floor-occupancy-text').textContent =
-      `${controller.occupiedRooms}/${controller.totalRooms} rooms occupied`;
+      t('occupiedRooms', { occupied: controller.occupiedRooms, total: controller.totalRooms });
   });
   document.querySelector('#floorLoading').hidden = controllers.length > 0;
   const floorSelector = document.querySelector('#accessibleFloor');
   const floorValues = ['', ...controllers.map(controller => String(controller.floor))];
   if (floorValues.length !== floorSelector.options.length ||
       floorValues.some((value, index) => floorSelector.options[index].value !== value)) {
-    floorSelector.replaceChildren(new Option('All floors', ''));
-    controllers.forEach(controller => floorSelector.add(new Option(`Floor ${controller.floor}`, String(controller.floor))));
+    floorSelector.replaceChildren(new Option(t('allFloors'), ''));
+    controllers.forEach(controller => floorSelector.add(new Option(t('floorNameOption', { floor: controller.floor }), String(controller.floor))));
   }
   floorSelector.value = floorView.current === null ? '' : String(floorView.current);
   floorSelector.disabled = controllers.length === 0;
@@ -451,7 +454,7 @@ function syncRoomInspector() {
   updateFloorStatus();
   inspector.hidden = false;
   document.querySelector('#roomInspectorTitle').textContent =
-    `Floor ${controller.floor} — ${room.name}`;
+    t('floorRoomName', { floor: controller.floor, room: room.name });
   const sensorFaulted = Boolean(sensorFaultForRoom(controller, room));
   document.querySelector('#inspectorPresence').checked = room.presence;
   document.querySelector('#inspectorFault').checked = sensorFaulted;
@@ -515,7 +518,7 @@ function createFaultRow(controller, fault, list, errorTarget) {
   label.textContent = `${controller.id}: ${fault.scope} — ${fault.description}`;
   const clear = document.createElement('button');
   clear.type = 'button';
-  clear.textContent = 'Clear';
+  clear.textContent = t('clear');
   clear.addEventListener('click', () => clearFault(controller, fault, errorTarget));
   row.append(label, clear);
   list.append(row);
@@ -524,7 +527,7 @@ function createFaultRow(controller, fault, list, errorTarget) {
 function renderFaults(controller, list) {
   list.replaceChildren();
   if (!controller?.faults.length) {
-    list.textContent = 'No active faults';
+    list.textContent = t('noActiveFaults');
     return;
   }
   controller.faults.forEach(fault => createFaultRow(controller, fault, list, '#actionError'));
@@ -535,7 +538,7 @@ function renderAccessibleFaults() {
   list.replaceChildren();
   const faults = controllers.flatMap(controller => controller.faults.map(fault => ({ controller, fault })));
   if (!faults.length) {
-    list.textContent = 'No active faults';
+    list.textContent = t('noActiveFaults');
     return;
   }
   faults.forEach(({ controller, fault }) => createFaultRow(controller, fault, list, '#accessibleError'));
@@ -543,7 +546,14 @@ function renderAccessibleFaults() {
 
 function renderStatus() {
   const table = document.createElement('table');
-  table.innerHTML = '<thead><tr><th>Controller</th><th>Floor</th><th>Status</th><th>Rooms / lights</th></tr></thead>';
+  const head = document.createElement('thead');
+  const headingRow = document.createElement('tr');
+  ['controller', 'floor', 'status', 'statusTableHeader'].forEach(key => {
+    const heading = document.createElement('th');
+    heading.textContent = t(key);
+    headingRow.append(heading);
+  });
+  head.append(headingRow);
   const body = document.createElement('tbody');
   controllers.forEach(controller => {
     const row = document.createElement('tr');
@@ -552,8 +562,12 @@ function renderStatus() {
     const cells = [
       controller.id,
       String(controller.floor),
-      controller.status,
-      controller.rooms.map(room => `${room.name}: ${room.lightStrips.filter(lightEmits).length}/${room.lightStrips.length} on`).join(' · ')
+      controllerStatusLabel(controller.status),
+      controller.rooms.map(room => t('roomLightsOn', {
+        room: room.name,
+        on: room.lightStrips.filter(lightEmits).length,
+        total: room.lightStrips.length
+      })).join(' · ')
     ];
     cells.forEach(value => {
       const cell = document.createElement('td');
@@ -562,7 +576,7 @@ function renderStatus() {
     });
     body.append(row);
   });
-  table.append(body);
+  table.append(head, body);
   document.querySelector('#statusTable').replaceChildren(table);
 }
 
@@ -571,7 +585,7 @@ function populateAccessibleControls() {
   const selectedRoom = document.querySelector('#accessibleRoom').value;
   replaceOptions(document.querySelector('#accessibleRoom'), rooms.map(room => ({
     id: room.id,
-    label: `${room.controllerId} — ${room.name}`
+    label: t('roomTarget', { controller: room.controllerId, room: room.name })
   })));
   if (rooms.some(room => room.id === selectedRoom)) document.querySelector('#accessibleRoom').value = selectedRoom;
   populateAccessibleFaultTargets();
@@ -583,13 +597,16 @@ function populateAccessibleFaultTargets() {
   if (scope === 'sensor') {
     options = controllers.flatMap(controller => controller.rooms.map(room => {
       const key = room.id.slice(`floor-${controller.floor}-`.length);
-      return { id: `sensor-floor-${controller.floor}-${key}`, label: `Floor ${controller.floor} — ${room.name} sensor` };
+      return { id: `sensor-floor-${controller.floor}-${key}`, label: t('sensorTarget', { floor: controller.floor, room: room.name }) };
     }));
   } else if (scope === 'light') {
     options = controllers.flatMap(controller => controller.rooms.flatMap(room =>
-      room.lightStrips.map((strip, index) => ({ id: strip.id, label: `Floor ${controller.floor} — ${room.name}, strip ${index + 1}` }))));
+      room.lightStrips.map((strip, index) => ({
+        id: strip.id,
+        label: t('lightTarget', { floor: controller.floor, room: room.name, strip: index + 1 })
+      }))));
   } else {
-    options = controllers.map(controller => ({ id: controller.id, label: `Floor ${controller.floor} controller` }));
+    options = controllers.map(controller => ({ id: controller.id, label: t('controllerTarget', { floor: controller.floor }) }));
   }
   replaceOptions(document.querySelector('#accessibleFaultTarget'), options);
 }
@@ -605,8 +622,8 @@ function ownerForTarget(scope, targetId) {
 
 function updateGestureHelp() {
   document.querySelector('#viewStatus').textContent = coarsePointer.matches
-    ? 'Tap a room to select · drag to orbit · two-finger pan and zoom'
-    : 'Click a room to select · drag to orbit · right-drag to pan · scroll to zoom';
+    ? t('touchGestureHelp')
+    : t('mouseGestureHelp');
 }
 
 function showActionError(error, target = '#actionError') {
@@ -619,7 +636,7 @@ function showActionError(error, target = '#actionError') {
 
 async function request(url, options) {
   const response = await fetch(url, options);
-  if (!response.ok) throw new Error(`Request failed (${response.status}): ${await response.text()}`);
+  if (!response.ok) throw new Error(t('requestFailed', { status: response.status, body: await response.text() }));
   const loadError = document.querySelector('#loadError');
   if (loadError) loadError.hidden = true;
   const actionError = document.querySelector('#actionError');
@@ -656,22 +673,22 @@ async function refresh() {
     fetch('/api/controllers'),
     fetch('/api/status')
   ]);
-  if (!controllerResponse.ok) throw new Error(`Controller API returned ${controllerResponse.status}`);
+  if (!controllerResponse.ok) throw new Error(t('controllerApiFailed', { status: controllerResponse.status }));
   const updatedControllers = await controllerResponse.json();
   const transport = statusResponse.ok ? await statusResponse.json() : null;
   if (sequence < lastAppliedRefresh) return;
-  if (sequence < minimumRefreshSequence) throw new Error('Status changed during refresh; reload the page.');
+  if (sequence < minimumRefreshSequence) throw new Error(t('statusChangedDuringRefresh'));
   lastAppliedRefresh = sequence;
   controllers = updatedControllers;
   if (statusResponse.ok) {
     const transportStatus = document.querySelector('#transportStatus');
     transportStatus.textContent = transport.mqttConnected
-      ? 'MQTT connected'
-      : 'MQTT unavailable · HTTP active';
+      ? t('mqttConnected')
+      : t('mqttUnavailableHttpActive');
     transportStatus.classList.toggle('offline', !transport.mqttConnected);
   } else {
     const transportStatus = document.querySelector('#transportStatus');
-    transportStatus.textContent = 'Transport status unavailable';
+    transportStatus.textContent = t('transportStatusUnavailable');
     transportStatus.classList.add('offline');
   }
   if (initialSelectionPending) {
@@ -718,7 +735,7 @@ async function refreshAfterAction() {
     if (lastAppliedRefresh <= actionRefreshSequence) {
       actionWarningAfterRefresh = refreshSequence;
       document.querySelector('#refreshWarning').hidden = false;
-      showActionError(new Error(`Action applied, but status refresh failed: ${error.message}`), '#refreshWarningText');
+      showActionError(new Error(t('actionStatusRefreshFailed', { error: error.message })), '#refreshWarningText');
     }
   }
 }
@@ -787,7 +804,7 @@ document.querySelector('#floorButtons').addEventListener('click', event => {
   if (!button) return;
   const controller = controllers.find(candidate => candidate.id === button.dataset.controllerId);
   if (!controller) {
-    showActionError(new Error('The selected floor is unavailable.'), '#loadError');
+    showActionError(new Error(t('selectedFloorUnavailable')), '#loadError');
     return;
   }
   if (floorView.current === controller.floor) {
@@ -818,7 +835,7 @@ document.querySelector('#accessibleFloor').addEventListener('change', event => {
   }
   const controller = controllers.find(candidate => String(candidate.floor) === event.target.value);
   if (!controller) {
-    showActionError(new Error('The selected floor is unavailable.'), '#accessibleError');
+    showActionError(new Error(t('selectedFloorUnavailable')), '#accessibleError');
     updateFloorStatus();
     return;
   }
@@ -857,7 +874,11 @@ document.querySelector('#inspectorFault').addEventListener('change', async event
       response = await request(`/api/devices/${controller.id}/faults`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scope: 'sensor', targetId: sensorId, description: 'Simulated sensor fault' })
+        body: JSON.stringify({
+          scope: 'sensor',
+          targetId: sensorId,
+          description: t('simulatedSensorFault')
+        })
       });
     } else if (!event.target.checked && existingFault) {
       response = await request(`/api/devices/${controller.id}/faults/${existingFault.id}`, { method: 'DELETE' });
@@ -888,7 +909,7 @@ document.querySelector('#accessibleInjectFault').addEventListener('click', async
     await request(`/api/devices/${controller.id}/faults`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scope, targetId, description: `Simulated ${scope} fault` })
+      body: JSON.stringify({ scope, targetId, description: t('simulatedScopedFault', { scope }) })
     });
     await refreshAfterAction();
   } catch (error) {
@@ -931,7 +952,7 @@ async function runScenario(url) {
     } catch (error) {
       if (lastAppliedRefresh <= scenarioRefreshSequence) {
         scenarioWarningAfterRefresh = refreshSequence;
-        showActionError(new Error(`Scenario applied, but status refresh failed: ${error.message}`), '#scenarioStatusWarning');
+        showActionError(new Error(t('scenarioStatusRefreshFailed', { error: error.message })), '#scenarioStatusWarning');
       }
     }
   } finally {
@@ -972,8 +993,11 @@ function animate(timeMs) {
 }
 requestAnimationFrame(animate);
 refresh().catch(error => {
-  document.querySelector('#floorLoading').textContent = 'Floor list unavailable.';
+  document.querySelector('#floorLoading').textContent = t('floorListUnavailable');
+  const transportStatus = document.querySelector('#transportStatus');
+  transportStatus.textContent = t('transportStatusUnavailable');
+  transportStatus.classList.add('offline');
   const loadError = document.querySelector('#loadError');
-  loadError.textContent = `Unable to load building state: ${error.message}`;
+  loadError.textContent = t('unableToLoadBuildingState', { error: error.message });
   loadError.hidden = false;
 });

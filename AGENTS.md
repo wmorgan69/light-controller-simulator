@@ -74,6 +74,13 @@ For features and fixes that should visibly demonstrate the full agent workflow, 
 - Verify live data and important state transitions in a browser for user-visible changes. Check desktop and narrow-mobile widths and check for horizontal overflow.
 - Respect reduced-motion and keyboard needs. Keep browser-only interactions mirrored by an accessible non-3D or API path where the feature requires control.
 
+## Localization standards
+
+- Put new or changed browser interface text, including accessibility labels and error and status messages, in the appropriate application's English `wwwroot/localization.en.mjs`. Keep matching English HTML text and attribute fallbacks synchronized; shared model room names use the resource below instead.
+- Maintain shared model room names in `src/Devices.Contracts/RoomNames.resx`; preserve their culture-independent values in HTTP and MQTT state. Do not translate stable IDs, protocol values, user-supplied descriptions, or unknown telemetry.
+- Use resource placeholders and plural forms for dynamic text. Preserve escaping when inserting external values into HTML, and add focused tests for interpolation, pluralization, fallbacks, and relevant rendering behavior.
+- English is the only supported language. Do not add translations, automatic language negotiation, or language-selection controls unless requested.
+
 ## Code review acceptance criteria
 
 The code reviewer must check each applicable item and report:

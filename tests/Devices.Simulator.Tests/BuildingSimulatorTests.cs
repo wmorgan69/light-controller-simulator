@@ -1,8 +1,30 @@
 using Devices.Contracts;
+using System.Globalization;
+using System.Resources;
 using Xunit;
 
 public class BuildingSimulatorTests
 {
+    [Fact]
+    public void RoomNamesRemainEnglishForOtherUiCultures()
+    {
+        var original = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("fr-FR");
+            var resources = new ResourceManager("Devices.Contracts.RoomNames", typeof(DeviceIds).Assembly);
+            var rooms = DeviceIds.CreateBuilding().SelectMany(controller => controller.Rooms).ToArray();
+            Assert.Equal(resources.GetString("Boardroom", CultureInfo.InvariantCulture),
+                rooms.Single(room => room.Id == "floor-2-main").Name);
+            Assert.Equal(resources.GetString("TheForum", CultureInfo.InvariantCulture),
+                rooms.Single(room => room.Id == "floor-4-main").Name);
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = original;
+        }
+    }
+
     [Fact]
     public void BuildingHasPerFloorRoomsAndStableLightIds()
     {

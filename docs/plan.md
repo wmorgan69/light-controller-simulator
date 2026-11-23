@@ -59,6 +59,7 @@ devices/
 - Instrumentation remains useful with or without MQTT.
 - The 3D view starts with Floor 3 selected and its Collaboration Space open.
 - The UI provides a complete non-3D control path.
+- English room names and UI text are maintained as localization resources; language selection and other translations are not implemented.
 - Changes include focused tests and accurate documentation.
 
 ## Implementation decisions

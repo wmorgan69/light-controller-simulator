@@ -46,6 +46,8 @@ The project demonstrates:
 
 The instrumentation service polls simulator state over HTTP and can also ingest MQTT telemetry; both inputs feed the telemetry store, which persists data in SQLite.
 
+The applications currently use English localization resources. There is no language selector or automatic language switching.
+
 ## Applications
 
 | Application | URL | Purpose |
@@ -133,5 +135,5 @@ AGENTS.md                        Repository-wide agent instructions
 ```powershell
 dotnet build Devices.slnx
 dotnet test Devices.slnx --no-build --no-restore
-node --test tests/building-access.test.mjs tests/wiring-routes.test.mjs tests/floor-view.test.mjs tests/room-state.test.mjs tests/record-demo.test.mjs
+node --test tests/building-access.test.mjs tests/wiring-routes.test.mjs tests/floor-view.test.mjs tests/room-state.test.mjs tests/record-demo.test.mjs tests/localization-en.test.mjs tests/instrumentation-localization.test.mjs tests/instrumentation-dashboard.test.mjs
 ```

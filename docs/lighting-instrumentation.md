@@ -45,6 +45,8 @@ Status is conveyed with text and color. The dashboard does not infer unsupported
 
 Room names and fixture markers wrap when a controller card is too narrow to show them side by side.
 
+Browser interface text is in [localization.en.mjs](../src/Devices.Instrumentation.Web/wwwroot/localization.en.mjs). Static markup retains matching English fallback text and labels; update both when changing them. Only English is provided; there is no language selector or automatic culture negotiation. Room names arrive in telemetry from the simulator.
+
 The **Active faults** summary counts active device faults, including sensor faults. The **Lighting activity** legend's **Faulted** count includes only faulted light fixtures. Therefore, a sensor fault can produce 1 active fault while the fixture legend reports 0 faulted lights.
 
 ## State and offline semantics
@@ -104,6 +106,7 @@ src/Devices.Instrumentation.Web/
   wwwroot/
     app.js       polling, formatting, live dashboard rendering
     index.html   dashboard structure
+    localization.en.mjs  English browser interface strings
     styles.css   summary cards, controller cards, event feed
 ```
 
@@ -133,4 +136,5 @@ Relative `Telemetry:SqlitePath` values are resolved against the instrumentation 
 ```powershell
 dotnet run --project src/Devices.Instrumentation.Web/Devices.Instrumentation.Web.csproj --urls http://localhost:5081
 dotnet test tests/Devices.Instrumentation.Tests/Devices.Instrumentation.Tests.csproj
+node --test tests/instrumentation-localization.test.mjs tests/instrumentation-dashboard.test.mjs
 ```

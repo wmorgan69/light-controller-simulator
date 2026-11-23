@@ -54,6 +54,7 @@ Stable IDs are created in [Ids.cs](../src/Devices.Contracts/Ids.cs):
 Existing IDs for retained rooms and strips are unchanged. Floor 2 Office B and Floor 4 offices no longer exist; clients using their IDs must select another room. Previously stored instrumentation snapshots or events may still show the old rooms until newer snapshots arrive or events expire. A running simulator must be restarted to load the new model, which resets its in-memory state.
 
 Room names are display names in the HTTP and MQTT state; room, sensor and light IDs retain their existing `main`, `office-a` and `office-b` keys. Stored telemetry may show previous names until newer state arrives.
+The model's English room names are embedded from [RoomNames.resx](../src/Devices.Contracts/RoomNames.resx). They are independent of the server's UI culture so the shared HTTP and MQTT state remains consistent.
 
 ## Runtime architecture
 
@@ -82,6 +83,7 @@ On narrow screens the camera widens its view to keep the floor visible; on wider
 - **Accessible controls** and the keyboard-accessible Building list provide floor selection, room-trigger, and fault controls without 3D hit testing. Selecting a floor opens its main room; choosing All floors restores the overview.
 
 The 3D view is built from local Three.js modules in `wwwroot/vendor`; it does not require a CDN at runtime.
+Browser interface text is in [localization.en.mjs](../src/Devices.Simulator.Web/wwwroot/localization.en.mjs). Static markup retains matching English fallback text and labels; update both when changing them. Only English is provided; there is no language selector or automatic culture negotiation.
 
 ![Access flow: a room connects through an open doorway and rear walkway to a stair landing and the adjacent floor.](assets/diagrams/building-light-simulator-access.svg)
 
@@ -129,6 +131,7 @@ src/Devices.Simulator.Web/
     building-pillars.mjs  illustrative corner pillars
     building-stairs.mjs  illustrative flights between floors
     floor-view.mjs  floor selection and camera framing
+    localization.en.mjs  English browser interface strings
     room-fixtures.mjs  floor layouts and room sensor and light positions
     room-state.mjs  sensor fault lookup and light visual state
     wiring-routes.mjs  illustrative wiring routes
@@ -160,7 +163,7 @@ An unavailable broker does not block HTTP simulation. MQTT status is exposed thr
 ```powershell
 dotnet run --project src/Devices.Simulator.Web/Devices.Simulator.Web.csproj --urls http://localhost:5080
 dotnet test tests/Devices.Simulator.Tests/Devices.Simulator.Tests.csproj
-node --test tests/building-access.test.mjs tests/wiring-routes.test.mjs tests/floor-view.test.mjs tests/room-state.test.mjs tests/record-demo.test.mjs
+node --test tests/building-access.test.mjs tests/wiring-routes.test.mjs tests/floor-view.test.mjs tests/room-state.test.mjs tests/record-demo.test.mjs tests/localization-en.test.mjs
 ```
 
 The simulator view-logic tests require Node.js.

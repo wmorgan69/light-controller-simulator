@@ -4,6 +4,7 @@
 
 - [Architecture overview](#architecture-overview)
 - [Project plan](plan.md)
+- [Changelog](CHANGELOG.md)
 - [Applications](#applications)
 - [Directory structure](#directory-structure)
 - [Running the system](#running-the-system)
@@ -114,7 +115,7 @@ dotnet build Devices.slnx
 dotnet test Devices.slnx --no-build --no-restore
 ```
 
-The CI workflow also runs the simulator's Node.js view-logic and recording-helper tests, builds both container images, and smoke-tests HTTP telemetry and SQLite persistence with Docker Compose.
+The CI workflow also runs the Node.js view-logic, recording-helper, and localization tests, builds both container images, and smoke-tests HTTP telemetry and SQLite persistence with Docker Compose.
 
 ## Documentation map
 
@@ -123,6 +124,7 @@ The CI workflow also runs the simulator's Node.js view-logic and recording-helpe
 | [Building Light Simulator](building-light-simulator.md) | 3D model, controls, state model, APIs, MQTT commands, scenarios, source map |
 | [Lighting Instrumentation](lighting-instrumentation.md) | Dashboard design, telemetry flow, persistence, stale/offline behavior, source map |
 | [Project plan](plan.md) | Goals, delivery phases, implementation decisions, acceptance criteria |
+| [Changelog](CHANGELOG.md) | Project history, recorded commits, and upcoming changes |
 | [Contributor Guide](contributor-guide.md) | Code coverage workflow, testing tips, security review process, common questions |
 | [Branch Protection Configuration](branch-protection.md) | CI/CD enforcement, GitHub status checks, Codecov setup |
 | [Quality & Security Implementation](quality-and-security.md) | Coverage threshold strategy, reaching 90%, security review workflow, Dependabot setup |

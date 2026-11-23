@@ -1,4 +1,15 @@
+import { controllerStatusLabel, eventTypeLabel, localize } from './localization.en.mjs';
+
 let refreshInProgress = false;
+
+function localizeStaticMarkup() {
+  document.querySelectorAll('[data-i18n]').forEach(element => {
+    element.textContent = localize(element.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n-aria-label]').forEach(element => {
+    element.setAttribute('aria-label', localize(element.dataset.i18nAriaLabel));
+  });
+}
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, character => ({
@@ -43,10 +54,10 @@ function getTotals(controllers) {
 
 function renderSummary(totals) {
   const cards = [
-    { label: 'Controllers online', value: totals.online, note: `of ${totals.controllers} total`, accent: 'teal' },
-    { label: 'Active faults', value: totals.faults, note: `${totals.faulted} controller${totals.faulted === 1 ? '' : 's'} affected`, accent: totals.faults ? 'red' : 'green' },
-    { label: 'Lights on', value: totals.lightsOn, note: `of ${totals.strips} fixtures`, accent: 'amber' },
-    { label: 'Occupied rooms', value: totals.presence, note: `of ${totals.rooms} monitored`, accent: 'blue' }
+    { label: localize('controllersOnline'), value: totals.online, note: localize('totalControllers', { count: totals.controllers }), accent: 'teal' },
+    { label: localize('activeFaults'), value: totals.faults, note: localize('affectedControllers', { count: totals.faulted }), accent: totals.faults ? 'red' : 'green' },
+    { label: localize('lightsOn'), value: totals.lightsOn, note: localize('fixtureTotal', { count: totals.strips }), accent: 'amber' },
+    { label: localize('occupiedRooms'), value: totals.presence, note: localize('monitoredRooms', { count: totals.rooms }), accent: 'blue' }
   ];
 
   document.querySelector('#summaryCards').innerHTML = cards.map(card => `
@@ -65,37 +76,37 @@ function renderLightingSummary(totals) {
   const faultWidth = totals.stripsFaulted / denominator * 100;
 
   document.querySelector('#activityCaption').textContent =
-    `${totals.lightsOn} of ${totals.strips} fixtures currently on`;
+    localize('activityCaption', { on: totals.lightsOn, total: totals.strips });
   document.querySelector('#lightingSummary').innerHTML = totals.strips
-    ? `<div class="activity-bar" role="img" aria-label="${totals.lightsOn} lights on, ${off} off, ${totals.stripsFaulted} faulted">
+    ? `<div class="activity-bar" role="img" aria-label="${escapeHtml(localize('activityAriaLabel', { on: totals.lightsOn, off, faulted: totals.stripsFaulted }))}">
         <span class="activity-segment segment-on" style="width:${onWidth}%"></span>
         <span class="activity-segment segment-off" style="width:${offWidth}%"></span>
         <span class="activity-segment segment-fault" style="width:${faultWidth}%"></span>
       </div>
       <div class="activity-legend">
-        <span><i class="legend-dot dot-on"></i><strong>${totals.lightsOn}</strong> On</span>
-        <span><i class="legend-dot dot-off"></i><strong>${off}</strong> Off</span>
-        <span><i class="legend-dot dot-fault"></i><strong>${totals.stripsFaulted}</strong> Faulted</span>
+        <span><i class="legend-dot dot-on"></i><strong>${totals.lightsOn}</strong> ${localize('on')}</span>
+        <span><i class="legend-dot dot-off"></i><strong>${off}</strong> ${localize('off')}</span>
+        <span><i class="legend-dot dot-fault"></i><strong>${totals.stripsFaulted}</strong> ${localize('faulted')}</span>
       </div>`
-    : '<p class="empty-state">Lighting data will appear when controllers report.</p>';
+    : `<p class="empty-state">${localize('noLightingData')}</p>`;
 }
 
 function renderRoom(room) {
   const strips = room.lightStrips ?? [];
   const onCount = strips.filter(strip => strip.isOn && !strip.isFaulted).length;
   const presence = room.presence
-    ? '<span class="room-presence present"><i></i>Occupied</span>'
-    : '<span class="room-presence"><i></i>Vacant</span>';
+    ? `<span class="room-presence present"><i></i>${localize('occupied')}</span>`
+    : `<span class="room-presence"><i></i>${localize('vacant')}</span>`;
   const stripVisual = strips.length
-    ? `<div class="fixture-row" role="img" aria-label="${onCount} of ${strips.length} lights on">
+    ? `<div class="fixture-row" role="img" aria-label="${escapeHtml(localize('fixtureRowAriaLabel', { on: onCount, total: strips.length }))}">
         <span class="fixture-markers">${strips.map(strip => {
           const state = strip.isFaulted ? 'fixture-fault' : strip.isOn ? 'fixture-on' : 'fixture-off';
-          const description = strip.isFaulted ? 'faulted' : strip.isOn ? 'on' : 'off';
-          return `<i class="fixture-marker ${state}" title="${escapeHtml(strip.id)}: ${description}" aria-hidden="true"></i>`;
+          const description = localize(strip.isFaulted ? 'fixtureFaulted' : strip.isOn ? 'fixtureOn' : 'fixtureOff');
+          return `<i class="fixture-marker ${state}" title="${escapeHtml(localize('fixtureTitle', { id: strip.id, state: description }))}" aria-hidden="true"></i>`;
         }).join('')}</span>
         <span class="fixture-count">${onCount}/${strips.length}</span>
       </div>`
-    : '<span class="fixture-count">No fixtures</span>';
+    : `<span class="fixture-count">${localize('noFixtures')}</span>`;
 
   return `<div class="room-row">
     <div class="room-info">
@@ -108,7 +119,7 @@ function renderRoom(room) {
 
 function renderControllers(controllers) {
   document.querySelector('#controllerCount').textContent =
-    `${controllers.length} FLOOR${controllers.length === 1 ? '' : 'S'}`;
+    localize('floorCount', { count: controllers.length });
   document.querySelector('#controllers').innerHTML = controllers.length
     ? controllers.map(controller => {
       const state = String(controller.status ?? 'unknown').toLowerCase();
@@ -120,54 +131,57 @@ function renderControllers(controllers) {
       const lightTotal = rooms.reduce((count, room) => count + (room.lightStrips ?? []).length, 0);
       const roomContent = rooms.length
         ? rooms.map(renderRoom).join('')
-        : '<p class="empty-state compact">No room data reported.</p>';
+        : `<p class="empty-state compact">${localize('noRoomData')}</p>`;
 
       return `<article class="controller-card status-${statusClass}">
         <div class="controller-header">
           <div class="floor-badge" aria-hidden="true">${escapeHtml(controller.floor)}</div>
           <div class="controller-title">
-            <p class="floor-label">FLOOR ${escapeHtml(controller.floor)}</p>
+            <p class="floor-label">${escapeHtml(localize('floorLabel', { floor: controller.floor }))}</p>
             <h3>${escapeHtml(controller.id)}</h3>
           </div>
-          <span class="status-pill status-pill-${statusClass}"><i></i>${escapeHtml(controller.status)}</span>
+          <span class="status-pill status-pill-${statusClass}"><i></i>${escapeHtml(controllerStatusLabel(controller.status))}</span>
         </div>
         <div class="controller-light-summary">
-          <span>Lighting load</span>
-          <strong>${lightsOn}<small> / ${lightTotal} on</small></strong>
+          <span>${localize('controllerLightingLoad')}</span>
+          <strong>${lightsOn}<small>${localize('lightsOnTotal', { count: lightTotal })}</small></strong>
         </div>
         <div class="room-list">${roomContent}</div>
         ${faults.length ? `<div class="fault-callout">
-          <strong>${faults.length} active fault${faults.length === 1 ? '' : 's'}</strong>
+          <strong>${localize('activeFaultCount', { count: faults.length })}</strong>
           <ul>${faults.map(fault => `<li>${escapeHtml(fault.description)}</li>`).join('')}</ul>
         </div>` : ''}
       </article>`;
     }).join('')
-    : '<p class="empty-state">Waiting for telemetry or simulator connection.</p>';
+    : `<p class="empty-state">${localize('waitingForTelemetry')}</p>`;
 }
 
 function renderEvents(events) {
   const visibleEvents = events.slice(0, 12);
-  document.querySelector('#eventCount').textContent = events.length ? `${events.length} TOTAL` : '';
+  document.querySelector('#eventCount').textContent = events.length ? localize('eventCount', { count: events.length }) : '';
   document.querySelector('#events').innerHTML = visibleEvents.length
     ? visibleEvents.map(event => {
       const timestamp = new Date(event.timestamp);
       const time = Number.isNaN(timestamp.getTime())
-        ? 'Unknown time'
-        : `${timestamp.toLocaleDateString()} · ${timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
-      const eventType = String(event.eventType ?? 'event');
+        ? localize('unknownTime')
+        : localize('eventTime', {
+          date: timestamp.toLocaleDateString(),
+          time: timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        });
+      const eventType = String(event.eventType ?? localize('defaultEvent'));
       const eventClass = eventType.toLowerCase().includes('fault') ? 'event-fault' : 'event-state';
       return `<article class="event-item">
         <span class="event-marker ${eventClass}" aria-hidden="true"></span>
         <div class="event-content">
           <div class="event-title-row">
-            <strong>${escapeHtml(eventType.replaceAll('.', ' '))}</strong>
+            <strong>${escapeHtml(eventTypeLabel(eventType))}</strong>
             <time datetime="${escapeHtml(event.timestamp)}">${escapeHtml(time)}</time>
           </div>
           <span class="event-controller">${escapeHtml(event.controllerId)}</span>
         </div>
       </article>`;
     }).join('')
-    : '<p class="empty-state">No events recorded yet.</p>';
+    : `<p class="empty-state">${localize('noEvents')}</p>`;
 }
 
 async function refresh() {
@@ -180,7 +194,7 @@ async function refresh() {
       fetch('/api/status')
     ]);
     if (!snapshotResponse.ok || !eventsResponse.ok || !statusResponse.ok)
-      throw new Error('Instrumentation API request failed');
+      throw new Error(localize('apiRequestFailed'));
     const controllers = await snapshotResponse.json();
     const events = await eventsResponse.json();
     const transport = await statusResponse.json();
@@ -194,26 +208,30 @@ async function refresh() {
     const status = document.querySelector('#connectionStatus');
     status.classList.toggle('is-connected', controllers.length > 0);
     status.classList.toggle('is-error', false);
-    status.lastChild.textContent = controllers.length
-      ? `${controllers.length} controller${controllers.length === 1 ? '' : 's'} reporting · ${transport.mqttConnected ? 'MQTT' : transport.httpAvailable ? 'HTTP fallback' : 'No live transport'}`
-      : 'Waiting for simulator telemetry';
+    document.querySelector('#connectionStatusText').textContent = controllers.length
+      ? localize('reportingStatus', {
+        count: controllers.length,
+        transport: localize(transport.mqttConnected ? 'mqttTransport' : transport.httpAvailable ? 'httpFallbackTransport' : 'noLiveTransport')
+      })
+      : localize('waitingForSimulatorTelemetry');
   } catch (error) {
     const status = document.querySelector('#connectionStatus');
     status.classList.remove('is-connected');
     status.classList.add('is-error');
-    status.lastChild.textContent = 'Instrumentation API unavailable';
+    document.querySelector('#connectionStatusText').textContent = localize('apiUnavailable');
     document.querySelector('#summaryCards').innerHTML =
-      '<p class="empty-state">Live summary unavailable.</p>';
+      `<p class="empty-state">${localize('liveSummaryUnavailable')}</p>`;
     document.querySelector('#lightingSummary').innerHTML =
-      '<p class="empty-state">Lighting activity unavailable.</p>';
+      `<p class="empty-state">${localize('lightingActivityUnavailable')}</p>`;
     document.querySelector('#controllers').innerHTML =
-      '<p class="empty-state">Could not load controller state. Check the instrumentation service.</p>';
+      `<p class="empty-state">${localize('controllerStateUnavailable')}</p>`;
     document.querySelector('#events').innerHTML =
-      '<p class="empty-state">Recent events unavailable.</p>';
+      `<p class="empty-state">${localize('recentEventsUnavailable')}</p>`;
   } finally {
     refreshInProgress = false;
   }
 }
 
+localizeStaticMarkup();
 refresh();
 setInterval(refresh, 1000);
