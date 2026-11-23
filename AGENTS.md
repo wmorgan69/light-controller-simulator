@@ -2,9 +2,16 @@
 
 ## Project context
 
-- Read `docs/plan.md` before making broad feature changes. Treat the current source and tests as authoritative where the original plan describes proposals that have since changed.
+- Read `docs/plans/plan.md` before making broad feature changes. Treat the current source and tests as authoritative where the original plan describes proposals that have since changed.
 - Keep changes surgical and follow existing project patterns.
 - The solution targets .NET 11 and is built from `Devices.slnx`.
+
+## Agent investigation and review handoffs
+
+- All repository agents may inspect any file in this repository when relevant, including files outside the initial handoff; the handoff is not a file-access allowlist. Tool availability and host permission decisions still apply, and reviewers remain read-only.
+- Start with the requested changes and directly relevant code, tests, and documentation. Prefer focused file reads and searches; expand when the evidence requires it, including to trace security or data-flow boundaries.
+- When delegating, state the objective, changed paths, relevant context, and applicable checks. Explain why broader investigation is needed when expanding beyond that scope; do not prevent reviewers from following relevant evidence.
+- Respect permission prompts and decisions. These instructions do not grant permissions or guarantee that prompts will be avoided.
 
 ## Required implementation workflow
 
@@ -20,14 +27,16 @@ Reviewers are read-only and must not review their own changes. Code review check
 ## Documentation standards
 
 - Keep `docs/README.md` as the documentation table of contents and update it whenever a new top-level guide is added.
-- Maintain separate guides for the [Building Light Simulator](docs/building-light-simulator.md) and [Lighting Instrumentation](docs/lighting-instrumentation.md) applications.
+- Maintain separate guides for the [Building Light Simulator](docs/technical/building-light-simulator.md) and [Lighting Instrumentation](docs/technical/lighting-instrumentation.md) applications.
 - Update affected documentation in the same change as code behavior, API, configuration, protocol, source-tree, workflow, or UX changes.
 - Describe current behavior rather than proposed behavior as implemented. Move unimplemented ideas to explicit "remaining/open" sections.
 - Include a Mermaid diagram when a change introduces or alters a system boundary, state flow, message flow, runtime sequence, or major component relationship.
 - Keep source-tree documentation representative rather than listing generated `bin/`, `obj/`, or transient SQLite artifacts.
 - Use stable, repository-relative Markdown links and keep the table of contents synchronized with headings.
+- For Markdown, use descriptive headings and links, readable tables and lists, and fenced code blocks with a language where applicable. Keep proposed work explicitly labelled.
+- For new or changed Mermaid diagrams, use the [simulator runtime diagram](docs/assets/diagrams/building-light-simulator-runtime.svg) as the visual reference: dark-blue rounded nodes and label backgrounds (`#1E293B`), blue outlines and directional arrows (`#60A5FA`), and light labels (`#F8FAFC`). Arrange related steps in a clear, spacious flow, using multiple rows where useful; keep connectors and labels legible without overlaps or ambiguous directions. Apply styles in syntax supported by the diagram type and verify contrast and rendering in the target Markdown preview, including light and dark themes. If Mermaid cannot render the diagram reliably, use an accessible static SVG with the same visual treatment.
 - Use examples that can be run from the repository root. Document ports, configuration keys, HTTP endpoints, MQTT topics, test commands, and current defaults.
-- Before completion, verify every new or changed Markdown link and Mermaid block, and remove contradictions with `docs/plan.md`, source code, and the running UI.
+- Before completion, verify every new or changed Markdown link and Mermaid block, and remove contradictions with `docs/plans/plan.md`, source code, and the running UI.
 
 The code reviewer must confirm that documentation is complete and accurate for the changed implementation. Documentation-only changes still require a code review unless the change is a correction with no behavioral impact; UX documentation changes require UX review when they describe UI behavior.
 
@@ -67,6 +76,7 @@ For features and fixes that should visibly demonstrate the full agent workflow, 
 
 ## UI implementation standards
 
+- For UI work, consult the [shared design language](docs/ux/design-language.md) and the relevant [simulator](docs/ux/simulator/main/design-language.md) or [instrumentation](docs/ux/instrumentation/design-language.md) guide. The shared guide sets targets for new or changed UI; the application guides describe current behavior. Do not require unrelated legacy UI changes.
 - Follow existing markup, CSS, rendering, and accessibility patterns. Keep UI state synchronized with server-returned state and avoid stale optimistic updates.
 - Use semantic HTML and meaningful labels/headings. Status must not rely on color alone; pair color with text or an icon.
 - Keep loading, waiting, empty, error, healthy, faulted, and offline states visually and programmatically distinct.

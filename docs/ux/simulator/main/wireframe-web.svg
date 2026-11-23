@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="960" viewBox="0 0 1200 960" role="img" aria-labelledby="title desc">
+  <title id="title">Simulator desktop wireframe</title>
+  <desc id="desc">Desktop layout with floor navigation beside a selected-floor view, followed by live status and accessible controls.</desc>
+  <rect width="1200" height="960" fill="#fff"/>
+  <g fill="none" stroke="#333" stroke-width="2">
+    <path d="M0 104H1200M230 104V560M0 560H1200"/>
+    <rect x="16" y="146" width="198" height="38"/><rect x="16" y="194" width="198" height="48"/><rect x="16" y="250" width="198" height="48"/><rect x="16" y="306" width="198" height="48"/><rect x="16" y="362" width="198" height="48"/>
+    <rect x="16" y="452" width="198" height="34"/><rect x="16" y="494" width="198" height="34"/>
+    <rect x="260" y="168" width="910" height="245" stroke-dasharray="8 5"/><rect x="260" y="426" width="310" height="104"/>
+    <rect x="16" y="612" width="1168" height="152"/><path d="M16 642H1184M16 672H1184M16 702H1184M16 732H1184"/>
+    <rect x="16" y="824" width="370" height="32"/><rect x="16" y="890" width="370" height="32"/>
+  </g>
+  <g font-family="Arial, sans-serif" fill="#222" font-size="16">
+    <text x="20" y="32" font-size="24" font-weight="bold">Building Light Simulator</text><text x="20" y="58">Four-floor controller simulation</text><text x="20" y="82">Choose a floor; select it again to reset the camera.</text><text x="960" y="32">Transport status</text>
+    <text x="16" y="132" font-weight="bold">Building</text><text x="28" y="171">All floors</text><text x="28" y="224">Floor 4 · status · occupancy</text><text x="28" y="280">Floor 3 · status · occupancy</text><text x="28" y="336">Floor 2 · selected</text><text x="28" y="392">Floor 1 · status · occupancy</text>
+    <text x="16" y="440" font-weight="bold">Scenarios</text><text x="28" y="475">Reset building</text><text x="28" y="517">Occupancy demo</text>
+    <text x="260" y="132">Room selection and camera help · Wiring legend</text><text x="590" y="292">3D selected floor</text><text x="276" y="452" font-weight="bold">Floor 2 — Boardroom</text><text x="276" y="486">Presence [ ]</text><text x="415" y="486">Sensor fault [x]</text><text x="276" y="514">Room controls</text>
+    <text x="16" y="592" font-size="20" font-weight="bold">Live status</text><text x="28" y="634">Controller</text><text x="320" y="634">Floor</text><text x="440" y="634">Status</text><text x="620" y="634">Rooms / lights</text><text x="28" y="663">Floor 1</text><text x="28" y="693">Floor 2</text><text x="28" y="723">Floor 3</text><text x="28" y="753">Floor 4</text>
+    <text x="16" y="796" font-weight="bold">▾ Accessible controls</text><text x="16" y="819">Floor view</text><text x="16" y="885">Room sensor</text><text x="410" y="846">Room trigger, fault type, target, inject and clear controls continue below</text>
+  </g>
+</svg>

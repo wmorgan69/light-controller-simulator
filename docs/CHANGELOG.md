@@ -37,7 +37,7 @@ The first commit, `120bfb3`, imported an existing project as well as quality and
 - Added screenshots and walkthrough video assets under `docs`, organized diagrams, screenshots, and videos into separate folders, and updated the recording helper and documentation.
 - Reworked diagrams that did not reliably render in Markdown previews, using matching blue SVGs where needed. Refined the documentation directory tree and added a selected-floor screenshot.
 
-These features formed the initial Git baseline; the model and interface were further changed after that baseline. See the [simulator guide](building-light-simulator.md) and [instrumentation guide](lighting-instrumentation.md) for current behavior.
+These features formed the initial Git baseline; the model and interface were further changed after that baseline. See the [simulator guide](technical/building-light-simulator.md) and [instrumentation guide](technical/lighting-instrumentation.md) for current behavior.
 
 ## Recorded commits — 22 November 2026
 
@@ -80,7 +80,7 @@ The available conversation records also describe choosing the `light-controller-
 |---|---|
 | `875b74c` | Enhanced the simulator's building layouts, stairs, doors and access routes, room and lighting visuals, floor navigation, camera behavior, and room names. Updated screenshots, diagrams, the walkthrough, documentation, and focused tests. |
 
-The revised walkthrough shows floor selection, camera movement, presence and fault changes, instrumentation updates, and the occupancy demo. The building model now has nine named rooms and 37 light strips; see the [project plan](plan.md) for the current layout.
+The revised walkthrough shows floor selection, camera movement, presence and fault changes, instrumentation updates, and the occupancy demo. The building model now has nine named rooms and 37 light strips; see the [project plan](plans/plan.md) for the current layout.
 
 ### Conversation-driven refinements included in `875b74c`
 

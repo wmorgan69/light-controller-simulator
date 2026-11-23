@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+  <title id="title">Instrumentation desktop wireframe</title>
+  <desc id="desc">Building summary, lighting activity and controller cards beside the recent events list.</desc>
+  <rect width="1200" height="800" fill="#fff"/>
+  <g fill="none" stroke="#333" stroke-width="2">
+    <path d="M0 56H1200"/><rect x="20" y="158" width="275" height="92"/><rect x="305" y="158" width="275" height="92"/><rect x="590" y="158" width="275" height="92"/><rect x="875" y="158" width="305" height="92"/>
+    <rect x="20" y="270" width="780" height="112"/><rect x="820" y="270" width="360" height="500"/>
+    <rect x="20" y="438" width="380" height="155"/><rect x="420" y="438" width="380" height="155"/><rect x="20" y="613" width="380" height="155"/><rect x="420" y="613" width="380" height="155"/>
+    <rect x="36" y="331" width="748" height="12"/><path d="M36 512H384M436 512H784M36 687H384M436 687H784"/>
+  </g>
+  <g font-family="Arial, sans-serif" font-size="16" fill="#222">
+    <text x="20" y="35" font-weight="bold">Building systems / Lighting</text><text x="930" y="35">Connection status</text>
+    <text x="20" y="90">LIVE MONITORING</text><text x="20" y="122" font-size="26" font-weight="bold">Lighting overview</text><text x="20" y="144">Controller health, room occupancy and lighting activity</text>
+    <text x="36" y="186">Controllers online</text><text x="321" y="186">Active faults</text><text x="606" y="186">Lights on</text><text x="891" y="186">Occupied rooms</text><text x="36" y="220" font-size="24">4</text><text x="321" y="220" font-size="24">1</text><text x="606" y="220" font-size="24">6</text><text x="891" y="220" font-size="24">1</text>
+    <text x="36" y="300" font-weight="bold">Lighting activity</text><text x="36" y="365">6 On · 31 Off · 0 Faulted</text>
+    <text x="20" y="414" font-size="20" font-weight="bold">Controllers</text>
+    <text x="36" y="470" font-weight="bold">Floor 1 · Healthy</text><text x="36" y="500">Lighting load · room details</text><text x="36" y="544">Room occupancy / lights</text>
+    <text x="436" y="470" font-weight="bold">Floor 2 · Faulted</text><text x="436" y="500">Lighting load · room details</text><text x="436" y="544">Active fault</text>
+    <text x="36" y="645" font-weight="bold">Floor 3 · Healthy</text><text x="36" y="675">Lighting load · room details</text><text x="36" y="719">Room occupancy / lights</text>
+    <text x="436" y="645" font-weight="bold">Floor 4 · Healthy</text><text x="436" y="675">Lighting load · room details</text><text x="436" y="719">Room occupancy / lights</text>
+    <text x="840" y="300" font-weight="bold">Recent events</text><text x="840" y="340">Fault changed · controller · time</text><text x="840" y="380">State changed · controller · time</text><text x="840" y="420">State changed · controller · time</text><text x="840" y="460">Further events…</text>
+  </g>
+</svg>

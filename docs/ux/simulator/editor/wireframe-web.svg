@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="title desc">
+  <title id="title">Proposed building editor desktop wireframe</title>
+  <desc id="desc">A header above floor navigation, a toolbar and floor plan, and a properties panel. Column and spacing targets are annotated.</desc>
+  <rect width="1200" height="700" fill="#f3f4f6"/>
+  <g fill="#fff" stroke="#334155" stroke-width="2">
+    <rect x="16" y="16" width="1168" height="64" rx="4"/>
+    <rect x="16" y="96" width="220" height="535" rx="4"/>
+    <rect x="252" y="96" width="632" height="64" rx="4"/>
+    <rect x="252" y="176" width="632" height="455" rx="4"/>
+    <rect x="900" y="96" width="284" height="535" rx="4"/>
+    <rect x="1045" y="26" width="120" height="44" rx="4"/>
+  </g>
+  <g font-family="Arial, sans-serif" fill="#172033">
+    <text x="32" y="54" font-size="20" font-weight="bold">Menu  |  Edit building</text>
+    <text x="890" y="54" font-size="15">Unsaved changes</text>
+    <text x="1088" y="54" font-size="16">Save</text>
+    <text x="32" y="128" font-size="18" font-weight="bold">Building</text>
+    <text x="32" y="164" font-size="15">Floor count</text>
+    <text x="32" y="208" font-size="15">Floor 1</text>
+    <text x="32" y="244" font-size="15" font-weight="bold">Floor 2 - selected</text>
+    <text x="32" y="280" font-size="15">Floor 3</text>
+    <text x="268" y="124" font-size="15" font-weight="bold">Tools</text>
+    <text x="268" y="148" font-size="14">Select  |  Room  |  Door  |  Light  |  Connect</text>
+    <text x="268" y="208" font-size="18" font-weight="bold">Floor plan</text>
+    <text x="268" y="233" font-size="14">Selected: Office A</text>
+    <text x="916" y="128" font-size="18" font-weight="bold">Properties</text>
+    <text x="916" y="162" font-size="15">Office A</text>
+    <text x="916" y="203" font-size="14">Name</text>
+    <text x="916" y="265" font-size="14">Position and size</text>
+    <text x="916" y="353" font-size="15" font-weight="bold">Items and connections</text>
+    <text x="916" y="383" font-size="14">Office A</text>
+    <text x="916" y="410" font-size="14">Light 1 - Controller 2</text>
+    <text x="16" y="665" font-size="15">Targets: 220px navigation | flexible workspace | 280px properties | 1rem gaps</text>
+    <text x="16" y="687" font-size="13">Schematic only; panel widths and plan content are illustrative, not implemented UI.</text>
+  </g>
+  <g fill="none" stroke="#64748b" stroke-width="2">
+    <rect x="308" y="270" width="220" height="150"/>
+    <rect x="528" y="270" width="230" height="150"/>
+    <rect x="916" y="214" width="240" height="34" rx="3"/>
+    <rect x="916" y="276" width="112" height="34" rx="3"/>
+    <rect x="1044" y="276" width="112" height="34" rx="3"/>
+    <circle cx="394" cy="345" r="10"/>
+    <path d="M394 345 L625 345"/>
+  </g>
+  <g font-family="Arial, sans-serif" fill="#334155" font-size="14">
+    <text x="322" y="300">Office A</text>
+    <text x="542" y="300">Room</text>
+    <text x="600" y="372">Controller</text>
+  </g>
+</svg>

@@ -3,13 +3,16 @@ name: build-review-rebuild
 description: Coordinate implementation, build/test validation, independent code and UX review, fixes, and final revalidation.
 ---
 
-Follow `AGENTS.md` and `docs/plan.md` for repository conventions and the accepted behavior.
+Follow `AGENTS.md` and `docs/plans/plan.md` for repository conventions and the accepted behavior.
+Follow the [agent investigation and review handoff guidance](../../AGENTS.md#agent-investigation-and-review-handoffs); permission prompts and decisions still apply.
 
 This agent coordinates a feature or fix. It may implement, delegate implementation work, invoke independent reviewer subagents, fix actionable findings, and run validation. Keep implementation and review responsibilities separate:
 
 - Do not review code or UX work that you implemented in the same turn.
 - Use `code-reviewer` after implementation and before completion.
 - Use `ux-reviewer` after any user-visible UI change.
+- Use `security-reviewer` for changes that add external inputs, API endpoints, or authentication/authorization logic.
+- Include changed paths, relevant context, and applicable checks in each review handoff; let reviewers follow evidence beyond the initial scope when needed.
 - Do not merge or report a stage complete until its evidence is available.
 - Do not mark a visual state verified unless it was inspected in a browser or its unverified limitation is stated.
 
@@ -18,7 +21,7 @@ Run this workflow:
 1. **Clarify and plan**
    - Inspect the relevant code, tests, existing behavior, and plan/spec.
    - Produce a bounded implementation checklist.
-   - Identify affected tests and the need for UX review.
+   - Identify affected tests and the need for UX and security reviews.
 
 2. **Build**
    - Implement the change surgically.
@@ -41,14 +44,17 @@ Run this workflow:
    - Inspect desktop and narrow-mobile behavior when browser tools are available.
    - Check accessibility, clear status text, empty/error states, and supported telemetry only.
 
-6. **Rebuild**
+6. **Independent security review when applicable**
+   - Invoke `security-reviewer` for changes that add external inputs, API endpoints, or authentication/authorization logic.
+
+7. **Rebuild**
    - Fix each accepted review finding.
    - Do not introduce unrelated changes.
    - Repeat relevant tests and build/test validation.
-   - Repeat code review and affected UX review after fixes.
+   - Repeat code review and affected UX or security reviews after fixes.
    - Update `docs/README.md` and the affected application guides, and make the code reviewer confirm that documentation is accurate.
 
-7. **Report**
+8. **Report**
    - Give a stage summary:
 
      | Stage | Status | Evidence |
@@ -58,6 +64,7 @@ Run this workflow:
      | Tests | ... | ... |
      | Code review | ... | ... |
      | UX review | ... | ... |
+     | Security review | ... | ... |
      | Rebuild | ... | ... |
      | Final validation | ... | ... |
      | Documentation | ... | ... |

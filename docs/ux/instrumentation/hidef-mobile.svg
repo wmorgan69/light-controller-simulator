@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="1680" viewBox="0 0 390 1680" role="img" aria-labelledby="title desc">
+  <title id="title">Lighting Instrumentation mobile high-fidelity design</title>
+  <desc id="desc">Illustrative narrow-screen dashboard with building summaries, lighting activity, four controller cards, and recent events.</desc>
+  <rect width="390" height="1680" fill="#f2f5f9"/>
+  <g font-family="Arial, sans-serif">
+    <rect width="390" height="58" fill="#fff"/>
+    <rect x="16" y="16" width="26" height="26" rx="6" fill="#e2f4ef"/><text x="24" y="34" fill="#008c7d" font-size="14" font-weight="bold">L</text>
+    <text x="50" y="34" fill="#182c49" font-size="13" font-weight="bold">Lighting</text><circle cx="217" cy="21" r="4" fill="#19a77a"/><text x="228" y="25" fill="#526681" font-size="11">4 controllers reporting</text><text x="228" y="42" fill="#526681" font-size="11">HTTP fallback</text>
+    <text x="16" y="92" fill="#7b8ba4" font-size="10" font-weight="bold" letter-spacing="1">LIVE MONITORING</text>
+    <text x="16" y="124" fill="#172b49" font-size="26" font-weight="bold">Lighting overview</text>
+    <text x="16" y="146" fill="#647894" font-size="12">Controller health, room occupancy and lighting</text><text x="16" y="163" fill="#647894" font-size="12">activity across the building.</text>
+    <circle cx="21" cy="185" r="4" fill="#19a77a"/><text x="32" y="189" fill="#647894" font-size="11">Updates automatically</text>
+    <g fill="#fff" stroke="#e0e7f0">
+      <rect x="16" y="205" width="174" height="102" rx="10"/><rect x="200" y="205" width="174" height="102" rx="10"/><rect x="16" y="317" width="174" height="102" rx="10"/><rect x="200" y="317" width="174" height="102" rx="10"/>
+      <rect x="16" y="434" width="358" height="146" rx="10"/>
+      <rect x="16" y="628" width="358" height="192" rx="10"/><rect x="16" y="830" width="358" height="205" rx="10"/><rect x="16" y="1045" width="358" height="182" rx="10"/><rect x="16" y="1237" width="358" height="150" rx="10"/>
+      <rect x="16" y="1404" width="358" height="250" rx="10"/>
+    </g>
+    <path d="M17 218V294" stroke="#0aab96" stroke-width="3"/><path d="M201 218V294" stroke="#ef5661" stroke-width="3"/><path d="M17 330V406" stroke="#f4b437" stroke-width="3"/><path d="M201 330V406" stroke="#7195f0" stroke-width="3"/>
+    <g fill="#657994" font-size="11"><text x="30" y="229">Controllers online</text><text x="214" y="229">Active faults</text><text x="30" y="341">Lights on</text><text x="214" y="341">Occupied rooms</text><text x="30" y="290">of 4 total</text><text x="214" y="290">1 controller affected</text><text x="30" y="402">of 37 fixtures</text><text x="214" y="402">of 9 monitored</text></g>
+    <g fill="#172b49" font-size="27" font-weight="bold"><text x="30" y="266">4</text><text x="214" y="266">1</text><text x="30" y="378">6</text><text x="214" y="378">1</text></g>
+    <g fill="#526681" font-size="10" font-weight="bold" letter-spacing="1"><text x="30" y="457">BUILDING TOTAL</text><text x="16" y="605">FLOOR BY FLOOR</text><text x="30" y="1428">SYSTEM ACTIVITY</text></g>
+    <g fill="#172b49" font-weight="bold"><text x="30" y="479" font-size="16">Lighting activity</text><text x="16" y="623" font-size="16">Controllers</text><text x="30" y="1450" font-size="16">Recent events</text></g>
+    <text x="30" y="498" fill="#526681" font-size="11">6 of 37 fixtures currently on</text><rect x="30" y="512" width="330" height="9" rx="4" fill="#dae2ec"/><path d="M34 512H83V521H34A4 4 0 0 1 34 512" fill="#f2b53c"/>
+    <g font-size="11" fill="#61758f"><text x="30" y="548" fill="#a26700">● 6 On</text><text x="101" y="548">● 31 Off</text><text x="188" y="548" fill="#c43b4a">● 0 Faulted</text></g>
+    <g fill="#e7f5f1"><rect x="30" y="643" width="35" height="35" rx="8"/><rect x="30" y="1060" width="35" height="35" rx="8"/><rect x="30" y="1252" width="35" height="35" rx="8"/></g><rect x="30" y="845" width="35" height="35" rx="8" fill="#fff0f1"/>
+    <g font-size="15" font-weight="bold" fill="#008d7b"><text x="42" y="666">1</text><text x="42" y="1083">3</text><text x="42" y="1275">4</text></g><text x="42" y="868" font-size="15" font-weight="bold" fill="#d23f50">2</text>
+    <g fill="#526681" font-size="10"><text x="76" y="654">FLOOR 1</text><text x="76" y="856">FLOOR 2</text><text x="76" y="1071">FLOOR 3</text><text x="76" y="1263">FLOOR 4</text></g>
+    <g fill="#172b49" font-size="12" font-weight="bold"><text x="76" y="671">controller-floor-1</text><text x="76" y="873">controller-floor-2</text><text x="76" y="1088">controller-floor-3</text><text x="76" y="1280">controller-floor-4</text></g>
+    <g font-size="11" font-weight="bold"><text x="311" y="665" fill="#07835d">● Healthy</text><text x="310" y="867" fill="#ce3645">● Faulted</text><text x="311" y="1082" fill="#07835d">● Healthy</text><text x="311" y="1274" fill="#07835d">● Healthy</text></g>
+    <g fill="#f4f7fa"><rect x="30" y="688" width="330" height="29" rx="5"/><rect x="30" y="890" width="330" height="29" rx="5"/><rect x="30" y="1105" width="330" height="29" rx="5"/><rect x="30" y="1297" width="330" height="29" rx="5"/></g>
+    <g fill="#647894" font-size="11"><text x="40" y="707">Lighting load</text><text x="317" y="707">6 / 8 on</text><text x="40" y="909">Lighting load</text><text x="317" y="909">0 / 9 on</text><text x="40" y="1124">Lighting load</text><text x="317" y="1124">0 / 8 on</text><text x="40" y="1316">Lighting load</text><text x="310" y="1316">0 / 12 on</text></g>
+    <g fill="#243b5a" font-size="11">
+      <text x="30" y="741">Open Workspace · Occupied</text><text x="325" y="741">6/6</text><text x="30" y="769">Reception Office · Vacant</text><text x="325" y="769">0/1</text><text x="30" y="797">Support Office · Vacant</text><text x="325" y="797">0/1</text>
+      <text x="30" y="943">Boardroom · Vacant</text><text x="325" y="943">0/8</text><text x="30" y="971">Meeting Office · Vacant</text><text x="325" y="971">0/1</text>
+      <text x="30" y="1158">Collaboration Space · Vacant</text><text x="325" y="1158">0/6</text><text x="30" y="1186">Project Office · Vacant</text><text x="325" y="1186">0/1</text><text x="30" y="1214">Focus Office · Vacant</text><text x="325" y="1214">0/1</text>
+      <text x="30" y="1350">The Forum · Vacant</text><text x="318" y="1350">0/12</text>
+    </g>
+    <rect x="30" y="982" width="330" height="38" rx="5" fill="#fff1f2"/><text x="40" y="998" fill="#ad2838" font-size="11" font-weight="bold">1 active fault</text><text x="40" y="1013" fill="#8d4b52" font-size="10">• Simulated sensor fault</text>
+    <g font-size="11"><circle cx="34" cy="1477" r="4" fill="#e74c5c"/><text x="47" y="1481" fill="#243b5a" font-weight="bold">Fault Changed</text><text x="47" y="1497" fill="#526681">controller-floor-2 · 01:28:49 PM</text><circle cx="34" cy="1523" r="4" fill="#19a77a"/><text x="47" y="1527" fill="#243b5a" font-weight="bold">State Changed</text><text x="47" y="1543" fill="#526681">controller-floor-1 · 01:28:38 PM</text><circle cx="34" cy="1569" r="4" fill="#19a77a"/><text x="47" y="1573" fill="#243b5a" font-weight="bold">State Changed</text><text x="47" y="1589" fill="#526681">controller-floor-4 · 01:28:36 PM</text><text x="47" y="1620" fill="#526681">Further events…</text></g>
+  </g>
+</svg>

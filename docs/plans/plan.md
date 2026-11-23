@@ -18,9 +18,12 @@ devices/
     Devices.Instrumentation.Tests/
   docs/
     README.md
-    plan.md
-    building-light-simulator.md
-    lighting-instrumentation.md
+    plans/
+      plan.md
+      building-editor-spec.md
+    technical/
+      building-light-simulator.md
+      lighting-instrumentation.md
 ```
 
 ## Building model
@@ -40,7 +43,7 @@ devices/
 - SQLite stores latest controller state and recent events.
 - HTTP mutation responses return current authoritative controller state.
 
-![Architecture: the simulator maintains authoritative state, which reaches the instrumentation dashboard through HTTP polling and optional MQTT telemetry.](assets/diagrams/plan-architecture.svg)
+![Architecture: the simulator maintains authoritative state, which reaches the instrumentation dashboard through HTTP polling and optional MQTT telemetry.](../assets/diagrams/plan-architecture.svg)
 
 ## Delivery phases
 
@@ -74,6 +77,7 @@ devices/
 
 ## Remaining optional decisions
 
+- The proposed [building editor](building-editor-spec.md) has its own scope, design, and open decisions; it is not implemented.
 - Decide whether to add inactivity timers.
 - Decide whether to retain historical utilization charts.
 - Decide whether to add a real MQTT integration test broker to CI.
@@ -91,10 +95,10 @@ Feature work follows:
 6. Fix findings and repeat affected validation/review.
 7. Confirm documentation and run/test evidence.
 
-Repository instructions live in [AGENTS.md](../AGENTS.md). Agent profiles live under [.github/agents](../.github/agents/).
+Repository instructions live in [AGENTS.md](../../AGENTS.md). Agent profiles live under [.github/agents](../../.github/agents/).
 
 ## Documentation
 
-- [Documentation home](README.md)
-- [Building Light Simulator](building-light-simulator.md)
-- [Lighting Instrumentation](lighting-instrumentation.md)
+- [Documentation home](../README.md)
+- [Building Light Simulator](../technical/building-light-simulator.md)
+- [Lighting Instrumentation](../technical/lighting-instrumentation.md)
