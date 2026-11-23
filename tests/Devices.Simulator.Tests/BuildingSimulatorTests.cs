@@ -1,16 +1,102 @@
 using Devices.Contracts;
+using System.Globalization;
+using System.Resources;
 using Xunit;
 
 public class BuildingSimulatorTests
 {
     [Fact]
-    public void BuildingHasFourControllersAndTwentyFourStrips()
+    public void RoomNamesRemainEnglishForOtherUiCultures()
+    {
+        var original = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("fr-FR");
+            var resources = new ResourceManager("Devices.Contracts.RoomNames", typeof(DeviceIds).Assembly);
+            var rooms = DeviceIds.CreateBuilding().SelectMany(controller => controller.Rooms).ToArray();
+            Assert.Equal(resources.GetString("Boardroom", CultureInfo.InvariantCulture),
+                rooms.Single(room => room.Id == "floor-2-main").Name);
+            Assert.Equal(resources.GetString("TheForum", CultureInfo.InvariantCulture),
+                rooms.Single(room => room.Id == "floor-4-main").Name);
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = original;
+        }
+    }
+
+    [Fact]
+    public void BuildingHasPerFloorRoomsAndStableLightIds()
     {
         var controllers = DeviceIds.CreateBuilding().ToArray();
 
         Assert.Equal(4, controllers.Length);
-        Assert.Equal(12, controllers.Sum(controller => controller.Rooms.Count));
-        Assert.Equal(24, controllers.Sum(controller => controller.Rooms.Sum(room => room.LightStrips.Count)));
+        Assert.Equal(9, controllers.Sum(controller => controller.Rooms.Count));
+        Assert.Equal(37, controllers.Sum(controller => controller.Rooms.Sum(room => room.LightStrips.Count)));
+        Assert.All(controllers, controller =>
+        {
+            var expectedRooms = controller.Floor switch
+            {
+                2 => new[] { "main", "office-a" },
+                4 => new[] { "main" },
+                _ => new[] { "main", "office-a", "office-b" }
+            };
+            Assert.Equal(expectedRooms.Select(room => DeviceIds.Room(controller.Floor, room)),
+                controller.Rooms.Select(room => room.Id));
+            var main = controller.Rooms.Single(room => room.Id == DeviceIds.Room(controller.Floor, "main"));
+            var lightCount = controller.Floor switch { 2 => 8, 4 => 12, _ => 6 };
+            Assert.Equal(Enumerable.Range(1, lightCount).Select(index => DeviceIds.Light(controller.Floor, "main", index)),
+                main.LightStrips.Select(strip => strip.Id));
+        });
+    }
+
+    [Theory]
+    [InlineData(1, "main", "Open Workspace")]
+    [InlineData(1, "office-a", "Reception Office")]
+    [InlineData(1, "office-b", "Support Office")]
+    [InlineData(2, "main", "Boardroom")]
+    [InlineData(2, "office-a", "Meeting Office")]
+    [InlineData(3, "main", "Collaboration Space")]
+    [InlineData(3, "office-a", "Project Office")]
+    [InlineData(3, "office-b", "Focus Office")]
+    [InlineData(4, "main", "The Forum")]
+    public void RoomNamesUseStableIdsAndSurviveSensorChanges(int floor, string roomKey, string name)
+    {
+        var simulator = new BuildingSimulator();
+        var roomId = DeviceIds.Room(floor, roomKey);
+        Assert.Equal(name, simulator.GetController(DeviceIds.Controller(floor))!.Rooms.Single(room => room.Id == roomId).Name);
+        Assert.Equal(SensorTriggerResult.Triggered, simulator.TriggerSensor(roomId, out var updated));
+        Assert.Equal(name, updated!.Rooms.Single(room => room.Id == roomId).Name);
+    }
+
+    [Theory]
+    [InlineData(2, "office-b")]
+    [InlineData(4, "office-a")]
+    [InlineData(4, "office-b")]
+    public void RemovedRoomsAndSensorsAreNotValidTargets(int floor, string room)
+    {
+        var simulator = new BuildingSimulator();
+        Assert.Equal(SensorTriggerResult.RoomNotFound,
+            simulator.TriggerSensor(DeviceIds.Room(floor, room), out _));
+        Assert.Equal(FaultMutationResult.InvalidTarget,
+            simulator.AddFault(DeviceIds.Controller(floor),
+                new FaultRequest("sensor", DeviceIds.Sensor(floor, room), "Removed sensor"), out _));
+    }
+
+    [Fact]
+    public void AddedMainRoomStripRespondsToPresenceAndFaults()
+    {
+        var simulator = new BuildingSimulator();
+        var roomId = DeviceIds.Room(2, "main");
+        var stripId = DeviceIds.Light(2, "main", 6);
+
+        Assert.Equal(SensorTriggerResult.Triggered, simulator.TriggerSensor(roomId, out var triggered));
+        Assert.True(triggered!.Rooms.Single(room => room.Id == roomId).LightStrips.Single(strip => strip.Id == stripId).IsOn);
+        Assert.Equal(FaultMutationResult.Added, simulator.AddFault("controller-floor-2",
+            new FaultRequest("light", stripId, "Test strip fault"), out var faulted));
+        Assert.True(faulted!.Rooms.Single(room => room.Id == roomId).LightStrips.Single(strip => strip.Id == stripId).IsFaulted);
+        Assert.True(simulator.ClearFault("controller-floor-2", faulted.Faults.Single().Id, out var restored));
+        Assert.False(restored.Rooms.Single(room => room.Id == roomId).LightStrips.Single(strip => strip.Id == stripId).IsFaulted);
     }
 
     [Fact]
@@ -79,7 +165,7 @@ public class BuildingSimulatorTests
     public void SensorCanBeResetAfterTrigger()
     {
         var simulator = new BuildingSimulator();
-        var roomId = DeviceIds.Room(4, "office-b");
+        var roomId = DeviceIds.Room(4, "main");
 
         Assert.Equal(SensorTriggerResult.Triggered, simulator.TriggerSensor(roomId, out _));
         Assert.True(simulator.ResetSensor(roomId, out var reset));
@@ -183,7 +269,7 @@ public class BuildingSimulatorTests
     public void FaultCanBeClearedByTargetIdentity()
     {
         var simulator = new BuildingSimulator();
-        var sensorId = DeviceIds.Sensor(4, "office-a");
+        var sensorId = DeviceIds.Sensor(4, "main");
         Assert.Equal(FaultMutationResult.Added, simulator.AddFault("controller-floor-4",
             new FaultRequest("sensor", sensorId, "MQTT sensor fault"), out var faulted));
         Assert.NotNull(faulted);

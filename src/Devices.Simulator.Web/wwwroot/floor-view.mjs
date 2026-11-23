@@ -2,6 +2,14 @@ export function isFloorVisible(selectedFloor, floor) {
   return selectedFloor === null || selectedFloor === floor;
 }
 
+export function applyFloorMaterialEmphasis(material, dimmed) {
+  if (material.userData.preserveTransparency) return;
+  material.opacity = dimmed ? 0.16 : 1;
+  material.transparent = dimmed;
+  material.depthWrite = !dimmed;
+  material.needsUpdate = true;
+}
+
 export function floorNavigation(controllers, selectedFloor) {
   return [...controllers]
     .sort((a, b) => b.floor - a.floor)

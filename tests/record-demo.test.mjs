@@ -1,6 +1,68 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { captureBuildingLightingDemo } from '../docs/assets/record-demo.mjs';
+import { captureBuildingLightingDemo, rotateFullTurn, showDashboardUpdate, showFloorLayouts, showOccupancyScenario } from '../docs/assets/record-demo.mjs';
+
+test('shows every floor layout and returns to Floor 3', async () => {
+  const floors = [];
+  const page = {
+    getByRole: (role, { name }) => ({
+      click: async () => floors.push(Number(name.source.match(/\d+/)[0])),
+      getAttribute: async () => 'true'
+    }),
+    waitForTimeout: async () => {}
+  };
+  await showFloorLayouts(page);
+  assert.deepEqual(floors, [1, 2, 3, 4, 3]);
+});
+
+test('reports a floor selection failure during the walkthrough', async () => {
+  const page = {
+    getByRole: () => ({ click: async () => {}, getAttribute: async () => 'false' }),
+    waitForTimeout: async () => {}
+  };
+  await assert.rejects(showFloorLayouts(page), /Floor 1 selection failed/);
+});
+
+test('holds the verified dashboard update for five seconds', async () => {
+  const steps = [];
+  const expected = { occupied: 2, faults: 0, lights: 7 };
+  await showDashboardUpdate(
+    { waitForTimeout: async duration => steps.push(['hold', duration]) },
+    async (counts, label) => steps.push(['verify', counts, label]),
+    expected,
+    'presence'
+  );
+  assert.deepEqual(steps, [['verify', expected, 'presence'], ['hold', 5000]]);
+});
+
+test('shows the occupancy scenario and holds the resulting lights before the dashboard', async () => {
+  const steps = [];
+  const button = {};
+  const counts = { occupied: 5, faults: 0 };
+  const page = {
+    getByRole: (role, { name }) => name === 'All floors'
+      ? { click: async () => steps.push('all floors') }
+      : button,
+    screencast: { showChapter: async title => steps.push(title) },
+    waitForTimeout: async duration => steps.push(duration)
+  };
+  const result = await showOccupancyScenario(
+    page,
+    async (target, path) => {
+      assert.equal(target, button);
+      steps.push(path);
+    },
+    async matches => {
+      assert.ok(matches(counts));
+      assert.ok(!matches({ occupied: 3, faults: 0 }));
+      assert.ok(!matches({ occupied: 5, faults: 1 }));
+      steps.push('verified');
+      return counts;
+    }
+  );
+  assert.equal(result, counts);
+  assert.deepEqual(steps, ['all floors', 'Occupancy demo', '/api/scenarios/occupancy', 'verified', 2000]);
+});
 
 test('rejects incomplete screencast support before changing simulator state', async () => {
   const methods = ['start', 'stop', 'showActions', 'showChapter'];
@@ -12,4 +74,106 @@ test('rejects incomplete screencast support before changing simulator state', as
     await assert.rejects(captureBuildingLightingDemo(page, 'output'), /screencast support/);
     assert.equal(visited, false);
   }
+});
+
+test('a full rotation drags horizontally by the canvas height', async () => {
+  const moves = [];
+  let pressed = false;
+  const page = {
+    mouse: {
+      move: async (x, y) => moves.push({ x, y, pressed }),
+      down: async () => { pressed = true; },
+      up: async () => { pressed = false; }
+    },
+    waitForTimeout: async () => {}
+  };
+  await rotateFullTurn(page, { x: 100, y: 50, width: 900, height: 560 });
+  assert.equal(moves.at(-1).x - moves[0].x, 560);
+  assert.ok(moves.slice(1).every(move => move.y === moves[0].y && move.pressed));
+  assert.equal(pressed, false);
+});
+
+test('a full rotation rejects a canvas too narrow for the drag', async () => {
+  await assert.rejects(rotateFullTurn({}, { x: 0, y: 0, width: 300, height: 560 }), /too narrow/);
+});
+
+test('captures the overview and waits for current dashboard light counts', async () => {
+  let occupied = false;
+  let selectedFloor = 'Floor 3';
+  let lightReads = 0;
+  const screenshotViews = [];
+  const page = {
+    screencast: Object.fromEntries(
+      ['start', 'stop', 'showActions', 'showChapter'].map(method => [method, async () => {}])
+    ),
+    evaluate: async fn => {
+      const source = fn.toString();
+      if (source.includes('visibilityState')) return 'visible';
+      if (source.includes('/api/controllers')) {
+        return [{ faults: [], rooms: [{ presence: occupied, lightStrips: Array(6).fill({ isOn: occupied }) }] }];
+      }
+    },
+    goto: async () => {},
+    waitForResponse: async () => ({ ok: () => true }),
+    waitForTimeout: async () => {},
+    getByRole: (role, { name }) => ({
+      click: async () => {
+        if (name === 'Reset building') occupied = false;
+        if (name === 'Trigger selected room sensor') occupied = true;
+        if (name === 'All floors') selectedFloor = name;
+      },
+      isVisible: async () => true,
+      selectOption: async () => {},
+      waitFor: async () => {}
+    }),
+    getByText: () => ({ waitFor: async () => {} }),
+    locator: () => ({
+      filter: ({ hasText }) => ({
+        locator: () => ({
+          textContent: async () => {
+            if (hasText === 'Occupied rooms') return '1';
+            if (hasText === 'Active faults') return '0';
+            lightReads++;
+            return lightReads === 1 ? '0' : '6';
+          }
+        })
+      })
+    }),
+    screenshot: async ({ path }) => {
+      screenshotViews.push({ path, selectedFloor, lightReads });
+      if (path.endsWith('lighting-instrumentation.png')) throw new Error('stop after screenshots');
+    }
+  };
+  await assert.rejects(captureBuildingLightingDemo(page, 'output'), /stop after screenshots/);
+  assert.equal(screenshotViews[0].selectedFloor, 'All floors');
+  assert.ok(screenshotViews[1].lightReads >= 2);
+});
+
+test('restores the baseline if initial reset fails', async () => {
+  const requests = [];
+  let stateReads = 0;
+  const page = {
+    screencast: Object.fromEntries(
+      ['start', 'stop', 'showActions', 'showChapter'].map(method => [method, async () => {}])
+    ),
+    evaluate: async () => {
+      stateReads++;
+      if (stateReads === 1) return 'visible';
+      if (stateReads === 2) return [];
+      return [{ faults: [], rooms: [{ presence: true, lightStrips: Array(6).fill({ isOn: true }) }] }];
+    },
+    goto: async () => {},
+    waitForResponse: async () => {
+      const failed = requests.length === 0;
+      requests.push(failed ? 500 : 200);
+      return { ok: () => !failed, status: () => failed ? 500 : 200 };
+    },
+    getByRole: () => ({
+      click: async () => {},
+      isVisible: async () => true,
+      selectOption: async () => {}
+    })
+  };
+  await assert.rejects(captureBuildingLightingDemo(page, 'output'), /Resetting the building failed: HTTP 500/);
+  assert.deepEqual(requests, [500, 200, 200]);
 });

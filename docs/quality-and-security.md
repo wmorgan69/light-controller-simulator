@@ -70,20 +70,9 @@ if (( $(echo "$line_coverage_pct < 60" | bc -l) )); then
 
 Consider narrowly scoped, documented C# exclusions only when justified, and verify any configuration against the Coverlet collector used by CI. The .NET coverage report does not measure the JavaScript 3D renderer.
 
-### Option 3: Incremental PR-by-PR Enforcement
+### Option 3: Incremental PR-by-PR Coverage Visibility
 
-**Don't set a hard threshold yet.** Instead:
-
-1. Enable coverage tracking in Codecov (once you configure the token)
-2. Use Codecov PR comments to show coverage impact of each change
-3. Require code review to approve coverage decreases (Codecov can enforce this)
-4. Set the ≥90% threshold in Codecov status checks ONLY for new code/files
-
-**Implementation**: Skip the coverage enforcement step in CI for now:
-```bash
-# Comment out or remove the "Enforce code coverage >= 50%" step in ci.yml
-# Keep the Codecov upload step for visibility
-```
+This is an alternative proposal, not the current CI behavior. CI currently enforces the 50% threshold. If the team prefers Codecov-only PR visibility instead, configure and verify the Codecov upload and status checks before deliberately removing or replacing the CI coverage gate.
 
 ## Security Review (OWASP Top 10)
 

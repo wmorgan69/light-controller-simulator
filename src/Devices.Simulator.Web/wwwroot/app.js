@@ -1,10 +1,15 @@
 import * as THREE from 'three';
 import { OrbitControls } from './vendor/OrbitControls.js';
-import { isWiringVisible, wiringRoute } from './wiring-routes.mjs?v=wiring-4';
-import { FloorView, fieldOfViewForAspect, selectedFloorCamera, cameraPresetNeedsUpdate, isFloorVisible, floorNavigation } from './floor-view.mjs?v=floor-navigation-4';
+import { isWiringVisible, wiringRoute } from './wiring-routes.mjs?v=wiring-7';
+import { FloorView, applyFloorMaterialEmphasis, fieldOfViewForAspect, selectedFloorCamera, cameraPresetNeedsUpdate, isFloorVisible, floorNavigation } from './floor-view.mjs?v=floor-navigation-5';
 import { createFloorPillars } from './building-pillars.mjs?v=pillars-2';
-import { roomFixturePositions, sensorRadius } from './room-fixtures.mjs?v=ceiling-sensors-1';
-import { lightVisualState, sensorFaultForRoom } from './room-state.mjs?v=2';
+import { createFloorSlab, createFloorStairLandings, createFloorStairs, createIncomingFloorStairs } from './building-stairs.mjs?v=stairs-8';
+import { createFloorWalkway, createOpenDoor, roomWallSegments } from './building-access.mjs?v=access-2';
+import { floorRoomLayout, roomFixturePositions, sensorRadius } from './room-fixtures.mjs?v=room-access-4';
+import { lightEmits, lightVisualState, roomIllumination, selectedRoomVisualState, sensorFaultForRoom, sensorPulseAmount } from './room-state.mjs?v=7';
+import { controllerStatusLabel, localizeMarkup, t } from './localization.en.mjs?v=1';
+
+localizeMarkup(document);
 
 const canvas = document.querySelector('#buildingCanvas');
 const building = new THREE.Group();
@@ -34,6 +39,7 @@ let cameraInteractionActive = false;
 let previousViewportWidth = window.innerWidth;
 const roomVisuals = new Map();
 const coarsePointer = matchMedia('(pointer: coarse)');
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
@@ -92,7 +98,61 @@ function addWall(x1, z1, x2, z2, y, height, roomId, controllerId, floor) {
   wall.rotation.y = -Math.atan2(dz, dx);
   wall.userData.roomId = roomId;
   addSelectable(wall, { type: 'room', roomId, controllerId, floor });
-  roomVisuals.get(roomId)?.walls.push(wall);
+  const visual = roomVisuals.get(roomId);
+  if (visual) {
+    applyWallLighting(wall, false, visual.illumination);
+    visual.walls.push(wall);
+  }
+}
+
+function applyWallLighting(wall, selected, illumination) {
+  const strength = illumination;
+  wall.material.emissive.set(selected ? '#0c4a6e' : '#000000');
+  wall.material.emissive.lerp(new THREE.Color('#d49a46'), strength * 0.45);
+  wall.material.emissiveIntensity = (selected ? 0.32 : 0) + strength * 0.35;
+}
+
+function createLightRays() {
+  const vertices = [];
+  const uvs = [];
+  const indices = [];
+  for (const [x, z] of [[1, 0], [0, 1], [0.707, 0.707]]) {
+    const offset = vertices.length / 3;
+    vertices.push(
+      -x * 0.18, -0.06, -z * 0.18,
+      x * 0.18, -0.06, z * 0.18,
+      x * 0.7, -1.08, z * 0.7,
+      -x * 0.7, -1.08, -z * 0.7
+    );
+    uvs.push(0, 1, 1, 1, 1, 0, 0, 0);
+    indices.push(offset, offset + 1, offset + 2, offset, offset + 2, offset + 3);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.setIndex(indices);
+  const material = new THREE.ShaderMaterial({
+    transparent: true,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+    vertexShader: `
+      varying vec2 rayUv;
+      void main() {
+        rayUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      varying vec2 rayUv;
+      void main() {
+        float edge = sin(3.14159265 * rayUv.x);
+        float fade = smoothstep(0.0, 0.3, rayUv.y);
+        gl_FragColor = vec4(1.0, 0.95, 0.75, 0.45 * edge * edge * fade);
+      }
+    `
+  });
+  material.userData.preserveTransparency = true;
+  return new THREE.Mesh(geometry, material);
 }
 
 function disposeBuilding() {
@@ -114,6 +174,7 @@ function rebuildBuilding() {
   floorGroups.clear();
   roomVisuals.clear();
   const highestFloor = Math.max(...controllers.map(controller => controller.floor));
+  const floorNumbers = new Set(controllers.map(controller => controller.floor));
 
   controllers.forEach(controller => {
     if (!isFloorVisible(floorView.current, controller.floor)) return;
@@ -129,23 +190,24 @@ function rebuildBuilding() {
     floorGroup.add(wiringGroup);
     const wiringTargets = [];
 
-    const slab = new THREE.Mesh(
-      new THREE.BoxGeometry(10, 0.18, 8),
-      new THREE.MeshStandardMaterial({ color: '#334155', roughness: 0.86 }));
-    slab.position.set(0, y - 0.12, 0);
-    addSelectable(slab, { type: 'floor', controllerId: controller.id, floor: controller.floor });
+    const incomingFloor = floorView.current !== null && controller.floor === highestFloor
+      ? controller.floor - 1 : null;
+    for (const slab of createFloorSlab(y, floorNumbers.has(controller.floor - 1), incomingFloor)) {
+      addSelectable(slab, { type: 'floor', controllerId: controller.id, floor: controller.floor });
+    }
+    for (const landing of createFloorStairLandings(y, controller.floor)) {
+      addSelectable(landing, { type: 'floor', controllerId: controller.id, floor: controller.floor });
+    }
+    addSelectable(createFloorWalkway(y), { type: 'floor', controllerId: controller.id, floor: controller.floor });
 
     const floorLabel = new THREE.Mesh(
       new THREE.PlaneGeometry(1.35, 0.42),
-      new THREE.MeshBasicMaterial({ map: textTexture(`FLOOR ${controller.floor}`), side: THREE.DoubleSide }));
+      new THREE.MeshBasicMaterial({ map: textTexture(t('floorSceneLabel', { floor: controller.floor })), side: THREE.DoubleSide }));
     floorLabel.position.set(-4.45, y + 0.62, 4.06);
     addSelectable(floorLabel, { type: 'floor', controllerId: controller.id, floor: controller.floor });
 
-    const layout = {
-      main: { x: -2.4, z: 0, width: 4.7, depth: 7.1, label: 'MAIN ROOM' },
-      'office-a': { x: 1.25, z: 0, width: 2.35, depth: 3.2, label: 'OFFICE A' },
-      'office-b': { x: 3.8, z: 0, width: 2.35, depth: 3.2, label: 'OFFICE B' }
-    };
+    const layout = floorRoomLayout(controller.floor,
+      controller.rooms.map(room => room.id.slice(`floor-${controller.floor}-`.length)));
 
     controller.rooms.forEach(room => {
       const roomKey = room.id.slice(`floor-${controller.floor}-`.length);
@@ -156,6 +218,8 @@ function rebuildBuilding() {
         new THREE.BoxGeometry(area.width - 0.12, 0.05, area.depth - 0.12),
         new THREE.MeshStandardMaterial({
           color: selection?.roomId === room.id ? '#1e3a5f' : '#475569',
+          emissive: '#ffbd55',
+          emissiveIntensity: 0.32 * roomIllumination(room.lightStrips),
           roughness: 0.92,
           side: THREE.DoubleSide
         }));
@@ -172,20 +236,20 @@ function rebuildBuilding() {
         }));
       outline.position.set(area.x, y + 0.08, area.z);
       addToFloor(outline);
-      roomVisuals.set(room.id, { surface, outline, walls: [], sensor: null, lights: [], sensorFaulted: false });
+      roomVisuals.set(room.id, {
+        surface, outline, walls: [], sensor: null, lights: [], sensorFaulted: false,
+        illumination: roomIllumination(room.lightStrips)
+      });
 
-      const left = area.x - area.width / 2;
-      const right = area.x + area.width / 2;
-      const front = area.z - area.depth / 2;
-      const back = area.z + area.depth / 2;
-      addWall(left, front, right, front, y, 1.2, room.id, controller.id, controller.floor);
-      addWall(left, back, right, back, y, 1.2, room.id, controller.id, controller.floor);
-      addWall(left, front, left, back, y, 1.2, room.id, controller.id, controller.floor);
-      addWall(right, front, right, back, y, 1.2, room.id, controller.id, controller.floor);
+      for (const wall of roomWallSegments(area)) {
+        addWall(wall.x1, wall.z1, wall.x2, wall.z2, y + wall.y, wall.height,
+          room.id, controller.id, controller.floor);
+      }
+      addSelectable(createOpenDoor(area, y), roomSelection);
 
       const roomName = new THREE.Mesh(
         new THREE.PlaneGeometry(Math.min(area.width * 0.72, 2.6), 0.48),
-        new THREE.MeshBasicMaterial({ map: textTexture(area.label), side: THREE.DoubleSide, depthWrite: false }));
+        new THREE.MeshBasicMaterial({ map: textTexture(room.name.toUpperCase()), side: THREE.DoubleSide, depthWrite: false }));
       roomName.position.set(area.x, y + 0.64, area.z + area.depth / 2 + 0.07);
       addToFloor(roomName);
 
@@ -194,24 +258,29 @@ function rebuildBuilding() {
 
       room.lightStrips.forEach((strip, index) => {
         const light = new THREE.Mesh(
-          new THREE.BoxGeometry(room.lightStrips.length === 4 ? 1.1 : 1.7, 0.09, 0.22),
+          new THREE.BoxGeometry(room.lightStrips.length >= 4 ? 1.1 : 1.7, 0.09, 0.22),
           new THREE.MeshStandardMaterial(lightVisualState(strip)));
+        const rays = createLightRays();
+        rays.visible = lightEmits(strip);
+        light.add(rays);
+        light.userData.rays = rays;
         const position = fixtures.lights[index];
         light.position.set(position.x, position.y, position.z);
-        wiringTargets.push({ position: light.position, color: '#fbbf24' });
+        wiringTargets.push({ position: light.position, color: '#fbbf24', offset: 0 });
         addSelectable(light, { type: 'light', roomId: room.id, controllerId: controller.id, targetId: strip.id, floor: controller.floor });
         roomVisuals.get(room.id).lights.push(light);
       });
 
       const sensorFaulted = Boolean(sensorFaultForRoom(controller, room));
+      const sensorAppearance = selectedRoomVisualState(room.presence, sensorFaulted);
       const sensor = new THREE.Mesh(
         new THREE.SphereGeometry(sensorRadius, 18, 12),
         new THREE.MeshStandardMaterial({
-          color: sensorFaulted ? '#ef4444' : room.presence ? '#22c55e' : '#38bdf8',
-          emissive: sensorFaulted ? '#7f1d1d' : room.presence ? '#14532d' : '#082f49'
+          color: sensorAppearance.sensorColor,
+          emissive: sensorAppearance.sensorEmissive
         }));
       sensor.position.set(fixtures.sensor.x, fixtures.sensor.y, fixtures.sensor.z);
-      wiringTargets.push({ position: sensor.position, color: '#38bdf8' });
+      wiringTargets.push({ position: fixtures.sensorConnection, color: '#38bdf8', offset: 0.22 });
       addSelectable(sensor, {
         type: 'sensor',
         roomId: room.id,
@@ -220,6 +289,7 @@ function rebuildBuilding() {
         floor: controller.floor
       });
       roomVisuals.get(room.id).sensor = sensor;
+      roomVisuals.get(room.id).sensorFaulted = sensorFaulted;
 
       if (room.lightStrips.length === 4) {
         room.lightStrips.forEach((strip, index) => {
@@ -239,7 +309,7 @@ function rebuildBuilding() {
     addSelectable(controllerBox, { type: 'controller', controllerId: controller.id, roomId: controller.rooms[0]?.id, floor: controller.floor });
 
     wiringTargets.forEach(target => {
-      const points = wiringRoute(controllerBox.position, target.position, y + 1.4);
+      const points = wiringRoute(controllerBox.position, target.position, y + 1.4, target.offset);
       const route = new THREE.CurvePath();
       for (let index = 1; index < points.length; index++) {
         route.add(new THREE.LineCurve3(
@@ -251,6 +321,10 @@ function rebuildBuilding() {
         new THREE.MeshStandardMaterial({ color: target.color, emissive: target.color, emissiveIntensity: 0.45 }));
       wiringGroup.add(wire);
     });
+    floorGroup.add(createFloorStairs(y, controller.floor === highestFloor, floorView.current === null, controller.floor));
+    if (floorView.current !== null && floorNumbers.has(controller.floor - 1)) {
+      floorGroup.add(createIncomingFloorStairs(y, controller.floor));
+    }
   });
 
   activeFloorGroup = null;
@@ -270,10 +344,7 @@ function applyFloorEmphasis() {
       if (!object.isMesh) return;
       const materials = Array.isArray(object.material) ? object.material : [object.material];
       materials.forEach(material => {
-        material.opacity = dimmed ? 0.16 : 1;
-        material.transparent = dimmed;
-        material.depthWrite = !dimmed;
-        material.needsUpdate = true;
+        applyFloorMaterialEmphasis(material, dimmed);
       });
     });
   });
@@ -298,7 +369,7 @@ function textTexture(text) {
   context.font = 'bold 48px system-ui, sans-serif';
   context.textAlign = 'center';
   context.textBaseline = 'middle';
-  context.fillText(text, labelCanvas.width / 2, labelCanvas.height / 2);
+  context.fillText(text, labelCanvas.width / 2, labelCanvas.height / 2, labelCanvas.width - 32);
   const texture = new THREE.CanvasTexture(labelCanvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
@@ -306,7 +377,7 @@ function textTexture(text) {
 
 function updateFloorStatus() {
   document.querySelector('#wiringLegend').hidden = floorView.current === null;
-  document.querySelector('#floorSelectionHint').textContent = 'Choose a floor; select it again to reset the camera.';
+  document.querySelector('#floorSelectionHint').textContent = t('floorSelectionHint');
   const floorButtons = document.querySelector('#floorButtons');
   const orderedControllers = floorNavigation(controllers, floorView.current);
   const existingButtons = [...floorButtons.children];
@@ -319,7 +390,7 @@ function updateFloorStatus() {
       button.dataset.controllerId = controller.id;
       const name = document.createElement('span');
       name.className = 'floor-button-name';
-      name.textContent = `Floor ${controller.floor}`;
+      name.textContent = t('floorName', { floor: controller.floor });
       const status = document.createElement('span');
       status.className = 'floor-button-status';
       const faultIcon = document.createElement('span');
@@ -347,19 +418,19 @@ function updateFloorStatus() {
     const selected = controller.selected;
     button.setAttribute('aria-pressed', String(selected));
     const status = button.querySelector('.floor-button-status');
-    status.querySelector('.floor-status-text').textContent = controller.status;
+    status.querySelector('.floor-status-text').textContent = controllerStatusLabel(controller.status);
     status.querySelector('.floor-fault-icon').hidden = controller.status !== 'Faulted';
     status.classList.toggle('faulted', controller.status === 'Faulted');
     button.querySelector('.floor-occupancy-text').textContent =
-      `${controller.occupiedRooms}/${controller.totalRooms} rooms occupied`;
+      t('occupiedRooms', { occupied: controller.occupiedRooms, total: controller.totalRooms });
   });
   document.querySelector('#floorLoading').hidden = controllers.length > 0;
   const floorSelector = document.querySelector('#accessibleFloor');
   const floorValues = ['', ...controllers.map(controller => String(controller.floor))];
   if (floorValues.length !== floorSelector.options.length ||
       floorValues.some((value, index) => floorSelector.options[index].value !== value)) {
-    floorSelector.replaceChildren(new Option('All floors', ''));
-    controllers.forEach(controller => floorSelector.add(new Option(`Floor ${controller.floor}`, String(controller.floor))));
+    floorSelector.replaceChildren(new Option(t('allFloors'), ''));
+    controllers.forEach(controller => floorSelector.add(new Option(t('floorNameOption', { floor: controller.floor }), String(controller.floor))));
   }
   floorSelector.value = floorView.current === null ? '' : String(floorView.current);
   floorSelector.disabled = controllers.length === 0;
@@ -383,7 +454,7 @@ function syncRoomInspector() {
   updateFloorStatus();
   inspector.hidden = false;
   document.querySelector('#roomInspectorTitle').textContent =
-    `Floor ${controller.floor} — ${room.name}`;
+    t('floorRoomName', { floor: controller.floor, room: room.name });
   const sensorFaulted = Boolean(sensorFaultForRoom(controller, room));
   document.querySelector('#inspectorPresence').checked = room.presence;
   document.querySelector('#inspectorFault').checked = sensorFaulted;
@@ -399,8 +470,7 @@ function applyRoomVisualSelection(roomId) {
     visual.surface.material.color.set(id === roomId ? '#1e3a5f' : '#475569');
     visual.walls?.forEach(wall => {
       wall.material.color.set(id === roomId ? '#38bdf8' : '#94a3b8');
-      wall.material.emissive.set(id === roomId ? '#0c4a6e' : '#000000');
-      wall.material.emissiveIntensity = id === roomId ? 0.32 : 0;
+      applyWallLighting(wall, id === roomId, visual.illumination);
     });
   });
 }
@@ -409,22 +479,25 @@ function applyRoomVisualState(room, faulted) {
   const visual = roomVisuals.get(room.id);
   if (!visual) return;
   const presence = room.presence;
-  visual.surface.material.color.set(faulted ? '#451a1a' : presence ? '#173c3a' : '#1e3a5f');
-  visual.outline.material.color.set(faulted ? '#ef4444' : '#38bdf8');
+  const appearance = selectedRoomVisualState(presence, faulted);
+  visual.illumination = roomIllumination(room.lightStrips);
+  visual.surface.material.emissiveIntensity = 0.32 * visual.illumination;
+  visual.surface.material.color.set(appearance.surfaceColor);
+  visual.outline.material.color.set(appearance.outlineColor);
   visual.walls?.forEach(wall => {
-    wall.material.color.set(faulted ? '#ef4444' : '#38bdf8');
-    wall.material.emissive.set(faulted ? '#7f1d1d' : '#0c4a6e');
-    wall.material.emissiveIntensity = 0.32;
+    wall.material.color.set(appearance.wallColor);
+    applyWallLighting(wall, true, visual.illumination);
   });
   if (visual.sensor) {
-    visual.sensor.material.color.set(faulted ? '#ef4444' : presence ? '#22c55e' : '#38bdf8');
-    visual.sensor.material.emissive.set(faulted ? '#7f1d1d' : presence ? '#14532d' : '#082f49');
+    visual.sensor.material.color.set(appearance.sensorColor);
+    visual.sensor.material.emissive.set(appearance.sensorEmissive);
   }
   visual.lights.forEach((light, index) => {
     const state = lightVisualState(room.lightStrips[index]);
     light.material.color.set(state.color);
     light.material.emissive.set(state.emissive);
     light.material.emissiveIntensity = state.emissiveIntensity;
+    light.userData.rays.visible = lightEmits(room.lightStrips[index]);
   });
   visual.sensorFaulted = faulted;
 }
@@ -445,7 +518,7 @@ function createFaultRow(controller, fault, list, errorTarget) {
   label.textContent = `${controller.id}: ${fault.scope} — ${fault.description}`;
   const clear = document.createElement('button');
   clear.type = 'button';
-  clear.textContent = 'Clear';
+  clear.textContent = t('clear');
   clear.addEventListener('click', () => clearFault(controller, fault, errorTarget));
   row.append(label, clear);
   list.append(row);
@@ -454,7 +527,7 @@ function createFaultRow(controller, fault, list, errorTarget) {
 function renderFaults(controller, list) {
   list.replaceChildren();
   if (!controller?.faults.length) {
-    list.textContent = 'No active faults';
+    list.textContent = t('noActiveFaults');
     return;
   }
   controller.faults.forEach(fault => createFaultRow(controller, fault, list, '#actionError'));
@@ -465,7 +538,7 @@ function renderAccessibleFaults() {
   list.replaceChildren();
   const faults = controllers.flatMap(controller => controller.faults.map(fault => ({ controller, fault })));
   if (!faults.length) {
-    list.textContent = 'No active faults';
+    list.textContent = t('noActiveFaults');
     return;
   }
   faults.forEach(({ controller, fault }) => createFaultRow(controller, fault, list, '#accessibleError'));
@@ -473,7 +546,14 @@ function renderAccessibleFaults() {
 
 function renderStatus() {
   const table = document.createElement('table');
-  table.innerHTML = '<thead><tr><th>Controller</th><th>Floor</th><th>Status</th><th>Rooms / lights</th></tr></thead>';
+  const head = document.createElement('thead');
+  const headingRow = document.createElement('tr');
+  ['controller', 'floor', 'status', 'statusTableHeader'].forEach(key => {
+    const heading = document.createElement('th');
+    heading.textContent = t(key);
+    headingRow.append(heading);
+  });
+  head.append(headingRow);
   const body = document.createElement('tbody');
   controllers.forEach(controller => {
     const row = document.createElement('tr');
@@ -482,8 +562,12 @@ function renderStatus() {
     const cells = [
       controller.id,
       String(controller.floor),
-      controller.status,
-      controller.rooms.map(room => `${room.name}: ${room.lightStrips.filter(strip => strip.isOn).length}/${room.lightStrips.length} on`).join(' · ')
+      controllerStatusLabel(controller.status),
+      controller.rooms.map(room => t('roomLightsOn', {
+        room: room.name,
+        on: room.lightStrips.filter(lightEmits).length,
+        total: room.lightStrips.length
+      })).join(' · ')
     ];
     cells.forEach(value => {
       const cell = document.createElement('td');
@@ -492,7 +576,7 @@ function renderStatus() {
     });
     body.append(row);
   });
-  table.append(body);
+  table.append(head, body);
   document.querySelector('#statusTable').replaceChildren(table);
 }
 
@@ -501,7 +585,7 @@ function populateAccessibleControls() {
   const selectedRoom = document.querySelector('#accessibleRoom').value;
   replaceOptions(document.querySelector('#accessibleRoom'), rooms.map(room => ({
     id: room.id,
-    label: `${room.controllerId} — ${room.name}`
+    label: t('roomTarget', { controller: room.controllerId, room: room.name })
   })));
   if (rooms.some(room => room.id === selectedRoom)) document.querySelector('#accessibleRoom').value = selectedRoom;
   populateAccessibleFaultTargets();
@@ -513,13 +597,16 @@ function populateAccessibleFaultTargets() {
   if (scope === 'sensor') {
     options = controllers.flatMap(controller => controller.rooms.map(room => {
       const key = room.id.slice(`floor-${controller.floor}-`.length);
-      return { id: `sensor-floor-${controller.floor}-${key}`, label: `Floor ${controller.floor} — ${room.name} sensor` };
+      return { id: `sensor-floor-${controller.floor}-${key}`, label: t('sensorTarget', { floor: controller.floor, room: room.name }) };
     }));
   } else if (scope === 'light') {
     options = controllers.flatMap(controller => controller.rooms.flatMap(room =>
-      room.lightStrips.map((strip, index) => ({ id: strip.id, label: `Floor ${controller.floor} — ${room.name}, strip ${index + 1}` }))));
+      room.lightStrips.map((strip, index) => ({
+        id: strip.id,
+        label: t('lightTarget', { floor: controller.floor, room: room.name, strip: index + 1 })
+      }))));
   } else {
-    options = controllers.map(controller => ({ id: controller.id, label: `Floor ${controller.floor} controller` }));
+    options = controllers.map(controller => ({ id: controller.id, label: t('controllerTarget', { floor: controller.floor }) }));
   }
   replaceOptions(document.querySelector('#accessibleFaultTarget'), options);
 }
@@ -535,8 +622,8 @@ function ownerForTarget(scope, targetId) {
 
 function updateGestureHelp() {
   document.querySelector('#viewStatus').textContent = coarsePointer.matches
-    ? 'Tap a room to select · drag to orbit · two-finger pan and zoom'
-    : 'Click a room to select · drag to orbit · right-drag to pan · scroll to zoom';
+    ? t('touchGestureHelp')
+    : t('mouseGestureHelp');
 }
 
 function showActionError(error, target = '#actionError') {
@@ -549,7 +636,7 @@ function showActionError(error, target = '#actionError') {
 
 async function request(url, options) {
   const response = await fetch(url, options);
-  if (!response.ok) throw new Error(`Request failed (${response.status}): ${await response.text()}`);
+  if (!response.ok) throw new Error(t('requestFailed', { status: response.status, body: await response.text() }));
   const loadError = document.querySelector('#loadError');
   if (loadError) loadError.hidden = true;
   const actionError = document.querySelector('#actionError');
@@ -586,22 +673,22 @@ async function refresh() {
     fetch('/api/controllers'),
     fetch('/api/status')
   ]);
-  if (!controllerResponse.ok) throw new Error(`Controller API returned ${controllerResponse.status}`);
+  if (!controllerResponse.ok) throw new Error(t('controllerApiFailed', { status: controllerResponse.status }));
   const updatedControllers = await controllerResponse.json();
   const transport = statusResponse.ok ? await statusResponse.json() : null;
   if (sequence < lastAppliedRefresh) return;
-  if (sequence < minimumRefreshSequence) throw new Error('Status changed during refresh; reload the page.');
+  if (sequence < minimumRefreshSequence) throw new Error(t('statusChangedDuringRefresh'));
   lastAppliedRefresh = sequence;
   controllers = updatedControllers;
   if (statusResponse.ok) {
     const transportStatus = document.querySelector('#transportStatus');
     transportStatus.textContent = transport.mqttConnected
-      ? 'MQTT connected'
-      : 'MQTT unavailable · HTTP active';
+      ? t('mqttConnected')
+      : t('mqttUnavailableHttpActive');
     transportStatus.classList.toggle('offline', !transport.mqttConnected);
   } else {
     const transportStatus = document.querySelector('#transportStatus');
-    transportStatus.textContent = 'Transport status unavailable';
+    transportStatus.textContent = t('transportStatusUnavailable');
     transportStatus.classList.add('offline');
   }
   if (initialSelectionPending) {
@@ -648,7 +735,7 @@ async function refreshAfterAction() {
     if (lastAppliedRefresh <= actionRefreshSequence) {
       actionWarningAfterRefresh = refreshSequence;
       document.querySelector('#refreshWarning').hidden = false;
-      showActionError(new Error(`Action applied, but status refresh failed: ${error.message}`), '#refreshWarningText');
+      showActionError(new Error(t('actionStatusRefreshFailed', { error: error.message })), '#refreshWarningText');
     }
   }
 }
@@ -717,7 +804,7 @@ document.querySelector('#floorButtons').addEventListener('click', event => {
   if (!button) return;
   const controller = controllers.find(candidate => candidate.id === button.dataset.controllerId);
   if (!controller) {
-    showActionError(new Error('The selected floor is unavailable.'), '#loadError');
+    showActionError(new Error(t('selectedFloorUnavailable')), '#loadError');
     return;
   }
   if (floorView.current === controller.floor) {
@@ -748,7 +835,7 @@ document.querySelector('#accessibleFloor').addEventListener('change', event => {
   }
   const controller = controllers.find(candidate => String(candidate.floor) === event.target.value);
   if (!controller) {
-    showActionError(new Error('The selected floor is unavailable.'), '#accessibleError');
+    showActionError(new Error(t('selectedFloorUnavailable')), '#accessibleError');
     updateFloorStatus();
     return;
   }
@@ -787,7 +874,11 @@ document.querySelector('#inspectorFault').addEventListener('change', async event
       response = await request(`/api/devices/${controller.id}/faults`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scope: 'sensor', targetId: sensorId, description: 'Simulated sensor fault' })
+        body: JSON.stringify({
+          scope: 'sensor',
+          targetId: sensorId,
+          description: t('simulatedSensorFault')
+        })
       });
     } else if (!event.target.checked && existingFault) {
       response = await request(`/api/devices/${controller.id}/faults/${existingFault.id}`, { method: 'DELETE' });
@@ -818,7 +909,7 @@ document.querySelector('#accessibleInjectFault').addEventListener('click', async
     await request(`/api/devices/${controller.id}/faults`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scope, targetId, description: `Simulated ${scope} fault` })
+      body: JSON.stringify({ scope, targetId, description: t('simulatedScopedFault', { scope }) })
     });
     await refreshAfterAction();
   } catch (error) {
@@ -861,7 +952,7 @@ async function runScenario(url) {
     } catch (error) {
       if (lastAppliedRefresh <= scenarioRefreshSequence) {
         scenarioWarningAfterRefresh = refreshSequence;
-        showActionError(new Error(`Scenario applied, but status refresh failed: ${error.message}`), '#scenarioStatusWarning');
+        showActionError(new Error(t('scenarioStatusRefreshFailed', { error: error.message })), '#scenarioStatusWarning');
       }
     }
   } finally {
@@ -890,15 +981,23 @@ coarsePointer.addEventListener('change', updateGestureHelp);
 updateGestureHelp();
 updateRendererSize();
 
-function animate() {
+function animate(timeMs) {
   requestAnimationFrame(animate);
+  roomVisuals.forEach(visual => {
+    const pulse = sensorPulseAmount(visual.sensorFaulted, reducedMotion.matches, timeMs);
+    visual.sensor.scale.setScalar(1 + pulse * 0.16);
+    visual.sensor.material.emissiveIntensity = 1 + pulse * 1.25;
+  });
   controls.update();
   renderer.render(scene, camera);
 }
-animate();
+requestAnimationFrame(animate);
 refresh().catch(error => {
-  document.querySelector('#floorLoading').textContent = 'Floor list unavailable.';
+  document.querySelector('#floorLoading').textContent = t('floorListUnavailable');
+  const transportStatus = document.querySelector('#transportStatus');
+  transportStatus.textContent = t('transportStatusUnavailable');
+  transportStatus.classList.add('offline');
   const loadError = document.querySelector('#loadError');
-  loadError.textContent = `Unable to load building state: ${error.message}`;
+  loadError.textContent = t('unableToLoadBuildingState', { error: error.message });
   loadError.hidden = false;
 });

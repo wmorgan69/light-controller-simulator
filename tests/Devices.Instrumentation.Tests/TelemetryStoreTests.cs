@@ -781,7 +781,7 @@ public class TelemetryStoreTests
         Assert.Equal(4, controllers.Length);
         Assert.All(controllers, c =>
         {
-            Assert.Equal(3, c.Rooms.Count);
+            Assert.Equal(c.Floor switch { 2 => 2, 4 => 1, _ => 3 }, c.Rooms.Count);
             Assert.All(c.Rooms, r =>
             {
                 Assert.NotEmpty(r.LightStrips);

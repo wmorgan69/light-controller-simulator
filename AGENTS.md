@@ -54,6 +54,7 @@ For features and fixes that should visibly demonstrate the full agent workflow, 
 - Use the existing test framework and project structure; prefer xUnit and the current test helpers/patterns.
 - Before changing a bug, identify or add a regression test that reproduces the bug. If a browser-only issue cannot be covered by existing test infrastructure, document the browser verification and add lower-level tests for any newly testable behavior.
 - Run the smallest relevant test set while iterating, then run the solution build/tests before completion. Report exact commands and pass/fail counts.
+- For simulator browser view logic and recording-helper changes, run `node --test tests/building-access.test.mjs tests/wiring-routes.test.mjs tests/floor-view.test.mjs tests/room-state.test.mjs tests/record-demo.test.mjs`.
 - Do not write tests that merely restate an implementation or assert framework/library behavior. Tests should protect project requirements and catch regressions.
 
 ## API and state-transition standards
@@ -72,6 +73,13 @@ For features and fixes that should visibly demonstrate the full agent workflow, 
 - Do not display metrics or trends that lack a source in the telemetry contracts.
 - Verify live data and important state transitions in a browser for user-visible changes. Check desktop and narrow-mobile widths and check for horizontal overflow.
 - Respect reduced-motion and keyboard needs. Keep browser-only interactions mirrored by an accessible non-3D or API path where the feature requires control.
+
+## Localization standards
+
+- Put new or changed browser interface text, including accessibility labels and error and status messages, in the appropriate application's English `wwwroot/localization.en.mjs`. Keep matching English HTML text and attribute fallbacks synchronized; shared model room names use the resource below instead.
+- Maintain shared model room names in `src/Devices.Contracts/RoomNames.resx`; preserve their culture-independent values in HTTP and MQTT state. Do not translate stable IDs, protocol values, user-supplied descriptions, or unknown telemetry.
+- Use resource placeholders and plural forms for dynamic text. Preserve escaping when inserting external values into HTML, and add focused tests for interpolation, pluralization, fallbacks, and relevant rendering behavior.
+- English is the only supported language. Do not add translations, automatic language negotiation, or language-selection controls unless requested.
 
 ## Code review acceptance criteria
 

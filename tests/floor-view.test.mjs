@@ -1,7 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { FloorView, fieldOfViewForAspect, selectedFloorCamera, cameraPresetNeedsUpdate, isFloorVisible, floorNavigation } from '../src/Devices.Simulator.Web/wwwroot/floor-view.mjs';
+import { FloorView, applyFloorMaterialEmphasis, fieldOfViewForAspect, selectedFloorCamera, cameraPresetNeedsUpdate, isFloorVisible, floorNavigation } from '../src/Devices.Simulator.Web/wwwroot/floor-view.mjs';
 import { createFloorPillars } from '../src/Devices.Simulator.Web/wwwroot/building-pillars.mjs';
+import * as THREE from '../src/Devices.Simulator.Web/wwwroot/vendor/three.module.js';
+import { createFloorSlab, createFloorStairLandings, createFloorStairs, createIncomingFloorStairs } from '../src/Devices.Simulator.Web/wwwroot/building-stairs.mjs';
 
 test('places translucent, non-selectable pillars at the four floor corners', () => {
   const group = createFloorPillars(2.45, false);
@@ -24,11 +26,147 @@ test('caps the overview pillars at the top floor ceiling', () => {
   assert.ok(Math.abs(top.position.y + top.geometry.parameters.height / 2 - 8.55) < 1e-10);
 });
 
+test('connects each floor to the next with non-selectable stairs behind the offices', () => {
+  const baseY = 2.45;
+  const stairs = createFloorStairs(baseY, false, true, 1).children;
+  assert.equal(stairs.length, 18);
+  for (let index = 0; index < stairs.length; index++) {
+    const step = stairs[index];
+    assert.equal(step.userData.selection, undefined);
+    assert.ok(step.position.z + step.geometry.parameters.depth / 2 < -1.6);
+    assert.ok(Math.abs(step.position.y - step.geometry.parameters.height / 2 - baseY) < 1e-10);
+    if (index > 0) {
+      assert.ok(step.position.x > stairs[index - 1].position.x);
+      assert.ok(step.geometry.parameters.height > stairs[index - 1].geometry.parameters.height);
+    }
+  }
+  const last = stairs.at(-1);
+  assert.ok(Math.abs(last.position.y + last.geometry.parameters.height / 2 - (baseY + 2.45)) < 1e-10);
+  assert.equal(createFloorStairs(baseY, true, true, 4).children.length, 0);
+});
+
+test('joins opposite flights on separate lanes with a shared landing', () => {
+  for (const floor of [1, 2]) {
+    const lower = createFloorStairs((floor - 1) * 2.45, false, true, floor).children;
+    const upper = createFloorStairs(floor * 2.45, false, true, floor + 1).children;
+    assert.equal(lower.at(-1).position.x, upper[0].position.x);
+    assert.equal(lower[0].position.x, upper.at(-1).position.x);
+    assert.ok(Math.abs(lower.at(-1).position.z - upper[0].position.z) >= lower[0].geometry.parameters.depth,
+      'flights must not occupy the same lane');
+    const landings = createFloorStairLandings(floor * 2.45, floor + 1);
+    assert.equal(landings.length, 1);
+    const landing = landings[0];
+    for (const step of [lower.at(-1), upper[0]]) {
+      assert.ok(Math.abs(step.position.z - landing.position.z) + step.geometry.parameters.depth / 2
+        <= landing.geometry.parameters.depth / 2);
+    }
+  }
+});
+
+test('leaves room for a landing at each end of the shortened stair flight', () => {
+  const steps = createFloorStairs(0, false, true, 1).children;
+  const first = steps[0];
+  const last = steps.at(-1);
+  const start = first.position.x - first.geometry.parameters.width / 2;
+  const end = last.position.x + last.geometry.parameters.width / 2;
+  assert.ok(end - start < 3.8);
+  const [left] = createFloorStairLandings(0, 1);
+  const [right] = createFloorStairLandings(2.45, 2);
+  assert.ok(left.geometry.parameters.width >= 0.6);
+  assert.ok(right.geometry.parameters.width >= 0.6);
+  assert.ok(Math.abs(start - (left.position.x + left.geometry.parameters.width / 2)) <= 0.03);
+  assert.ok(Math.abs((right.position.x - right.geometry.parameters.width / 2) - end) <= 0.03);
+  assert.ok(Math.abs(left.position.y + left.geometry.parameters.height / 2) < 1e-10);
+  assert.ok(Math.abs(right.position.y + right.geometry.parameters.height / 2 - 2.45) < 1e-10);
+});
+
+test('limits the selected-floor stairs to the lower visible flight', () => {
+  const baseY = 4.9;
+  const steps = createFloorStairs(baseY, false, false, 3).children;
+  assert.equal(steps.length, 10);
+  const last = steps.at(-1);
+  assert.ok(Math.abs(last.position.y + last.geometry.parameters.height / 2 - (baseY + 2.45 * 10 / 18)) < 1e-10);
+  assert.equal(createFloorStairs(baseY, true, false, 4).children.length, 0);
+});
+
+test('selected floors show translucent stair sections above and below their landing', () => {
+  for (const floor of [2, 3]) {
+    const baseY = (floor - 1) * 2.45;
+    const up = createFloorStairs(baseY, false, false, floor).children;
+    const down = createIncomingFloorStairs(baseY, floor).children;
+    assert.equal(down.length, 10);
+    assert.equal(up.length, 10);
+    assert.notEqual(up[0].position.z, down[0].position.z);
+    const top = down.at(-1);
+    assert.ok(Math.abs(top.position.y + top.geometry.parameters.height / 2 - baseY) < 1e-10);
+    assert.ok(down[0].position.y + down[0].geometry.parameters.height / 2 < baseY);
+    for (const step of [...up, ...down]) {
+      assert.equal(step.material.transparent, true);
+      assert.ok(step.material.opacity > 0 && step.material.opacity < 1);
+      assert.equal(step.material.userData.preserveTransparency, true);
+    }
+  }
+  assert.equal(createIncomingFloorStairs(0, 1).children.length, 0);
+  assert.equal(createIncomingFloorStairs(7.35, 4).children.length, 10);
+  assert.equal(createFloorStairs(7.35, true, false, 4).children.length, 0);
+  assert.equal(createFloorStairs(0, false, true, 1).children[0].material.transparent, false);
+});
+
+test('opens the slab above the full stair flight while preserving the surrounding floor', () => {
+  const castDown = (slabs, x, z) => {
+    const ray = new THREE.Raycaster(new THREE.Vector3(x, 10, z), new THREE.Vector3(0, -1, 0));
+    for (const slab of slabs) slab.updateMatrixWorld();
+    return ray.intersectObjects(slabs).length > 0;
+  };
+  const ground = createFloorSlab(0, false);
+  const upper = createFloorSlab(2.45, true);
+  for (const floor of [1, 2]) {
+    for (const step of createFloorStairs(0, false, true, floor).children) {
+      const { width, depth } = step.geometry.parameters;
+      for (const x of [step.position.x - width / 2, step.position.x + width / 2]) {
+        for (const z of [step.position.z - depth / 2, step.position.z + depth / 2]) {
+          assert.equal(castDown(upper, x, z), false, 'upper slab must clear both stair lanes');
+        }
+      }
+    }
+  }
+  assert.equal(castDown(ground, 2, -2.95), true);
+  for (const [x, z] of [[-4.9, -3.9], [4.9, -3.9], [2, -3.9], [2, -1.9], [0, 0]]) {
+    assert.equal(castDown(upper, x, z), true, `floor must remain at ${x}, ${z}`);
+  }
+});
+
+test('the selected top floor fills the unused lane while leaving the descending flight open', () => {
+  const slabs = createFloorSlab(7.35, true, 3);
+  for (const slab of slabs) slab.updateMatrixWorld();
+  const incoming = createFloorStairs(4.9, false, true, 3).children;
+  const unused = createFloorStairs(7.35, false, true, 4).children;
+  const hasFloor = step => new THREE.Raycaster(
+    new THREE.Vector3(step.position.x, 10, step.position.z),
+    new THREE.Vector3(0, -1, 0)).intersectObjects(slabs).length > 0;
+  for (const step of incoming) assert.equal(hasFloor(step), false, 'descending stairs must remain unobstructed');
+  for (const step of unused) assert.equal(hasFloor(step), true, 'unused lane must be covered');
+});
+
 test('shows only the selected floor and restores all floors in overview', () => {
   for (const floor of [1, 2, 3, 4]) {
     assert.equal(isFloorVisible(3, floor), floor === 3);
     assert.equal(isFloorVisible(null, floor), true);
   }
+});
+
+test('floor emphasis preserves the transparency of light rays', () => {
+  const rays = { userData: { preserveTransparency: true }, transparent: true, depthWrite: false };
+  applyFloorMaterialEmphasis(rays, false);
+  assert.equal(rays.transparent, true);
+  assert.equal(rays.depthWrite, false);
+  const wall = { userData: {} };
+  applyFloorMaterialEmphasis(wall, true);
+  assert.equal(wall.opacity, 0.16);
+  assert.equal(wall.transparent, true);
+  applyFloorMaterialEmphasis(wall, false);
+  assert.equal(wall.opacity, 1);
+  assert.equal(wall.depthWrite, true);
 });
 
 test('orders floor navigation and updates selection, status, and room occupancy', () => {
@@ -100,7 +238,16 @@ test('keeps the selected floor in view on desktop and mobile', () => {
       const vertical = Math.tan(fieldOfViewForAspect(aspect) * Math.PI / 360);
       {
         const baseY = (selectedFloor - 1) * 2.45;
+        const bounds = [];
         for (const x of [-5, 5]) for (const y of [baseY - 0.21, baseY + 1.4]) for (const z of [-4, 4]) {
+          bounds.push([x, y, z]);
+        }
+        if (selectedFloor > 1) {
+          for (const x of [1, 3.4]) for (const z of [-3.76, -2.05]) {
+            bounds.push([x, baseY - 2.45 * 10 / 18, z]);
+          }
+        }
+        for (const [x, y, z] of bounds) {
           const point = [x - position.x, y - position.y, z - position.z];
           const depth = dot(point, forward);
           assert.ok(depth > 0 && Math.abs(dot(point, right) / (depth * vertical * aspect)) <= 1,
