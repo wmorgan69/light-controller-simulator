@@ -67,6 +67,7 @@ For features and fixes that should visibly demonstrate the full agent workflow, 
 
 ## UI implementation standards
 
+- For UI work, consult the [shared design language](docs/ux/design-language.md) and the relevant [simulator](docs/ux/simulator/design-language.md) or [instrumentation](docs/ux/instrumentation/design-language.md) guide. The shared guide sets targets for new or changed UI; the application guides describe current behavior. Do not require unrelated legacy UI changes.
 - Follow existing markup, CSS, rendering, and accessibility patterns. Keep UI state synchronized with server-returned state and avoid stale optimistic updates.
 - Use semantic HTML and meaningful labels/headings. Status must not rely on color alone; pair color with text or an icon.
 - Keep loading, waiting, empty, error, healthy, faulted, and offline states visually and programmatically distinct.

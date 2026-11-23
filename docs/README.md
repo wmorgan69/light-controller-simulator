@@ -9,6 +9,7 @@
 - [Directory structure](#directory-structure)
 - [Running the system](#running-the-system)
 - [Screenshots and demo](#screenshots-and-demo)
+- [UX design references](ux/README.md)
 - [Quality and security](#quality-and-security)
 - [Testing](#testing)
 - [Documentation map](#documentation-map)
@@ -43,10 +44,13 @@ Both web applications use shared contracts. The instrumentation service polls th
 |   |-- Devices.Simulator.Tests/
 |   `-- Devices.Instrumentation.Tests/
 `-- docs/
-    `-- assets/
-        |-- diagrams/
-        |-- screenshots/
-        `-- videos/
+    |-- assets/
+    |   |-- diagrams/
+    |   |-- screenshots/
+    |   `-- videos/
+    `-- ux/
+        |-- simulator/
+        `-- instrumentation/
 ```
 
 Generated `bin/`, `obj/`, and SQLite files are runtime/build artifacts and are not source documentation.
@@ -97,6 +101,15 @@ To regenerate the main simulator and instrumentation screenshots and the walkthr
 
 If the process or browser is terminated, cleanup may not run: check the simulator state and reset it if needed. Verify that the recording completed before publishing it; an interrupted output may be incomplete.
 
+For UX review of a local video when the reviewer cannot decode it, the parent agent can follow the [video-review skill](../.github/skills/video-review/SKILL.md) to extract timestamped frames with a locally installed FFmpeg. The reviewer remains read-only; sampled frames do not verify continuous motion, audio, or live interaction.
+
+```mermaid
+flowchart LR
+  Video["Local video"] --> Parent["Parent agent"]
+  Parent -->|Local FFmpeg| Frames["Timestamped frames"]
+  Frames --> Reviewer["Read-only UX reviewer"]
+```
+
 ## Quality and security
 
 The project combines automated checks with guidance for manual reviews:
@@ -123,6 +136,7 @@ The CI workflow also runs the Node.js view-logic, recording-helper, and localiza
 |---|---|
 | [Building Light Simulator](building-light-simulator.md) | 3D model, controls, state model, APIs, MQTT commands, scenarios, source map |
 | [Lighting Instrumentation](lighting-instrumentation.md) | Dashboard design, telemetry flow, persistence, stale/offline behavior, source map |
+| [UX design references](ux/README.md) | Shared design baseline, app-specific design guides, and desktop and mobile references |
 | [Project plan](plan.md) | Goals, delivery phases, implementation decisions, acceptance criteria |
 | [Changelog](CHANGELOG.md) | Project history, recorded commits, and upcoming changes |
 | [Contributor Guide](contributor-guide.md) | Code coverage workflow, testing tips, security review process, common questions |

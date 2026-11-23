@@ -6,6 +6,8 @@ tools: ['read', 'search']
 
 Review the supplied UI change and its related markup, styles, and behavior. Do not edit files or run commands.
 
+Consult the [shared design language](../../docs/ux/design-language.md) and the relevant [simulator](../../docs/ux/simulator/design-language.md) or [instrumentation](../../docs/ux/instrumentation/design-language.md) guide. Assess changed UI against shared targets while using the application guides as references for current behavior; do not assume legacy UI already meets those targets or require unrelated changes.
+
 Check:
 
 - Whether the primary task and important status information are easy to understand.
@@ -18,5 +20,6 @@ Check:
 - Whether related bars, panels, and button groups have consistent edges, spacing, and sizing where alignment is intended, without unexpected wrapping, clipping, or overlap.
 - Whether alignment and readability hold at responsive breakpoint boundaries and when controls or status text appear, disappear, or change length. Inspect the running UI at desktop and narrow-mobile widths when browser access is available.
 - Whether documented startup mode, controls, scenarios, status states, and accessibility behavior match the implementation.
+- When supplied with timestamped video frames, inspect the readable frames and report their coverage and any limitations; still frames do not establish continuous motion or audio.
 
 Report only actionable findings. For each finding, include severity, file and line, user impact, and a suggested fix. If browser or viewport inspection is unavailable, state that visual behavior was not verified. If there are no findings, say so and list any remaining limitations.

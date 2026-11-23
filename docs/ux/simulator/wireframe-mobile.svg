@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="1630" viewBox="0 0 390 1630" role="img" aria-labelledby="title desc">
+  <title id="title">Simulator mobile wireframe</title>
+  <desc id="desc">Narrow layout with floor and scenario controls above the scene, then status and accessible controls below.</desc>
+  <rect width="390" height="1630" fill="#fff"/>
+  <g fill="none" stroke="#333" stroke-width="2">
+    <path d="M0 138H390M0 440H390M0 1040H390"/>
+    <rect x="12" y="178" width="118" height="54"/><rect x="136" y="178" width="118" height="54"/><rect x="260" y="178" width="118" height="54"/>
+    <rect x="12" y="240" width="118" height="54"/><rect x="136" y="240" width="118" height="54"/>
+    <rect x="12" y="342" width="176" height="42"/><rect x="202" y="342" width="176" height="42"/>
+    <rect x="12" y="524" width="366" height="300" stroke-dasharray="8 5"/><rect x="12" y="842" width="366" height="114"/>
+    <rect x="12" y="1098" width="366" height="150"/><path d="M12 1128H378M12 1158H378M12 1188H378M12 1218H378"/>
+    <rect x="12" y="1320" width="366" height="38"/><rect x="12" y="1405" width="366" height="38"/><rect x="12" y="1490" width="366" height="38"/><rect x="12" y="1550" width="366" height="38"/>
+  </g>
+  <g font-family="Arial, sans-serif" fill="#222" font-size="14">
+    <text x="12" y="30" font-size="22" font-weight="bold">Building Light Simulator</text><text x="12" y="54">Four-floor controller simulation</text><text x="12" y="78">Choose a floor; select it again to reset the camera.</text><text x="12" y="108">Transport status</text>
+    <text x="12" y="165" font-weight="bold">Building</text><text x="22" y="209">All floors</text><text x="146" y="201">Floor 4</text><text x="146" y="220" font-size="11">Status / count</text><text x="270" y="201">Floor 3</text><text x="270" y="220" font-size="11">Status / count</text><text x="22" y="263">Floor 2</text><text x="22" y="282">Selected</text><text x="146" y="263">Floor 1</text><text x="146" y="282" font-size="11">Status / count</text>
+    <text x="12" y="326" font-weight="bold">Scenarios</text><text x="24" y="368">Reset building</text><text x="213" y="368">Occupancy demo</text>
+    <text x="12" y="468">Room selection and camera help</text><text x="12" y="490">Stairs and wiring legend</text><text x="132" y="674">3D selected floor</text>
+    <text x="24" y="870" font-weight="bold">Floor 2 — Boardroom</text><text x="24" y="910">Presence [ ]</text><text x="200" y="910">Sensor fault [x]</text>
+    <text x="12" y="1073" font-size="19" font-weight="bold">Live status</text><text x="22" y="1119">Controller · Floor · Status · Rooms / lights</text><text x="22" y="1149">Floor 1</text><text x="22" y="1179">Floor 2</text><text x="22" y="1209">Floor 3</text><text x="22" y="1239">Floor 4</text>
+    <text x="12" y="1287" font-weight="bold">▾ Accessible controls</text><text x="12" y="1310">Floor view</text><text x="12" y="1395">Room sensor</text><text x="12" y="1480">Fault type and target</text><text x="12" y="1540">Inject fault</text><text x="12" y="1610">Active faults and clear actions</text>
+  </g>
+</svg>

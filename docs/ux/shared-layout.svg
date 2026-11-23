@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">Shared responsive layout and dimension targets</title>
+  <desc id="desc">Schematic desktop and narrow layouts showing example spacing, stacked content and the target size for new controls. These are design targets, not current app measurements.</desc>
+  <defs>
+    <marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto-start-reverse"><path d="M0 0L8 4L0 8Z" fill="#355b8a"/></marker>
+  </defs>
+  <rect width="1200" height="760" fill="#f7f9fc"/>
+  <g font-family="Arial, sans-serif">
+    <text x="32" y="40" fill="#12223a" font-size="26" font-weight="bold">Shared layout and dimension targets</text>
+    <text x="32" y="68" fill="#43556e" font-size="16">Illustrative, not to scale · CSS units · app themes and layouts may differ</text>
+    <text x="32" y="111" fill="#12223a" font-size="20" font-weight="bold">Desktop example: viewport &gt; 760px</text>
+    <text x="820" y="111" fill="#12223a" font-size="20" font-weight="bold">Narrow: viewport ≤ 760px</text>
+    <rect x="32" y="130" width="740" height="390" rx="8" fill="#fff" stroke="#6882a5"/>
+    <rect x="52" y="150" width="700" height="56" rx="5" fill="#dbe6f5" stroke="#8298b4"/>
+    <text x="68" y="184" fill="#152a45" font-size="16" font-weight="bold">Page heading + status</text>
+    <rect x="52" y="226" width="424" height="228" rx="7" fill="#e0eaf8" stroke="#8298b4"/>
+    <text x="68" y="255" fill="#152a45" font-size="16" font-weight="bold">Primary content</text>
+    <text x="68" y="281" fill="#344c69" font-size="14">Wrap text and maintain reading order</text>
+    <rect x="68" y="300" width="166" height="44" rx="6" fill="#fff" stroke="#6882a5"/>
+    <text x="84" y="327" fill="#152a45" font-size="15">Labeled control</text>
+    <text x="68" y="373" fill="#344c69" font-size="14">New control target: aim for 44 × 44px</text>
+    <rect x="496" y="226" width="256" height="228" rx="7" fill="#eff3f8" stroke="#8298b4"/>
+    <text x="512" y="255" fill="#152a45" font-size="16" font-weight="bold">Related content</text>
+    <text x="512" y="281" fill="#344c69" font-size="14">Status uses text + color</text>
+    <path d="M478 468H494" stroke="#355b8a" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+    <text x="420" y="494" fill="#244b79" font-size="14" font-weight="bold">1rem example gap</text>
+    <text x="52" y="548" fill="#43556e" font-size="14">Columns and page inset depend on the application and content.</text>
+
+    <rect x="820" y="130" width="348" height="470" rx="8" fill="#fff" stroke="#6882a5"/>
+    <rect x="836" y="146" width="316" height="54" rx="5" fill="#dbe6f5" stroke="#8298b4"/>
+    <text x="852" y="179" fill="#152a45" font-size="16" font-weight="bold">Heading + status</text>
+    <rect x="836" y="216" width="316" height="132" rx="6" fill="#e0eaf8" stroke="#8298b4"/>
+    <text x="852" y="247" fill="#152a45" font-size="16" font-weight="bold">Primary content</text>
+    <text x="852" y="273" fill="#344c69" font-size="14">Controls stay keyboard accessible</text>
+    <rect x="852" y="285" width="145" height="44" rx="6" fill="#fff" stroke="#6882a5"/>
+    <text x="867" y="312" fill="#152a45" font-size="15">Labeled control</text>
+    <rect x="836" y="364" width="316" height="100" rx="6" fill="#eff3f8" stroke="#8298b4"/>
+    <text x="852" y="396" fill="#152a45" font-size="16" font-weight="bold">Related content</text>
+    <text x="852" y="423" fill="#344c69" font-size="14">Stacks after primary content</text>
+    <text x="836" y="493" fill="#344c69" font-size="14">Design for 320px and wider.</text>
+    <text x="836" y="516" fill="#344c69" font-size="14">Avoid page-level horizontal overflow.</text>
+    <text x="836" y="539" fill="#344c69" font-size="14">Data tables may scroll locally.</text>
+
+    <rect x="32" y="615" width="1136" height="106" rx="8" fill="#e9eef6" stroke="#8298b4"/>
+    <text x="50" y="645" fill="#12223a" font-size="16" font-weight="bold">Shared spacing scale</text>
+    <text x="50" y="671" fill="#344c69" font-size="15">.25rem · .5rem · 1rem · 1.5rem · 2rem</text>
+    <text x="50" y="699" fill="#344c69" font-size="14">1rem equals 16 CSS pixels only at the browser's default 16px root size.</text>
+  </g>
+</svg>
