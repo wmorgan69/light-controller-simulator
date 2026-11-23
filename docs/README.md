@@ -3,7 +3,8 @@
 ## Table of contents
 
 - [Architecture overview](#architecture-overview)
-- [Project plan](plan.md)
+- [Project plan](plans/plan.md)
+- [Building editor specification (proposed)](plans/building-editor-spec.md)
 - [Changelog](CHANGELOG.md)
 - [Applications](#applications)
 - [Directory structure](#directory-structure)
@@ -24,8 +25,8 @@ Both web applications use shared contracts. The instrumentation service polls th
 
 ## Applications
 
-- [Building Light Simulator](building-light-simulator.md) - Interactive 3D building model, HTTP device state, simulator scenarios, and MQTT publication.
-- [Lighting Instrumentation](lighting-instrumentation.md) - Live controller health, room/lighting state, events, SQLite persistence, and MQTT/HTTP transport status.
+- [Building Light Simulator](technical/building-light-simulator.md) - Interactive 3D building model, HTTP device state, simulator scenarios, and MQTT publication.
+- [Lighting Instrumentation](technical/lighting-instrumentation.md) - Live controller health, room/lighting state, events, SQLite persistence, and MQTT/HTTP transport status.
 
 ## Directory structure
 
@@ -48,8 +49,13 @@ Both web applications use shared contracts. The instrumentation service polls th
     |   |-- diagrams/
     |   |-- screenshots/
     |   `-- videos/
+    |-- contributing/
+    |-- plans/
+    |-- technical/
     `-- ux/
         |-- simulator/
+        |   |-- main/
+        |   `-- editor/
         `-- instrumentation/
 ```
 
@@ -119,7 +125,7 @@ The project combines automated checks with guidance for manual reviews:
 - **Dependency updates**: Dependabot is configured for NuGet and npm; it requires supported manifests and the relevant GitHub features to operate.
 - **Branch protection**: Required status checks and approvals depend on repository rules configured in GitHub; agent instructions alone do not enforce them.
 
-See [Branch Protection Configuration](branch-protection.md) and [Quality & Security Implementation Guide](quality-and-security.md) for setup instructions, recommended approaches for reaching 90% coverage, and troubleshooting.
+See [Branch Protection Configuration](contributing/branch-protection.md) and [Quality & Security Implementation Guide](contributing/quality-and-security.md) for setup instructions, recommended approaches for reaching 90% coverage, and troubleshooting.
 
 ## Testing
 
@@ -134,11 +140,12 @@ The CI workflow also runs the Node.js view-logic, recording-helper, and localiza
 
 | Document | Covers |
 |---|---|
-| [Building Light Simulator](building-light-simulator.md) | 3D model, controls, state model, APIs, MQTT commands, scenarios, source map |
-| [Lighting Instrumentation](lighting-instrumentation.md) | Dashboard design, telemetry flow, persistence, stale/offline behavior, source map |
+| [Building Light Simulator](technical/building-light-simulator.md) | 3D model, controls, state model, APIs, MQTT commands, scenarios, source map |
+| [Lighting Instrumentation](technical/lighting-instrumentation.md) | Dashboard design, telemetry flow, persistence, stale/offline behavior, source map |
 | [UX design references](ux/README.md) | Shared design baseline, app-specific design guides, and desktop and mobile references |
-| [Project plan](plan.md) | Goals, delivery phases, implementation decisions, acceptance criteria |
+| [Project plan](plans/plan.md) | Goals, delivery phases, implementation decisions, acceptance criteria |
+| [Building editor specification](plans/building-editor-spec.md) | Proposed building editor, storage, acceptance criteria, and open decisions |
 | [Changelog](CHANGELOG.md) | Project history, recorded commits, and upcoming changes |
-| [Contributor Guide](contributor-guide.md) | Code coverage workflow, testing tips, security review process, common questions |
-| [Branch Protection Configuration](branch-protection.md) | CI/CD enforcement, GitHub status checks, Codecov setup |
-| [Quality & Security Implementation](quality-and-security.md) | Coverage threshold strategy, reaching 90%, security review workflow, Dependabot setup |
+| [Contributor Guide](contributing/contributor-guide.md) | Code coverage workflow, testing tips, security review process, common questions |
+| [Branch Protection Configuration](contributing/branch-protection.md) | CI/CD enforcement, GitHub status checks, Codecov setup |
+| [Quality & Security Implementation](contributing/quality-and-security.md) | Coverage threshold strategy, reaching 90%, security review workflow, Dependabot setup |

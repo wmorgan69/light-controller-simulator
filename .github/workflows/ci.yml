@@ -45,7 +45,7 @@ jobs:
           echo "Code Coverage: ${line_coverage_pct}%"
           
           # Phase 1: Enforce 50% threshold (baseline; can be raised to 60%, 75%, 90% over time)
-          # See docs/quality-and-security.md for phased enforcement strategy
+          # See docs/contributing/quality-and-security.md for phased enforcement strategy
           if (( $(echo "$line_coverage_pct < 50" | bc -l) )); then
             echo "ERROR: Code coverage ${line_coverage_pct}% is below 50% threshold"
             exit 1

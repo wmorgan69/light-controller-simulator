@@ -41,6 +41,6 @@ If coverage is regressing or missing tests for new code:
 - **Severity**: Medium (blocks PR until fixed)
 - **Finding**: "New code paths lack test coverage"
 - **Evidence**: "File X line Y adds logic Z, but no tests in PR validate this path"
-- **Suggested fix**: "Add test cases covering the new logic (see docs/contributor-guide.md for test patterns)"
+- **Suggested fix**: "Add test cases covering the new logic (see docs/contributing/contributor-guide.md for test patterns)"
 
 Report only actionable findings. For each finding, include severity, file and line, evidence, impact, and a suggested fix or test. If there are no findings, say so and list important checks you could not verify. Do not treat unverified behavior as passing.

@@ -3,7 +3,7 @@ name: build-review-rebuild
 description: Coordinate implementation, build/test validation, independent code and UX review, fixes, and final revalidation.
 ---
 
-Follow `AGENTS.md` and `docs/plan.md` for repository conventions and the accepted behavior.
+Follow `AGENTS.md` and `docs/plans/plan.md` for repository conventions and the accepted behavior.
 Follow the [agent investigation and review handoff guidance](../../AGENTS.md#agent-investigation-and-review-handoffs); permission prompts and decisions still apply.
 
 This agent coordinates a feature or fix. It may implement, delegate implementation work, invoke independent reviewer subagents, fix actionable findings, and run validation. Keep implementation and review responsibilities separate:

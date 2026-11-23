@@ -16,7 +16,7 @@ The repository currently provides these quality and security mechanisms:
 |---|---|
 | `.github/agents/security-reviewer.agent.md` | Security review agent definition (OWASP Top 10 checklist) |
 | `.github/dependabot.yml` | Dependabot configuration for NuGet and npm packages |
-| `docs/branch-protection.md` | Setup guide for GitHub branch protection and CI status checks |
+| `docs/contributing/branch-protection.md` | Setup guide for GitHub branch protection and CI status checks |
 
 ### Modified
 
@@ -149,7 +149,7 @@ This is an alternative proposal, not the current CI behavior. CI currently enfor
 
 5. Click **Create**
 
-**See [docs/branch-protection.md](../docs/branch-protection.md) for detailed instructions.**
+**See [docs/contributing/branch-protection.md](branch-protection.md) for detailed instructions.**
 
 ## Codecov Integration (Optional but Recommended)
 
@@ -193,7 +193,7 @@ The workflow currently requests `./coverage.cobertura.xml`, but dotnet-test writ
 
 ### This Week
 
-1. **Set up GitHub branch protection** (see [branch-protection.md](../docs/branch-protection.md))
+1. **Set up GitHub branch protection** (see [branch-protection.md](branch-protection.md))
    - Enable `Build and test` as the required status check
    - Require code reviews
    
@@ -276,4 +276,4 @@ This is normal for UI-heavy code. Consider:
 
 ## Questions?
 
-Refer to [docs/branch-protection.md](../docs/branch-protection.md) for step-by-step setup and FAQ.
+Refer to [docs/contributing/branch-protection.md](branch-protection.md) for step-by-step setup and FAQ.

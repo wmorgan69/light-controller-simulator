@@ -80,7 +80,7 @@ The diagram is schematic and not to scale. Its spacing and target sizes are desi
 
 | Application | Current reference | Intentional emphasis |
 |---|---|---|
-| Simulator | [Simulator design language](simulator/design-language.md) | Dark 3D scene, floor navigation, room controls, and a non-3D control path |
+| Simulator | [Simulator design language](simulator/main/design-language.md) | Dark 3D scene, floor navigation, room controls, and a non-3D control path |
 | Instrumentation | [Instrumentation design language](instrumentation/design-language.md) | Light summary dashboard, controller cards, lighting activity, and events |
 
 Where existing styles differ from this baseline, the application guides describe the current behavior. Treat alignment with the shared targets as work for relevant future changes, not as already implemented behavior.

@@ -67,7 +67,7 @@ Fill out `.github/PULL_REQUEST_TEMPLATE.md`, retaining its headings and recordin
 
 ### 4. Request Code Review
 
-Include the changed paths, relevant context, applicable checks, validation results, and available coverage evidence in the review handoff. Follow the [agent investigation and review handoff guidance](../AGENTS.md#agent-investigation-and-review-handoffs): reviewers may expand their investigation when evidence requires it, and permission prompts still apply.
+Include the changed paths, relevant context, applicable checks, validation results, and available coverage evidence in the review handoff. Follow the [agent investigation and review handoff guidance](../../AGENTS.md#agent-investigation-and-review-handoffs): agents may inspect relevant files anywhere in the repository, handoffs are not file-access allowlists, and permission prompts still apply.
 
 ### 5. Request Security Review (If Applicable)
 
@@ -174,5 +174,5 @@ You can override with code review approval, but:
 
 - [Quality & Security Implementation](quality-and-security.md) - In-depth guide, phased approach, Codecov setup
 - [Branch Protection Configuration](branch-protection.md) - GitHub branch protection setup
-- [Project Plan](plan.md) - Architecture and project goals
-- [AGENTS.md](../AGENTS.md) - Agent definitions and workflow
+- [Project Plan](../plans/plan.md) - Architecture and project goals
+- [AGENTS.md](../../AGENTS.md) - Agent definitions and workflow

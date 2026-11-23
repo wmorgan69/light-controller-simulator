@@ -106,9 +106,9 @@ In CodeSandbox, this requires a server environment with a working Docker engine 
 ## Documentation
 
 - [Documentation home](docs/README.md)
-- [Project plan](docs/plan.md)
-- [Building Light Simulator](docs/building-light-simulator.md)
-- [Lighting Instrumentation](docs/lighting-instrumentation.md)
+- [Project plan](docs/plans/plan.md)
+- [Building Light Simulator](docs/technical/building-light-simulator.md)
+- [Lighting Instrumentation](docs/technical/lighting-instrumentation.md)
 
 ## Source layout
 

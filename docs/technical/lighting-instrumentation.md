@@ -20,13 +20,13 @@ The instrumentation application presents the latest building state and recent de
 
 ## Design
 
-![Design: MQTT and HTTP fallback feed the telemetry store, which provides dashboard summaries, lighting activity, floor cards, recent events, and SQLite persistence. Controller states and device events also feed their respective dashboard views.](assets/diagrams/lighting-instrumentation-design.svg)
+![Design: MQTT and HTTP fallback feed the telemetry store, which provides dashboard summaries, lighting activity, floor cards, recent events, and SQLite persistence. Controller states and device events also feed their respective dashboard views.](../assets/diagrams/lighting-instrumentation-design.svg)
 
 The UI prioritizes building-wide health and lighting activity, then floor details, then recent events.
 
 ## Telemetry architecture
 
-![Telemetry architecture: MQTT broker messages and the HTTP poller feed the telemetry store. The dashboard requests telemetry and events from the store.](assets/diagrams/lighting-instrumentation-telemetry.svg)
+![Telemetry architecture: MQTT broker messages and the HTTP poller feed the telemetry store. The dashboard requests telemetry and events from the store.](../assets/diagrams/lighting-instrumentation-telemetry.svg)
 
 The service runs an HTTP poller alongside the MQTT subscriber. The dashboard reports MQTT when connected and reports HTTP fallback otherwise; it remains usable without a broker.
 
@@ -45,13 +45,13 @@ Status is conveyed with text and color. The dashboard does not infer unsupported
 
 Room names and fixture markers wrap when a controller card is too narrow to show them side by side.
 
-Browser interface text is in [localization.en.mjs](../src/Devices.Instrumentation.Web/wwwroot/localization.en.mjs). Static markup retains matching English fallback text and labels; update both when changing them. Only English is provided; there is no language selector or automatic culture negotiation. Room names arrive in telemetry from the simulator.
+Browser interface text is in [localization.en.mjs](../../src/Devices.Instrumentation.Web/wwwroot/localization.en.mjs). Static markup retains matching English fallback text and labels; update both when changing them. Only English is provided; there is no language selector or automatic culture negotiation. Room names arrive in telemetry from the simulator.
 
 The **Active faults** summary counts active device faults, including sensor faults. The **Lighting activity** legend's **Faulted** count includes only faulted light fixtures. Therefore, a sensor fault can produce 1 active fault while the fixture legend reports 0 faulted lights.
 
 ## State and offline semantics
 
-![State transitions: an observed controller is healthy with no faults, faulted with an active fault, or offline after the stale observation timeout. New telemetry returns an offline controller to observed.](assets/diagrams/lighting-instrumentation-state.svg)
+![State transitions: an observed controller is healthy with no faults, faulted with an active fault, or offline after the stale observation timeout. New telemetry returns an offline controller to observed.](../assets/diagrams/lighting-instrumentation-state.svg)
 
 - A controller is online unless its status is `Offline`.
 - `Faulted` controllers remain online.
@@ -110,7 +110,7 @@ src/Devices.Instrumentation.Web/
     styles.css   summary cards, controller cards, event feed
 ```
 
-Shared contracts are in [Devices.Contracts](../src/Devices.Contracts/).
+Shared contracts are in [Devices.Contracts](../../src/Devices.Contracts/).
 
 ## Configuration
 

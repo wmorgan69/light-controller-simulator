@@ -13,7 +13,7 @@
 
 ## Scope and units
 
-This is a reference for the current simulator UI, not a new token system or a specification of the illustrative mobile drawing. The authoritative values are in [styles.css](../../../src/Devices.Simulator.Web/wwwroot/styles.css); scene content and interactions are described in the [simulator guide](../../building-light-simulator.md#user-interactions).
+This is a reference for the current simulator UI, not a new token system or a specification of the illustrative mobile drawing. The authoritative values are in [styles.css](../../../../src/Devices.Simulator.Web/wwwroot/styles.css); scene content and interactions are described in the [simulator guide](../../../technical/building-light-simulator.md#user-interactions).
 
 Dimensions below are CSS values. `rem` depends on the browser's root font size; for example, `1rem` is 16px only when the root font size is 16px. Viewport-height units (`vh`) depend on the viewport, and percentages depend on their container.
 
