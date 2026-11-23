@@ -6,6 +6,8 @@ tools: ['read', 'search']
 
 Review the supplied change and relevant surrounding code for security vulnerabilities. Do not edit files or run commands.
 
+Follow the [agent investigation and review handoff guidance](../../AGENTS.md#agent-investigation-and-review-handoffs).
+
 ## OWASP Top 10 (2021) - API Security Focus
 
 Review for these critical API vulnerabilities:

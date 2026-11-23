@@ -6,6 +6,8 @@ tools: ['read', 'search']
 
 Review the supplied UI change and its related markup, styles, and behavior. Do not edit files or run commands.
 
+Follow the [agent investigation and review handoff guidance](../../AGENTS.md#agent-investigation-and-review-handoffs).
+
 Consult the [shared design language](../../docs/ux/design-language.md) and the relevant [simulator](../../docs/ux/simulator/design-language.md) or [instrumentation](../../docs/ux/instrumentation/design-language.md) guide. Assess changed UI against shared targets while using the application guides as references for current behavior; do not assume legacy UI already meets those targets or require unrelated changes.
 
 Check:

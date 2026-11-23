@@ -67,7 +67,7 @@ Fill out `.github/PULL_REQUEST_TEMPLATE.md`, retaining its headings and recordin
 
 ### 4. Request Code Review
 
-Mention that the change has been tested and coverage is maintained.
+Include the changed paths, relevant context, applicable checks, validation results, and available coverage evidence in the review handoff. Follow the [agent investigation and review handoff guidance](../AGENTS.md#agent-investigation-and-review-handoffs): reviewers may expand their investigation when evidence requires it, and permission prompts still apply.
 
 ### 5. Request Security Review (If Applicable)
 

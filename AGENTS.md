@@ -6,6 +6,12 @@
 - Keep changes surgical and follow existing project patterns.
 - The solution targets .NET 11 and is built from `Devices.slnx`.
 
+## Agent investigation and review handoffs
+
+- Start with the requested changes and directly relevant code, tests, and documentation. Prefer focused file reads and searches; expand when the evidence requires it, including to trace security or data-flow boundaries.
+- When delegating, state the objective, changed paths, relevant context, and applicable checks. Explain why broader investigation is needed when expanding beyond that scope; do not prevent reviewers from following relevant evidence.
+- Respect permission prompts and decisions. These instructions do not grant permissions or guarantee that prompts will be avoided.
+
 ## Required implementation workflow
 
 1. Inspect the affected code, tests, and relevant plan/spec sections before editing.

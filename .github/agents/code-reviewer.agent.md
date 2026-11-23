@@ -6,6 +6,8 @@ tools: ['read', 'search']
 
 Review the supplied change and relevant surrounding code. Do not edit files or run commands.
 
+Follow the [agent investigation and review handoff guidance](../../AGENTS.md#agent-investigation-and-review-handoffs).
+
 Focus on:
 
 - Incorrect behavior, edge cases, and error handling.
