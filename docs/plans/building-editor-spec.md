@@ -1,38 +1,31 @@
 # Building editor specification
 
-**Status: proposed.** This is a design for future work, not a description of implemented functionality. Decisions listed as open must be resolved before implementation.
+**Status: implemented, with limitations below.** This describes current behavior rather than a claim that every original acceptance goal is complete.
 
 ## Table of contents
 
 - [Purpose and scope](#purpose-and-scope)
-- [Current baseline](#current-baseline)
-- [Proposed workflow](#proposed-workflow)
+- [Current workflow](#current-workflow)
 - [Building design and validation](#building-design-and-validation)
 - [Persistence and runtime integration](#persistence-and-runtime-integration)
+- [Access and API](#access-and-api)
 - [Failure and conflict handling](#failure-and-conflict-handling)
-- [Acceptance criteria](#acceptance-criteria)
-- [Open decisions](#open-decisions)
+- [Remaining gaps](#remaining-gaps)
 - [Related designs](#related-designs)
 
 ## Purpose and scope
 
-Allow a user to edit the simulator's building: choose its floor count, add or change office spaces and doors, place lights, and connect lights to a controller. A menu in the simulator provides an entry point. The saved building design is stored in SQLite and restored when the simulator restarts.
+The simulator supports editing one building's dimensions, floors, rooms, doors, lights, sensors and controller connections, with a saved design in SQLite. This is a local-development simulator, not an electrical engineering or code-compliance tool. Instrumentation has a separate telemetry database. See the [editor technical guide](../technical/building-editor.md), [simulator guide](../technical/building-light-simulator.md) and [instrumentation guide](../technical/lighting-instrumentation.md).
 
-This specification covers one simulator building and its editor. It does not propose a real electrical engineering or code-compliance tool, a multi-building service, or changes to instrumentation's visual design.
+## Current workflow
 
-## Current baseline
+When editing is available, choose **Building menu**, then **Edit building** to load the saved design. Multiple editors may work concurrently. The editor offers an SVG plan, item list and forms, session undo/redo, save, JSON export and exit. Edits remain in browser memory and do not change the running simulation until saved. Floor and item deletion and leaving with changes prompt for confirmation. Save validates, persists and attempts activation; the UI reports saved and running revisions separately, with activation and cleanup status and retry controls.
 
-The [simulator guide](../technical/building-light-simulator.md#building-model) describes today's fixed four-floor model, one controller per floor, one sensor per room, in-memory simulator state, and illustrative wiring. The [instrumentation guide](../technical/lighting-instrumentation.md#persistence) describes a separate SQLite store for telemetry; it does not persist the simulator building design. The editor, building-design database, and editable wiring do not exist yet.
+The editor can replace its local design with a one-floor blank building or the original four-floor template after confirmation. The replacement is undoable, but unapplied form values are discarded. New IDs prevent reuse of retired entities; saving replaces previous devices and initiates controller cleanup.
 
-## Proposed workflow
+Existing plan items can be dragged in select or move mode. The preview snaps to the grid, Escape cancels, and moving a room translates its fixtures. A completed move is undoable; invalid intermediate positions remain in the editor with validation feedback. Click-to-place and labelled item-list and form alternatives remain available.
 
-1. Open a labelled menu in the simulator and choose **Edit building**.
-2. Acquire the single-editor session and load the saved design, or offer to resume its persisted draft, without changing the running simulation.
-3. Set the floor count, select a floor, and use a toolbar to add and edit rooms, doors, lights, and controller connections. Provide equivalent form-based controls for users who cannot use a canvas.
-4. Undo or redo edits as needed. Review validation and the effects of destructive changes. Save explicitly, keep the draft for later, or discard it. Leaving with unsaved changes requires confirmation.
-5. After a successful save, activate the saved design immediately and return the resulting authoritative design to the editor. Do not present an unpersisted draft as running state.
-
-The [UX design](../ux/simulator/editor/ux.md) develops this flow and the [UI design](../ux/simulator/editor/ui.md) proposes responsive layouts.
+The browser refreshes status every 20 seconds. Unsaved changes and undo/redo history are held only in the open browser session; undo after a save creates unsaved changes. Save compares the observed revision with the current saved revision. On conflict, editing and saving stop; users can export local edits or explicitly discard them and load the current saved design.
 
 ```mermaid
 ---
@@ -48,54 +41,54 @@ config:
     textColor: '#F8FAFC'
 ---
 flowchart TB
-    Entry("Enter editor") --> Loading("Loading")
-    Loading -->|loaded| Clean("Clean")
-    Loading -->|failed| LoadError("Load error")
-    LoadError -->|retry| Loading
-    Clean -->|edit| Dirty("Unsaved draft")
-    Dirty -->|save| Validating("Validating")
-    Validating -->|invalid| Dirty
-    Validating -->|valid| Saving("Saving")
-    Saving -->|persisted| Activating("Activating")
-    Activating -->|activated| Clean
-    Activating -->|failed| ActivationError("Saved; activation failed")
-    Saving -->|save failed| Dirty
-    ActivationError -->|retry activation| Activating
-    ActivationError -->|exit; retry later| Exit
-    Dirty -->|discard confirmed| Clean
-    Dirty -->|latest draft persisted; keep and exit| Exit
-    Clean -->|exit| Exit("Leave editor")
+    Check("Check editor access") -->|unavailable| View("Show access status; keep viewing")
+    Check -->|available| Entry("Open editor")
+    Entry --> Load("Load saved design")
+    Load -->|load failed| Error("Show error and retry")
+    Load -->|loaded| Access("Represent legacy access as editable objects")
+    Access --> Edit("Edit in browser memory")
+    Edit -->|confirm blank or default| Template("Replace local design with new identities")
+    Template --> Edit
+    Edit -->|save| Validate("Validate for save")
+    Validate -->|invalid| Edit
+    Validate -->|valid| Saved("Persist saved design")
+    Saved --> Activate("Attempt activation")
+    Activate -->|success| Active("Running design and access geometry updated")
+    Activate -->|failure| Failed("Saved; activation failed")
+    Failed --> Retry("Editor retry or restart")
+    Retry --> Activate
+    Edit -->|revision conflict| Recovery("Stop writes; export or load saved design")
+    Edit -->|exit with unsaved changes| Exit("Confirm discard and leave")
+    Active --> Exit
     classDef default fill:#1E293B,stroke:#60A5FA,color:#F8FAFC;
-    linkStyle default stroke:#60A5FA,stroke-width:2px;
 ```
 
 ## Building design and validation
 
-The design needs stable identities for floors, rooms, doors, controllers, sensors, light strips, and connections. Renaming or repositioning an entity must not silently change its identity. A deleted stateful entity must not reuse its retired ID, or must have a distinct generation tracked across restarts; recreating a room or device in the same position must not inherit the deleted entity's presence or faults. Display names are not IDs. The data must represent floor order, room boundaries and dimensions, door placement, fixture positions, and controller-to-device associations sufficiently for both editing and simulator rendering.
+The JSON design contains `revision`, `width`, `depth` and `floors`. Each floor has an ID, number, controller ID and X/Z position, rooms, and optional `walkways` and `stairs` arrays. Each room has ID, name, X/Z top-left, width, depth, one sensor, and door and light arrays. Doors have IDs and positions; sensors and lights also carry their controller ID. Walkways and stairs have IDs, X/Z top-left and width/depth; stairs also specify `east` or `west` as the direction of ascent. A stair belongs to its lower floor and connects it to the next numbered floor. Coordinates are absolute metres. Names are display text, not identifiers.
 
-The first version uses these agreed design rules:
+Fresh databases and the default template use a 10 × 8 m design with four floors, nine rooms, nine sensors and 37 strips. It preserves the IDs and English names from `DeviceIds.CreateBuilding()`, including `DeviceIds.Sensor` for each room. Its room rectangles, door and fixture positions approximate the original 3D arrangement on the 0.5 m grid; generated door IDs are stable. Existing saved and active designs retain their dimensions and coordinates. The editor shows its local design, while the 3D view uses the active design geometry; legacy access is generated relative to its footprint without modifying stored data. New rooms and floors receive new IDs, a sensor or controller respectively, and logical connections can be edited. Room state exposes `sensorId`; legacy state without it uses the original floor/room-derived ID.
 
-- A building has 1–10 floors and editable width and depth in metres, initially 20 × 20 m.
-- Rooms are non-overlapping rectangles; placement snaps to a 0.5 m grid. Doors are placed on room boundaries.
-- Each floor has one automatically created controller. Each room has one automatically created, movable presence sensor. Users place individual light strips and can change their positions.
-- Wiring represents logical associations to the controller on the same floor; routes are generated automatically for illustration and are not physical cable layouts. Every light and sensor must be connected before saving.
+For save, server validation requires:
 
-Proposed minimum validation:
+- 1–10 floors, numbered contiguously from 1, and building width/depth each 2–100 m on the 0.5 m grid.
+- Non-overlapping rectangular rooms, at least 1 × 1 m, on the grid and within the footprint; room names must not be blank.
+- Controllers within the footprint; doors on a room boundary; sensors and lights within or on their room boundary. All positions are on the grid.
+- Walkway and stair rectangles have positive dimensions and fit within four metres of the footprint; their coordinates need not be on the grid. Each floor has at most 256 walkways and 32 stairs. Stairs cannot start on the top floor, and ascent direction must be `east` or `west`.
+- One sensor per room and every sensor and light connected to that floor's controller. Doors and light lists may be empty.
+- Globally unique, nonempty IDs of at most 128 ASCII letters, digits, hyphens or underscores; removed saved IDs cannot be reused or changed to another entity type.
 
-- Require the agreed floor count, valid dimensions and geometry, valid door placement, and meaningful names. Validate grid placement and require all lights and sensors to connect to their own floor's controller.
-- Reject references to missing entities, incompatible connections, and invalid or duplicate IDs; identify the affected item and how to fix it.
-- Before removing a floor, room, controller, or device with dependants, show the affected items and require confirmation to delete them together. Cancel preserves the draft; never silently leave dangling references.
-- Validate on the server as well as in the editor. Do not rely on the client to enforce correctness.
+Unsaved in-memory edits may temporarily be invalid. A save request must be structurally well formed, with required arrays, objects and safe unique IDs; references are safe IDs or null, names are at most 256 characters, and payloads are bounded to 100 floors and 10,000 entities. The browser also validates before save; server validation is authoritative and reports paths and messages.
 
 ## Persistence and runtime integration
 
-The simulator owns a separate SQLite file for building designs and persisted drafts. Proposed configuration is `BuildingDesign:SqlitePath`, defaulting to `building-design.db` relative to the simulator content root. For Compose, configure `BuildingDesign__SqlitePath=/data/building-design.db` and mount a separate `building-design-data` volume at `/data`; this storage is not yet configured. The existing instrumentation telemetry database remains separate. On first run, seed the current building without overwriting an existing design; version and migrate the schema.
+`BuildingDesign:SqlitePath` defaults to `building-design.db` relative to the simulator content root. Compose sets `BuildingDesign__SqlitePath=/data/building-design.db` and mounts `building-design-data` at `/data`; instrumentation uses its own `telemetry-data` volume. Fresh databases receive the seed only once. Schema version 4 migrates versions 1–3 while retaining saved and active designs and revision. An unsupported version or nonempty unversioned database is rejected. Migration cannot recover IDs deleted before version 1, except IDs still visible in the old active design. See [backup and restore](../technical/building-light-simulator.md#persistence-and-backup).
 
-Document manual backup and restore; automatic backups are not part of the first version. Use SQLite's online backup facility for a consistent live backup, or stop the simulator before copying the database and any required journal files. Restore only while the simulator is stopped, validate the backup's integrity and schema before replacing data, and retain a recovery copy until the restored design has been verified.
+The database stores saved and last active designs, edit revision, retired IDs and cleanup status. Save compares the client's observed edit revision and atomically replaces the saved design, then separately attempts activation. Activation retains compatible live state for retained device IDs and drops removed devices; state itself is not restored across process restart. Removed controllers are enqueued for cleanup only as part of successful activation. Older active work is fenced by saved or active revision and retired IDs cannot be reused.
 
-Only one editor may edit at a time. Use a renewable editor lease; automatically release it after expiry and preserve the persisted draft for recovery. Reject writes from expired or superseded sessions so recovery cannot create two active editors. If renewal fails or the lease is lost, notify the current editor, stop saving and draft persistence from that session, and retain its local edits in memory. Offer a local export of those edits. After reacquiring the lease, compare the local edits' base revision with the current persisted design and draft; when they differ, let the user export the local edits, explicitly discard them, or manually reapply them to the current draft. Never silently overwrite newer work or claim local-only edits were stored. The exact lease duration and heartbeat are open.
+Older designs with absent or null access arrays retain their legacy generated geometry. Opening one in the editor creates editable access objects in the browser; saving persists those objects with stable IDs. Empty arrays explicitly remove that floor's corresponding generated objects. Session undo includes changes to access objects.
 
-Persist drafts and support undo/redo while the editor session is open, including after saving. History is not restored after editor exit or restart; undoing a saved edit changes the draft and requires another save to affect the running building. If draft persistence fails, keep the current edits in the session and report that they are not safely stored. Do not offer **keep draft and leave** until persistence succeeds; retry persistence or explicitly confirm discarding the unsaved changes. An unexpected browser or process termination may still lose edits that were not persisted.
+On startup the service restores the last active design and retries a different saved revision. If it fails, the restored active design remains running. Activation failure is represented in the current process and recomputed by startup retry, not stored as a separate durable failure record. After a runtime failure, an editor can retry, or restart can retry; no periodic activation retry is implemented.
 
 ```mermaid
 ---
@@ -111,53 +104,59 @@ config:
     textColor: '#F8FAFC'
 ---
 flowchart LR
-    Editor("Editor") -->|persist draft| API("Simulator API")
-    API -->|draft and design writes| DB[("Simulator design SQLite")]
-    Editor -->|validate and save| API
-    DB -->|load saved design| Runtime("Simulator runtime")
-    Runtime -->|HTTP state| Browser("Simulator view")
-    Runtime -->|HTTP and optional MQTT| Dashboard("Instrumentation")
-    Dashboard -->|persist telemetry| Telemetry[("Instrumentation telemetry SQLite")]
+    Editor("Local editor") -->|save with expected revision| API("Simulator editor API")
+    API -->|transactional saved design| DB[("Design SQLite")]
+    API -->|activate saved revision| Runtime("Simulator runtime")
+    Runtime -->|commit active and enqueue removals| DB
+    Runtime -->|building view and design status| Browser("Simulator browser")
+    Runtime -->|controller snapshot| Dashboard("Instrumentation")
+    DB -->|restore active; retry saved on startup| Runtime
+    DB -->|pending or failed cleanup| Publisher("MQTT publisher")
+    Publisher -->|empty retained payload| Broker("MQTT broker")
+    Dashboard --> Telemetry[("Instrumentation telemetry SQLite")]
     classDef default fill:#1E293B,stroke:#60A5FA,color:#F8FAFC;
-    linkStyle default stroke:#60A5FA,stroke-width:2px;
 ```
 
-This is a proposed boundary, not a chosen API shape or a claim that the editor is implemented. Design writes must be atomic, and the simulator must not expose a partially written design. Activate immediately after a successful save; if activation fails, show which design is saved and which is running. Persist both the last successfully activated design and the pending activation. On restart, restore the last active design and retry the pending activation; if it still fails, keep the restored design active. Show persistent pending or failed activation status in the simulator and editor, with a retry control where local editor access is enabled. Allow the user to leave and retry later. Associate activation and cleanup work with design revisions; recheck current authority before dispatch or retry and cancel or no-op superseded work. Coordinate in-flight effects and reconcile state so stale work cannot activate an older design or remove a controller required by the current design. Keep simulation mutation responses authoritative and MQTT publication off the HTTP mutation critical path.
+The publisher tries pending and failed cleanup while MQTT is connected, normally every five seconds; a retry request accelerates the next check. Successful broker publication marks the item completed; failures remain durable and retryable. Cleanup completion and failure updates are fenced by active revision. Activation and cleanup are separate from MQTT publication; HTTP mutation responses do not wait for MQTT. This does not constitute end-to-end subscriber confirmation.
 
-Preserve presence and faults for retained device IDs when activating a design, and remove live state for deleted devices. For removed controllers, clear retained MQTT state and remove them from the current instrumentation dashboard while retaining historical events. Enqueue removal cleanup only after the design that removes the controller successfully activates; a failed activation must not clean up controllers in the still-active design. Fence cleanup against the active design revision and a non-reused controller identity or generation, including when a floor number is reused. Reconcile authoritative removals across HTTP and MQTT, remove current controller state and observation timestamps from memory and persistent storage, and prevent stale messages or restart from restoring deleted controllers. Cleanup must be idempotent and recoverable after failure or restart. Publication and removal must remain asynchronous rather than delaying the save response. Persist cleanup progress and show pending, failed, and complete states separately from activation in the simulator and editor; retry automatically and offer a retry control where local editor access is enabled. Do not report unconfirmed cleanup as complete. Define revision, selected-floor, active-command, and restart reconciliation before implementation; do not assume old snapshots automatically disappear.
+Instrumentation polls `/api/controller-snapshot`, containing the active design revision and controllers. It persists membership, removes absent controllers' current state and observation timestamps, preserves historical events, and tombstones removed IDs to reject late telemetry. Equal revisions must have equal membership; stale revisions and reused tombstones are rejected. Only a `404` falls back to legacy `/api/controllers`, which cannot establish removals.
 
-The first version is for local development only and has no authentication. Enable editor endpoints only for a verified loopback-only local development host, with browser-origin and host protections; do not trust a client-supplied host header alone. Disable editor access in the existing Compose deployment, non-loopback bindings, and proxy deployments until a protected access model is implemented. These restrictions apply to editor access, not the existing simulator endpoints. Define and test the enforcement before implementation; authentication and authorization are required before expanding access beyond that scope.
+## Access and API
+
+Editor access has no authentication and is limited to a directly connected loopback host in the Development environment. The client and local connection addresses, request host and every server listener must be loopback; the request scheme and port must match a listener. Forwarding headers are rejected. Mutations require an exact same-origin `Origin`; GET/HEAD may omit it. Compose publishes its ports on host loopback, but the container listener binds `0.0.0.0`, so editor endpoints are disabled there.
+
+Other simulator API mutations reject forwarding headers, non-loopback Host values, cross-origin or malformed `Origin` headers, and `Sec-Fetch-Site` values other than `same-origin`. Originless local command-line requests remain supported. These checks do not authenticate callers or check the TCP peer; they rely on a loopback-bound deployment. Compose sets `Simulator:AllowHttpMutations` to `false` so HTTP mutations are disabled even from its internal network; the default is `true` for direct local development. Compose therefore supports viewing and telemetry polling, but not simulator HTTP controls or editor mutations. MQTT commands are separate and require a trusted broker with its own access controls. Instrumentation APIs are unauthenticated. The Compose ports are bound to `127.0.0.1`; do not expose them through proxies or non-loopback bindings. Local processes and users share access.
+
+The browser periodically reads `GET /api/capabilities`, which returns non-cached `mutationsAllowed` and `editorAllowed` flags for the current request. Until access is confirmed, or if the check fails, mutation controls are disabled and access status is shown. These flags guide the UI; server policies still enforce each request.
+
+The API uses camelCase JSON and exposes:
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/building-editor` | Saved `design`, `activeDesign`, `editRevision`, `activationStatus`, cleanup |
+| `POST` | `/api/building-editor/save` | Save `{ "expectedRevision": n, "design": {...} }`, then attempt activation |
+| `POST` | `/api/building-editor/retry` | Retry activation |
+| `POST` | `/api/building-editor/retry-cleanup` | Request cleanup retry; returns `202` |
+
+Use the returned `editRevision` as `expectedRevision` for save. Invalid input returns `400` with validation errors; a stale revision returns `409`; disallowed editor requests return `403`. Save success does not imply activation success: inspect `activationStatus`, `design.revision`, `activeDesign.revision` and cleanup entries. Ordinary `GET /api/building-view` returns active design and current controllers together.
+
+The read-only `GET /api/building-design-status` is not editor-restricted. It returns `savedRevision`, `runningRevision`, `activationStatus`, `pendingCleanup`, `failedCleanup`, and `completedCleanup`. The simulator header polls it every five seconds after a response and displays an unavailable state on failure. A changed running revision refreshes the building view and controls; if that fails, the header reports the error and retries on a later poll.
 
 ## Failure and conflict handling
 
-- A failed load shows an error and retry; it must not replace the saved design with an empty one.
-- A failed validation or save preserves the draft and explains the problem. A second editor cannot modify the design while the first holds a valid session; explain when it can retry and that the persisted draft is preserved on expiry.
-- A lost editor lease disables writes and exposes an explicit local-edit recovery path without overwriting another session's draft.
-- A successful save must be distinguishable from activation or publication failure. Explain which design is saved and which is running; allow exit and later activation retry.
-- Destructive operations and navigation away from a dirty draft require confirmation. Cancel keeps the editor open; a safely persisted draft can be resumed later, while explicitly confirmed discard removes its changes. Never claim an unpersisted draft was retained.
+- Loading errors are shown with retry. Invalid saves preserve the prior saved design and local edits.
+- Concurrent editors can open independently; stale saves return a conflict rather than overwriting newer designs.
+- A persistence failure leaves local edits in memory; closing or reloading the browser loses unsaved edits.
+- A saved revision can remain pending or failed while the previous active design runs. Cleanup remains pending or failed until a successful broker publish; retry and status are separate from activation.
+- SQLite failures do not replace the database with an empty design. Online backup or a stopped-server copy is required for a consistent backup.
 
-## Acceptance criteria
+## Remaining gaps
 
-- A user can enter and leave the editor, create 1–10 floors, adjust building dimensions, and create and edit rectangular rooms, doors, lights, and same-floor controller connections.
-- Pointer and keyboard/form workflows can complete the same essential design tasks; desktop and narrow-mobile layouts remain usable.
-- Invalid designs, unconnected lights or sensors, and dangling relationships cannot be saved; errors identify the affected fields or entities.
-- Saving a valid design persists it across simulator restarts, while a failed save leaves the previously saved design intact.
-- A default installation retains the existing building until a design change is saved; saved designs are not replaced on restart.
-- The running simulator, HTTP state, and instrumentation reflect an activated design, including controller removals and retained MQTT cleanup; historical events are preserved.
-- Only one editor can modify a design at a time; expired sessions cannot write, persisted drafts can be recovered, and edits can be undone and redone during the editor session.
-- Local-only editor access, abandoned or lost sessions, destructive changes, storage failures, pending activation across restart, and asynchronous cleanup failures have explicit, tested outcomes. Tests cover failed activation followed by restart, floor removal and recreation while cleanup is pending, recreating a room or device in the same floor/name/slot without inheriting deleted state, superseded work, and conflict recovery without overwriting newer edits.
-- Focused tests cover validation, persistence and restart, state reconciliation, controller removal, and accessible editor workflows. Document configuration, migration, API and protocol changes when implemented.
-
-## Open decisions
-
-Resolve these with stakeholders before treating the proposal as implementation-ready:
-
-1. Minimum and maximum width and depth; room size constraints, floor footprint rules, and which room-boundary door placements are valid.
-2. Controller placement, default sensor and light placement, and light-strip properties beyond editable position.
-3. Draft retention duration and cleanup, including how to handle expired drafts.
-4. Single-editor lease duration and heartbeat; activation retry cadence and coordination with simultaneous simulator commands.
-5. Revision and selected-floor reconciliation, cleanup retry cadence and backoff, and the mechanism for authoritative instrumentation removal across HTTP, MQTT, and restart.
-6. Exact local-only access enforcement, browser-origin protections, backup tooling, and migration details.
+- Access objects and room geometry are illustrative and do not guarantee a connected or accessible route from each interior door. The seed approximates the baseline room geometry.
+- Authentication, authorization and safe editor access for non-loopback, proxy or Compose deployments are not implemented.
+- Automatic backups and a periodic activation retry are not implemented.
+- Cleanup indicates broker publication, not acknowledgement by every subscriber. A [broker-backed test](../technical/building-light-simulator.md#running-and-testing) covers ingestion, direct snapshot reconciliation and retained-message cleanup; it does not cover HTTP polling, disconnects or process restarts. Accessibility and desktop/mobile verification remain broader than this test.
+- Legacy UX and design documents remain design references and may describe proposed behavior beyond the current implementation.
 
 ## Related designs
 

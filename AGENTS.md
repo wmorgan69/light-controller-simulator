@@ -5,6 +5,7 @@
 - Read `docs/plans/plan.md` before making broad feature changes. Treat the current source and tests as authoritative where the original plan describes proposals that have since changed.
 - Keep changes surgical and follow existing project patterns.
 - The solution targets .NET 11 and is built from `Devices.slnx`.
+- Browser frontends use Node.js and npm with React, TypeScript, Material UI, Vite, and Three.js. See `package.json` and the CI workflow for scripts and supported tool versions.
 
 ## Agent investigation and review handoffs
 
@@ -86,7 +87,7 @@ For features and fixes that should visibly demonstrate the full agent workflow, 
 
 ## Localization standards
 
-- Put new or changed browser interface text, including accessibility labels and error and status messages, in the appropriate application's English `wwwroot/localization.en.mjs`. Keep matching English HTML text and attribute fallbacks synchronized; shared model room names use the resource below instead.
+- Put new or changed browser interface text, including accessibility labels and error and status messages, in the appropriate application's English `frontend/shared/localization.en.ts` (simulator) or `frontend/localization.en.ts` (instrumentation). Keep matching English HTML text and attribute fallbacks synchronized; shared model room names use the resource below instead.
 - Maintain shared model room names in `src/Devices.Contracts/RoomNames.resx`; preserve their culture-independent values in HTTP and MQTT state. Do not translate stable IDs, protocol values, user-supplied descriptions, or unknown telemetry.
 - Use resource placeholders and plural forms for dynamic text. Preserve escaping when inserting external values into HTML, and add focused tests for interpolation, pluralization, fallbacks, and relevant rendering behavior.
 - English is the only supported language. Do not add translations, automatic language negotiation, or language-selection controls unless requested.

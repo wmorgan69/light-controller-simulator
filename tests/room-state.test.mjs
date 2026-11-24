@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { lightEmits, lightVisualState, roomIllumination, selectedRoomVisualState, sensorFaultForRoom, sensorPulseAmount } from '../src/Devices.Simulator.Web/wwwroot/room-state.mjs';
+import { lightEmits, lightVisualState, roomIllumination, selectedRoomVisualState, sensorFaultForRoom, sensorPulseAmount } from '../src/Devices.Simulator.Web/frontend/scene/room-state.ts';
 
 test('a sensor fault changes the sensor, not the selected room walls or floor', () => {
   for (const presence of [false, true]) {
@@ -36,6 +36,12 @@ test('finds only the selected room sensor fault', () => {
   assert.equal(sensorFaultForRoom(controller, { id: 'floor-4-office-b' }), undefined);
   controller.faults = [];
   assert.equal(sensorFaultForRoom(controller, { id: 'floor-4-office-a' }), undefined);
+});
+
+test('uses the explicit sensor identity for an edited room', () => {
+  const fault = { scope: 'sensor', targetId: 'sensor-new-id' };
+  const controller = { floor: 1, faults: [fault] };
+  assert.equal(sensorFaultForRoom(controller, { id: 'room-new-id', sensorId: 'sensor-new-id' }), fault);
 });
 
 test('only faulted sensors pulse, and reduced motion keeps them steady', () => {

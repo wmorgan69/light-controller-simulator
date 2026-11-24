@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { controllerStatusLabel, eventTypeLabel, localize } from '../src/Devices.Instrumentation.Web/wwwroot/localization.en.mjs';
+import { controllerStatusLabel, eventTypeLabel, localize } from '../src/Devices.Instrumentation.Web/frontend/localization.en.ts';
 
 test('all static markup localization keys exist', () => {
   const markup = readFileSync(new URL('../src/Devices.Instrumentation.Web/wwwroot/index.html', import.meta.url), 'utf8');
@@ -23,19 +23,27 @@ test('static text and accessibility labels remain available before localization 
   assert.match(markup, /<span class="status-dot" aria-hidden="true"><\/span>/);
 });
 
-test('loads the localized application through a cache-busted module URL', () => {
+test('loads the React application and its styles', () => {
   const markup = readFileSync(new URL('../src/Devices.Instrumentation.Web/wwwroot/index.html', import.meta.url), 'utf8');
-  assert.match(markup, /<script\s+type="module"\s+src="\/app\.js\?v=[^"]+"><\/script>/);
+  assert.match(markup, /<script\s+type="module"\s+src="\/dist\/app\.js"><\/script>/);
+  assert.match(markup, /<link\s+rel="stylesheet"\s+href="\/dist\/app\.css">/);
 });
 
 test('looks up English resources and interpolates values', () => {
   assert.equal(localize('documentTitle'), 'Lighting Instrumentation');
   assert.equal(localize('totalControllers', { count: 4 }), 'of 4 total');
+  assert.equal(localize('eventsShown', { shown: 12, total: 29 }), 'Showing 12 of 29 available');
+  assert.equal(localize('controllerId', { id: '<controller>' }), 'Controller ID: <controller>');
+  assert.equal(localize('httpPollingDetails', { state: 'available', source: 'Source: http://simulator:5080' }), 'HTTP polling: available · Source: http://simulator:5080');
 });
 
 test('formats singular and plural English messages', () => {
   assert.equal(localize('affectedControllers', { count: 1 }), '1 controller affected');
   assert.equal(localize('affectedControllers', { count: 2 }), '2 controllers affected');
+  assert.equal(localize('faultedFixtureCount', { count: 1 }), '1 faulted fixture');
+  assert.equal(localize('faultedFixtureCount', { count: 2 }), '2 faulted fixtures');
+  assert.equal(localize('fixtureRowAriaLabel', { on: 1, total: 3, faulted: 2 }), '1 of 3 lights on, 2 faulted');
+  assert.equal(localize('faultedFixtureIdentities', { ids: '<strip>' }), 'Faulted fixtures: <strip>');
 });
 
 test('maps known controller statuses and preserves unknown protocol values', () => {

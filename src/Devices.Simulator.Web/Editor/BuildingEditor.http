@@ -1,0 +1,50 @@
+@baseUrl = http://localhost:5080
+@origin = http://localhost:5080
+# Copy editRevision from the editor response. Update revision after each write.
+@revision = 1
+
+### Current active building and controller membership
+GET {{baseUrl}}/api/building-view
+
+### Authoritative instrumentation snapshot
+GET {{baseUrl}}/api/controller-snapshot
+
+### Activation and cleanup status
+GET {{baseUrl}}/api/building-design-status
+
+### Read saved design (Development with loopback-only binding)
+GET {{baseUrl}}/api/building-editor
+
+### Read the original four-floor design template without changing the saved building
+GET {{baseUrl}}/api/building-editor/default-design
+
+### Save and activate the design; this replaces the running building
+# Set @revision to the editRevision from the editor response.
+POST {{baseUrl}}/api/building-editor/save
+Origin: {{origin}}
+Content-Type: application/json
+
+{
+  "expectedRevision": {{revision}},
+  "design": {
+    "revision": 1,
+    "width": 20,
+    "depth": 20,
+    "floors": [{
+      "id": "floor-demo",
+      "number": 1,
+      "controllerId": "controller-demo",
+      "controllerX": 0,
+      "controllerZ": 0,
+      "rooms": []
+    }]
+  }
+}
+
+### Retry a pending activation
+POST {{baseUrl}}/api/building-editor/retry
+Origin: {{origin}}
+
+### Request asynchronous MQTT cleanup retry
+POST {{baseUrl}}/api/building-editor/retry-cleanup
+Origin: {{origin}}

@@ -4,91 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title data-i18n="pageTitle">Building Light Simulator</title>
-  <link rel="stylesheet" href="/styles.css?v=floor-navigation-12">
+  <link rel="stylesheet" href="/dist/app.css">
 </head>
 <body>
-  <header>
-    <h1 data-i18n="pageTitle">Building Light Simulator</h1>
-    <p data-i18n="pageSubtitle">Four-floor controller simulation</p>
-    <p id="floorSelectionHint" class="wiring-legend" data-i18n="floorSelectionHint">Choose a floor; select it again to reset the camera.</p>
-    <p id="transportStatus" class="transport-status" role="status" data-i18n="checkingMqtt">Checking MQTT...</p>
-  </header>
-  <main>
-    <nav class="floor-navigation" aria-label="Building floors" data-i18n-aria-label="buildingFloors">
-      <h2 data-i18n="building">Building</h2>
-      <div class="floor-options">
-        <button id="showAllFloors" class="floor-button" type="button" aria-pressed="true" disabled data-i18n="allFloors">All floors</button>
-        <div id="floorButtons" class="floor-buttons"></div>
-      </div>
-      <p id="floorLoading" role="status" data-i18n="loadingFloors">Loading floors...</p>
-      <div class="scenario-controls" role="group" aria-labelledby="scenarioHeading">
-        <h3 id="scenarioHeading" data-i18n="scenarios">Scenarios</h3>
-        <button id="scenarioReset" type="button" data-i18n="resetBuilding">Reset building</button>
-        <button id="scenarioOccupied" type="button" title="Randomly occupy up to 2 rooms on each floor" data-i18n="occupancyDemo" data-i18n-title="occupancyDemoTitle">Occupancy demo</button>
-        <p id="scenarioError" role="alert" hidden></p>
-        <p id="scenarioStatusWarning" role="alert" hidden></p>
-      </div>
-    </nav>
-    <section class="canvas-panel" aria-label="3D building view" data-i18n-aria-label="simulatorView">
-      <canvas id="buildingCanvas" role="img" aria-label="Interactive 3D view of the four-floor building. Illustrative open doors and a rear walkway connect rooms to the stairs between floors. A selected floor shows sections of the stairs above and below where available. Use the accessible controls below to select rooms and trigger sensors or faults." data-i18n-aria-label="simulatorCanvas"></canvas>
-      <div class="scene-overlays">
-        <div class="scene-messages">
-          <div class="view-help">
-            <div id="viewStatus" role="status"></div>
-            <p class="wiring-legend" data-i18n="stairsHelp">Stairs are at the back; orbit to view them.</p>
-            <p id="wiringLegend" class="wiring-legend" hidden><span data-i18n="wiringLabel">Wiring:</span> <span class="sensor-wire" data-i18n="sensorWiringLegend">blue = sensors</span> · <span class="light-wire" data-i18n="lightWiringLegend">yellow = lights</span></p>
-          </div>
-          <div id="loadError" class="load-error" role="alert" hidden></div>
-        </div>
-        <section id="roomInspector" class="room-inspector" aria-label="Room controls" data-i18n-aria-label="roomControls" hidden>
-          <div class="room-inspector-heading">
-            <span id="roomInspectorTitle" data-i18n="roomControls">Room controls</span>
-            <button id="closeRoomInspector" type="button" aria-label="Close room controls" data-i18n-aria-label="closeRoomControls" data-i18n="closeSymbol">×</button>
-          </div>
-          <div class="room-inspector-controls">
-            <label class="inspector-switch" for="inspectorPresence">
-              <span data-i18n="presence">Presence</span>
-              <input id="inspectorPresence" type="checkbox" role="switch">
-            </label>
-            <label class="inspector-switch" for="inspectorFault">
-              <span data-i18n="sensorFault">Sensor fault</span>
-              <input id="inspectorFault" type="checkbox" role="switch">
-            </label>
-          </div>
-          <p id="inspectorError" role="alert" hidden></p>
-        </section>
-      </div>
-    </section>
-  </main>
-  <section class="status-panel">
-    <h2 data-i18n="liveStatus">Live status</h2>
-    <div id="statusTable"></div>
-    <details class="accessible-controls">
-      <summary data-i18n="accessibleControls">Accessible controls</summary>
-      <label for="accessibleFloor" data-i18n="floorView">Floor view</label>
-      <select id="accessibleFloor" disabled><option value="" data-i18n="allFloors">All floors</option></select>
-      <label for="accessibleRoom" data-i18n="roomSensor">Room sensor</label>
-      <select id="accessibleRoom"></select>
-      <button id="accessibleTrigger" type="button" data-i18n="triggerSelectedRoomSensor">Trigger selected room sensor</button>
-      <label for="accessibleFaultScope" data-i18n="faultType">Fault type</label>
-      <select id="accessibleFaultScope">
-        <option value="sensor" data-i18n="sensor">Sensor</option>
-        <option value="light" data-i18n="lightStrip">Light strip</option>
-        <option value="controller" data-i18n="controller">Controller</option>
-      </select>
-      <select id="accessibleFaultTarget" aria-label="Accessible fault target" data-i18n-aria-label="accessibleFaultTarget"></select>
-      <button id="accessibleInjectFault" type="button" data-i18n="injectSelectedFault">Inject selected fault</button>
-      <div id="accessibleFaults" role="group" aria-label="All active faults" data-i18n-aria-label="allActiveFaults"></div>
-      <p id="accessibleError" role="alert" hidden></p>
-      <div id="refreshWarning" class="load-error" hidden>
-        <span id="refreshWarningText" role="alert"></span>
-        <button id="dismissRefreshWarning" type="button" data-i18n="dismiss">Dismiss</button>
-      </div>
-    </details>
-  </section>
-  <script type="importmap">
-    { "imports": { "three": "/vendor/three.module.js" } }
-  </script>
-  <script type="module" src="/app.js?v=localization-en-1"></script>
+  <div id="root">
+    <p id="simulator-initializing" role="status" data-i18n="appInitializing">Initializing simulator… If it does not start, check that JavaScript is enabled and reload the page.</p>
+  </div>
+  <noscript><style>#simulator-initializing { display: none; }</style><p data-i18n="appJavaScriptRequired">JavaScript is required to run the simulator. Enable JavaScript and reload the page.</p></noscript>
+  <script type="module" src="/dist/app.js"></script>
 </body>
 </html>

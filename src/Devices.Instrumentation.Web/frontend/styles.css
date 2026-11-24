@@ -1,0 +1,61 @@
+.MuiPaper-root.summary-card, .MuiPaper-root.panel, .MuiPaper-root.controller-card {
+  border-radius: 14px;
+  box-shadow: 0 5px 20px rgba(32, 48, 77, .035);
+}
+.MuiPaper-root.controller-card:hover { box-shadow: 0 9px 24px rgba(32, 48, 77, .08); }
+.connection-status { min-width: 0; color: #536176; }
+.status-dot, .live-pulse { flex: 0 0 8px; }
+.summary-label, .summary-note, .page-intro, .updated-label, .eyebrow,
+.muted-caption, .section-count, .controller-light-summary,
+.controller-light-summary small, .controller-id, .fixture-count,
+.event-title-row time, .event-controller, .empty-state { color: #536176; }
+.status-pill-faulted { color: #a3313a; }
+.status-pill-healthy { color: #17684d; }
+.status-pill-offline, .status-pill-unknown { color: #536176; }
+.room-presence { color: #536176; }
+.room-presence.present { color: #14715b; }
+.controller-title h3, .controller-id, .event-controller { overflow-wrap: anywhere; white-space: normal; }
+.controller-title h3 { font-size: 1rem; }
+.controller-id { margin: .2rem 0 0; font-size: .875rem; line-height: 1.35; }
+.connection-status, .summary-label, .summary-note, .updated-label, .muted-caption,
+.controller-light-summary, .controller-light-summary strong, .controller-light-summary small,
+.room-name, .room-presence, .fixture-count, .fault-callout, .event-title-row strong,
+.event-title-row time, .event-controller, .empty-state, .empty-state.compact { font-size: .875rem; }
+.eyebrow, .section-count { font-size: .8rem; }
+.section-count { white-space: normal; text-align: right; }
+.status-pill { font-size: .875rem; }
+.controller-header { flex-wrap: wrap; }
+.controller-title { flex: 1 1 8rem; }
+.fixture-row, .fixture-markers { min-width: 0; flex-wrap: wrap; }
+.fixture-markers { max-width: 100%; }
+.status-pill { max-width: 45%; overflow-wrap: anywhere; }
+.fixture-row { flex-shrink: 1; }
+.fixture-count { white-space: normal; }
+.fixture-fault-identities { flex-basis: 100%; margin: 0; color: #a3313a; font-size: .8rem; overflow-wrap: anywhere; }
+.telemetry-notice { color: #536176; font-size: 1rem; }
+.http-polling-details { margin: -1rem 0 1.25rem; color: #536176; font-size: .875rem; overflow-wrap: anywhere; }
+.telemetry-notice ~ .summary-grid .accent-green { --accent: #536176; }
+.updated-label.is-unavailable .live-pulse { background: #536176; }
+.updated-label.is-unavailable .live-pulse::after { display: none; }
+.fault-callout { overflow-wrap: anywhere; }
+.events-toggle {
+  min-height: 44px;
+  margin-top: .5rem;
+  padding: .5rem .75rem;
+  border: 1px solid #536176;
+  border-radius: 8px;
+  background: #fff;
+  color: #243f5b;
+  font: inherit;
+  font-size: .875rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.events-toggle:hover { background: #edf3f8; }
+.events-toggle:focus-visible, .event-list:focus-visible { outline: 3px solid #176a9b; outline-offset: 2px; }
+@media (max-width: 420px) {
+  .topbar { height: auto; min-height: 58px; padding-block: .5rem; }
+  .connection-status { font-size: .875rem; white-space: normal; justify-content: flex-end; text-align: right; }
+  .status-pill { font-size: .875rem; }
+  .room-presence { font-size: .875rem; }
+}

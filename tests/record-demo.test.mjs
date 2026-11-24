@@ -1,6 +1,111 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { captureBuildingLightingDemo, rotateFullTurn, showDashboardUpdate, showFloorLayouts, showOccupancyScenario } from '../docs/assets/record-demo.mjs';
+import { activateRoomControl, captureBuildingLightingDemo, recordingCamera, rotateFullTurn, selectBaselineRoom, selectFloor2OfficeA, showDashboardUpdate, showFloorLayouts, showOccupancyScenario } from '../docs/assets/record-demo.mjs';
+import { fieldOfViewForAspect, selectedFloorCamera } from '../src/Devices.Simulator.Web/frontend/scene/floor-view.ts';
+
+test('recording camera uses the simulator floor preset at desktop and mobile widths', async () => {
+  for (const width of [320, 1280]) {
+    const camera = await recordingCamera(width, 600, 800);
+    assert.equal(camera.fieldOfView, fieldOfViewForAspect(600 / 800));
+    assert.deepEqual(camera.preset, selectedFloorCamera(2, width));
+  }
+});
+
+test('recording selects the office using the current simulator canvas and room controls', async () => {
+  const steps = [];
+  const canvas = {
+    evaluate: async () => ({ viewportWidth: 1280, canvasWidth: 800, canvasHeight: 600 }),
+    click: async options => steps.push(['canvas', options.position])
+  };
+  const page = {
+    locator: selector => { assert.equal(selector, 'canvas.simulator-canvas'); return canvas; },
+    getByRole: (role, options) => {
+      if (role === 'button') return {
+        click: async () => steps.push(['floor']),
+        getAttribute: async () => 'true'
+      };
+      assert.equal(role, 'region');
+      assert.equal(options.name, 'Room controls');
+      return { getByRole: (headingRole, headingOptions) => {
+        assert.equal(headingRole, 'heading');
+        assert.deepEqual(headingOptions, { name: 'Floor 2 — Meeting Office', exact: true });
+        return { waitFor: async () => steps.push(['verified']) };
+      } };
+    }
+  };
+  await selectFloor2OfficeA(page);
+  assert.equal(steps[0][0], 'floor');
+  assert.equal(steps[1][0], 'canvas');
+  assert.ok(steps[1][1].x > 400 && steps[1][1].x < 800);
+  assert.ok(steps[1][1].y > 0 && steps[1][1].y < 600);
+  assert.deepEqual(steps[2], ['verified']);
+});
+
+test('baseline room selection opens the MUI menu and chooses the stable room ID', async () => {
+  for (const visible of [true, false]) {
+    const steps = [];
+    const page = {
+      locator: selector => {
+        assert.equal(selector, '.accessible-controls summary');
+        return { click: async () => steps.push('expand') };
+      },
+      getByRole: (role, options) => {
+        if (role === 'combobox') {
+          assert.equal(options.name, 'Room sensor');
+          return { isVisible: async () => visible, click: async () => steps.push('open') };
+        }
+        assert.equal(role, 'listbox');
+        return { locator: selector => {
+          assert.equal(selector, '[data-value="floor-1-main"]');
+          return { click: async () => steps.push('select') };
+        } };
+      }
+    };
+    await selectBaselineRoom(page);
+    assert.deepEqual(steps, visible ? ['open', 'select'] : ['expand', 'open', 'select']);
+  }
+});
+
+test('room controls use labeled checkboxes and verify the resulting state', async () => {
+  for (const name of ['Presence', 'Sensor fault']) {
+    const steps = [];
+    let checked = true;
+    const checkedLocator = {};
+    const page = { locator: selector => {
+      assert.equal(selector, ':checked');
+      return checkedLocator;
+    }, getByRole: (role, options) => {
+      assert.equal(role, 'region');
+      assert.equal(options.name, 'Room controls');
+      return { getByRole: (controlRole, controlOptions) => {
+        assert.equal(controlRole, 'checkbox');
+        assert.deepEqual(controlOptions, { name, exact: true });
+        return {
+          click: async () => steps.push('click'),
+          and: locator => {
+            assert.equal(locator, checkedLocator);
+            return { waitFor: async options => {
+              assert.deepEqual(options, { state: 'attached' });
+              if (!checked) throw new Error('checkbox not checked');
+              steps.push('checked');
+            } };
+          }
+        };
+      } };
+    } };
+    const expected = { occupied: 1 };
+    const verify = async (counts, label) => {
+      assert.equal(counts, expected);
+      assert.equal(label, 'activation');
+      steps.push('verify');
+    };
+    await activateRoomControl(page, name, verify, expected, 'activation');
+    assert.deepEqual(steps, ['click', 'verify', 'checked']);
+    checked = false;
+    await assert.rejects(activateRoomControl(page, name, verify, expected, 'activation'),
+      /checkbox not checked/);
+  }
+});
 
 test('shows every floor layout and returns to Floor 3', async () => {
   const floors = [];
@@ -116,14 +221,18 @@ test('captures the overview and waits for current dashboard light counts', async
     goto: async () => {},
     waitForResponse: async () => ({ ok: () => true }),
     waitForTimeout: async () => {},
-    getByRole: (role, { name }) => ({
+    getByRole: (role, { name } = {}) => role === 'listbox' ? {
+      locator: selector => {
+        assert.equal(selector, '[data-value="floor-1-main"]');
+        return { click: async () => {} };
+      }
+    } : ({
       click: async () => {
         if (name === 'Reset building') occupied = false;
         if (name === 'Trigger selected room sensor') occupied = true;
         if (name === 'All floors') selectedFloor = name;
       },
       isVisible: async () => true,
-      selectOption: async () => {},
       waitFor: async () => {}
     }),
     getByText: () => ({ waitFor: async () => {} }),
@@ -168,10 +277,14 @@ test('restores the baseline if initial reset fails', async () => {
       requests.push(failed ? 500 : 200);
       return { ok: () => !failed, status: () => failed ? 500 : 200 };
     },
-    getByRole: () => ({
+    getByRole: role => role === 'listbox' ? {
+      locator: selector => {
+        assert.equal(selector, '[data-value="floor-1-main"]');
+        return { click: async () => {} };
+      }
+    } : ({
       click: async () => {},
-      isVisible: async () => true,
-      selectOption: async () => {}
+      isVisible: async () => true
     })
   };
   await assert.rejects(captureBuildingLightingDemo(page, 'output'), /Resetting the building failed: HTTP 500/);

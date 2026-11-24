@@ -9,7 +9,7 @@ public enum ControllerStatus
 
 public sealed record LightStrip(string Id, string RoomId, bool IsOn, bool IsFaulted);
 
-public sealed record RoomState(string Id, string Name, string ControllerId, bool SensorTriggered, bool Presence, IReadOnlyList<LightStrip> LightStrips);
+public sealed record RoomState(string Id, string Name, string ControllerId, bool SensorTriggered, bool Presence, IReadOnlyList<LightStrip> LightStrips, string? SensorId = null);
 
 public sealed record ControllerFault(string Id, string Scope, string TargetId, string Description);
 
@@ -21,6 +21,8 @@ public sealed record ControllerState(
     IReadOnlyList<RoomState> Rooms,
     IReadOnlyList<ControllerFault> Faults,
     int Revision = 0);
+
+public sealed record BuildingControllerSnapshot(long Revision, IReadOnlyList<ControllerState> Controllers);
 
 public sealed record DeviceTelemetry(
     string EventId,

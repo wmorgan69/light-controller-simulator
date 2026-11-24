@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="A walkthrough of the Building Light Simulator and Lighting Instrumentation dashboard.">
+  <meta name="description" content="Walkthroughs of the building lighting simulator, dashboard and building editor.">
   <title>Building Lighting Demo</title>
   <style>
     :root {
@@ -45,19 +45,36 @@
 <body>
   <main>
     <h1>Building Lighting Demo</h1>
-    <p>See the simulator’s building navigation and room controls, then follow sensor and fault changes in the live instrumentation dashboard.</p>
+    <p>Explore the simulator and dashboard, then see a three-floor building created from a blank design.</p>
+    <h2>Building lighting and instrumentation</h2>
+    <p>Orbit, pan and zoom through the default building, then follow presence, a sensor fault and the occupancy demo in the instrumentation dashboard.</p>
     <video controls preload="metadata" playsinline aria-label="Building Light Simulator walkthrough">
       <source src="assets/videos/building-lighting-demo.webm" type="video/webm">
     </video>
-    <p>If the video doesn't play, <a href="assets/videos/building-lighting-demo.webm">download the demo video</a>.</p>
+    <p>If the video doesn't play, <a href="assets/videos/building-lighting-demo.webm">download the lighting walkthrough</a>.</p>
     <details>
       <summary>Text summary of the walkthrough</summary>
       <ol>
-        <li>Show all floors, then pan, rotate 360 degrees and zoom the building. Floor 1's Open Workspace is occupied, with six lights on.</li>
-        <li>Cycle through Floors 1–4: Floors 1 and 3 have a main room and two offices, Floor 2 has a larger main room and one office, and Floor 4 has one large room. Return to Floor 3, zoom, pan and rotate it 360 degrees.</li>
-        <li>Select Floor 2's Meeting Office and turn on presence. Its presence control is checked, its sensor turns green and its light comes on; the dashboard shows two occupied rooms and seven lights on.</li>
-        <li>Turn on the office sensor fault. The fault control is checked and the sensor turns red; the dashboard shows one active fault and one occupied room, with seven lights still on.</li>
-        <li>Select all floors and run the occupancy demo. See lights come on across the building, then see the dashboard update with several occupied rooms and no active faults. The dashboard stays visible for five seconds after each update.</li>
+        <li>Orbit, pan and zoom the building, explore all four floor views, and repeat the camera controls on Floor 3.</li>
+        <li>Turn on presence in Floor 3's Collaboration Space; six lights turn on and the dashboard reports one occupied room.</li>
+        <li>Enable its sensor fault and see the dashboard report one active fault. The faulted sensor no longer reports occupancy; the six lights remain on.</li>
+        <li>Run the occupancy demo and see lights and occupancy update across the building and dashboard; faults are cleared.</li>
+      </ol>
+    </details>
+    <h2>Building editor</h2>
+    <p>Start blank, create rooms and place lights, then save and activate the design.</p>
+    <video controls preload="metadata" playsinline aria-label="Building editor walkthrough">
+      <source src="assets/videos/building-editor-demo.webm" type="video/webm">
+    </video>
+    <p>If the video doesn't play, <a href="assets/videos/building-editor-demo.webm">download the editor walkthrough</a>.</p>
+    <details>
+      <summary>Text summary of the editor walkthrough</summary>
+      <ol>
+        <li>Start a blank building and set it to three floors.</li>
+        <li>On Floor 1, create two offices with two lights each.</li>
+        <li>On Floor 2, create a large office with six lights and a small office with two lights.</li>
+        <li>On Floor 3, create a meeting room with eight lights.</li>
+        <li>Save and activate the design, then view the three-floor building.</li>
       </ol>
     </details>
     <p><a href="https://github.com/wmorgan69/light-controller-simulator">View the project on GitHub</a></p>

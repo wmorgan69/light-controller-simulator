@@ -1,6 +1,6 @@
 # Building Light Simulator
 
-A .NET IoT demonstration for a four-floor office building. The solution combines an interactive 3D lighting simulator with a separate telemetry and instrumentation dashboard.
+A .NET IoT demonstration combining an interactive 3D building lighting simulator and editor with a separate telemetry and instrumentation dashboard. A fresh installation starts with a four-floor office building; the editor can create other layouts.
 
 ## Agentic workflow
 
@@ -39,6 +39,8 @@ The project demonstrates:
 - Optional MQTT state publication, command handling, acknowledgements, retained state, and reconnect behavior.
 - HTTP fallback telemetry for use without an MQTT broker.
 - An interactive Three.js building with floor selection and room-level controls.
+- A building editor with blank and default starting layouts, plan tools, drag-to-move, and save and activation.
+- React and TypeScript frontends using Material UI and Vite.
 - Live controller health, occupancy, lighting activity, faults, events, and SQLite persistence.
 - Unit-tested state transitions, revision handling, stale/offline behavior, and event persistence.
 
@@ -57,25 +59,34 @@ The applications currently use English localization resources. There is no langu
 
 ## Screenshots and demo
 
-The walkthrough cycles through all four floor layouts before returning to Floor 3.
+The [demo page](docs/demo.html) contains two walkthroughs: building navigation and live instrumentation, and creating a three-floor building from a blank design. The screenshots are separate examples captured at different times.
 
 ### Building Light Simulator
 
 ![Building Light Simulator showing the All floors overview with all four floors visible](docs/assets/screenshots/building-light-simulator.png)
 
-![Building Light Simulator showing Floor 2 Boardroom selected with a sensor fault and all eight lights off](docs/assets/screenshots/building-light-simulator-selected-floor.png)
+![Building Light Simulator showing Floor 3 Collaboration Space selected with a sensor fault](docs/assets/screenshots/building-light-simulator-selected-floor.png)
 
 [View the selected-floor screenshot at full size](docs/assets/screenshots/building-light-simulator-selected-floor.png)
 
+### Building editor
+
+![Building editor showing a large office with six lights and a small office with two lights on Floor 2](docs/assets/screenshots/building-editor.png)
+
 ### Lighting Instrumentation
 
-![Lighting Instrumentation using HTTP fallback with 4 controllers, 1 active sensor fault, 6 lights on, 1 of 9 rooms occupied, and 37 fixtures; the lighting activity legend shows 0 faulted light fixtures](docs/assets/screenshots/lighting-instrumentation.png)
+![Lighting Instrumentation using HTTP fallback with four controllers, no active faults, six lights on, and one occupied room](docs/assets/screenshots/lighting-instrumentation.png)
 
-The active-fault total includes sensor faults; the lighting-activity fault count includes only faulted light fixtures. This screenshot's 1 active sensor fault therefore coexists with 0 faulted light fixtures.
-
-[Watch the building lighting demo on GitHub Pages](https://wmorgan69.github.io/light-controller-simulator/demo.html)
+[Watch both demos on GitHub Pages](https://wmorgan69.github.io/light-controller-simulator/demo.html) or download the [lighting walkthrough](docs/assets/videos/building-lighting-demo.webm) and [editor walkthrough](docs/assets/videos/building-editor-demo.webm).
 
 ## Quick start
+
+Build both browser frontends once before running the .NET applications directly. This installs the locked Node dependencies, runs the strict TypeScript check, and creates the local bundles used by each web app:
+
+```powershell
+npm ci
+npm run build
+```
 
 Run the simulator:
 
@@ -99,9 +110,9 @@ With Docker and Docker Compose available, start both applications from the repos
 docker compose up --build
 ```
 
-Open `http://localhost:5080/` for the simulator and `http://localhost:5081/` for the dashboard. The dashboard polls `http://simulator:8080` over the Compose network and can also ingest MQTT telemetry; no MQTT broker is required. Its SQLite database is stored in the `telemetry-data` named volume and persists when the containers are stopped or recreated. Stop the applications with `docker compose down`.
+Open `http://localhost:5080/` for the simulator and `http://localhost:5081/` for the dashboard. Compose publishes both ports on host loopback only and disables simulator HTTP mutations: the simulator is view-only and its editor and HTTP controls are unavailable. Use the direct loopback Development quick start for interactive editing and controls. These services do not authenticate local users or processes; do not expose them through proxies or non-loopback bindings. The dashboard polls `http://simulator:8080` over the Compose network and can also ingest MQTT telemetry; no MQTT broker is required. MQTT commands are separate; external brokers require access controls. Its SQLite database is stored in the `telemetry-data` named volume and persists when the containers are stopped or recreated. Stop the applications with `docker compose down`.
 
-In CodeSandbox, this requires a server environment with a working Docker engine and Compose; forward ports 5080 and 5081 to access the applications.
+Remote or forwarded deployments are outside this local-only configuration.
 
 ## Documentation
 
@@ -116,10 +127,18 @@ In CodeSandbox, this requires a server environment with a working Docker engine 
 Dockerfile                       Container build stages for both applications
 compose.yaml                     Local two-service deployment
 .dockerignore                    Container build exclusions
+package.json                     Frontend scripts and pinned dependencies
+package-lock.json                Reproducible npm dependency lock
+tsconfig.json                    Strict TypeScript compiler settings
+vite.config.js                   Two-app static asset bundler
 src/
   Devices.Contracts/             Shared device and telemetry contracts
-  Devices.Simulator.Web/         Simulator API and 3D browser UI
-  Devices.Instrumentation.Web/   Telemetry subscriber and dashboard
+  Devices.Simulator.Web/
+    frontend/                    React, TypeScript, simulator and editor UI
+    wwwroot/                     Static entry point and assets
+  Devices.Instrumentation.Web/
+    frontend/                    React, TypeScript dashboard UI
+    wwwroot/                     Static entry point and assets
 tests/
   *.test.mjs                     Simulator view-logic and recording-helper tests
   Devices.Simulator.Tests/       Simulator state-transition tests
@@ -135,5 +154,6 @@ AGENTS.md                        Repository-wide agent instructions
 ```powershell
 dotnet build Devices.slnx
 dotnet test Devices.slnx --no-build --no-restore
-node --test tests/building-access.test.mjs tests/wiring-routes.test.mjs tests/floor-view.test.mjs tests/room-state.test.mjs tests/record-demo.test.mjs tests/localization-en.test.mjs tests/instrumentation-localization.test.mjs tests/instrumentation-dashboard.test.mjs
+npm run test:components
+node --import tsx --test tests\building-access.test.mjs tests\wiring-routes.test.mjs tests\floor-view.test.mjs tests\room-state.test.mjs tests\record-demo.test.mjs tests\building-design-view.test.mjs tests\building-editor.test.mjs tests\building-editor-ui.test.mjs tests\localization-en.test.mjs tests\simulator-react-model.test.mjs tests\instrumentation-localization.test.mjs tests\instrumentation-react-telemetry.test.mjs
 ```

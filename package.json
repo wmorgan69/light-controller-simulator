@@ -1,0 +1,35 @@
+{
+  "name": "devices-frontends",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test:components": "vitest run",
+    "test:components:coverage": "vitest run --coverage",
+    "build": "npm run typecheck && npm run build:simulator && npm run build:instrumentation",
+    "build:simulator": "vite build --mode simulator",
+    "build:instrumentation": "vite build --mode instrumentation"
+  },
+  "dependencies": {
+    "@emotion/react": "11.14.0",
+    "@emotion/styled": "11.14.1",
+    "@mui/icons-material": "9.6.0",
+    "@mui/material": "9.6.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "three": "0.187.0"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "10.4.1",
+    "@testing-library/react": "16.3.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@types/three": "0.187.0",
+    "@vitest/coverage-v8": "4.1.12",
+    "jsdom": "27.3.0",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vite": "8.3.8",
+    "vitest": "4.1.12"
+  }
+}

@@ -48,6 +48,60 @@ export async function showOccupancyScenario(page, postAndWait, waitForState) {
   return counts;
 }
 
+export async function recordingCamera(viewportWidth, canvasWidth, canvasHeight) {
+  const { tsImport } = await import('tsx/esm/api');
+  const { fieldOfViewForAspect, selectedFloorCamera } =
+    await tsImport('../../src/Devices.Simulator.Web/frontend/scene/floor-view.ts', import.meta.url);
+  return {
+    fieldOfView: fieldOfViewForAspect(canvasWidth / canvasHeight),
+    preset: selectedFloorCamera(2, viewportWidth)
+  };
+}
+
+export async function selectBaselineRoom(page) {
+  const roomSelect = page.getByRole('combobox', { name: 'Room sensor' });
+  if (!await roomSelect.isVisible()) {
+    await page.locator('.accessible-controls summary').click();
+  }
+  await roomSelect.click();
+  await page.getByRole('listbox').locator('[data-value="floor-1-main"]').click();
+}
+
+export async function activateRoomControl(page, name, waitForCounts, expected, label) {
+  const checkbox = page.getByRole('region', { name: 'Room controls' })
+    .getByRole('checkbox', { name, exact: true });
+  await checkbox.click();
+  await waitForCounts(expected, label);
+  await checkbox.and(page.locator(':checked')).waitFor({ state: 'attached' });
+}
+
+export async function selectFloor2OfficeA(page) {
+  const floor = page.getByRole('button', { name: /^Floor 2/ });
+  await floor.click();
+  if (await floor.getAttribute('aria-pressed') !== 'true') {
+    throw new Error('Floor 2 selection failed.');
+  }
+  const canvas = page.locator('canvas.simulator-canvas');
+  const { viewportWidth, canvasWidth, canvasHeight } = await canvas.evaluate(element => ({
+    viewportWidth: window.innerWidth, canvasWidth: element.clientWidth, canvasHeight: element.clientHeight
+  }));
+  const cameraSettings = await recordingCamera(viewportWidth, canvasWidth, canvasHeight);
+  const THREE = await import('three');
+  const camera = new THREE.PerspectiveCamera(cameraSettings.fieldOfView, canvasWidth / canvasHeight, 0.1, 1000);
+  const { position: cameraPosition, target } = cameraSettings.preset;
+  camera.position.set(cameraPosition.x, cameraPosition.y, cameraPosition.z);
+  camera.lookAt(target.x, target.y, target.z);
+  camera.updateMatrixWorld();
+  const projected = new THREE.Vector3(3.8, 3.1, 1.47).project(camera);
+  const position = {
+    x: (projected.x + 1) * canvasWidth / 2,
+    y: (1 - projected.y) * canvasHeight / 2
+  };
+  await canvas.click({ position });
+  await page.getByRole('region', { name: 'Room controls' })
+    .getByRole('heading', { name: 'Floor 2 — Meeting Office', exact: true }).waitFor();
+}
+
 /**
  * Capture the app screenshots and walkthrough from a visible Playwright page with screencast support.
  * Both apps must be running, and outputDirectory must contain writable screenshots and videos directories.
@@ -146,13 +200,6 @@ export async function captureBuildingLightingDemo(page, outputDirectory, {
     } while (Date.now() < deadline);
     throw new Error(`${label}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}.`);
   };
-  const ensureRoomControls = async () => {
-    const roomSelect = page.getByRole('combobox', { name: 'Room sensor' });
-    if (!await roomSelect.isVisible()) {
-      await page.locator('.accessible-controls summary').click();
-    }
-    return roomSelect;
-  };
   const showSiteAddress = () => page.evaluate(() => {
     const frame = document.createElement('div');
     frame.style.cssText = 'position:sticky;top:0;z-index:10000;box-sizing:border-box;'
@@ -169,38 +216,6 @@ export async function captureBuildingLightingDemo(page, outputDirectory, {
     frame.append(label, address);
     document.body.prepend(frame);
   });
-  const selectFloor2OfficeA = async () => {
-    const canvas = page.locator('#buildingCanvas');
-    const clickPosition = async (point, selectedFloor) => {
-      const position = await canvas.evaluate(async (element, values) => {
-        const THREE = await import('/vendor/three.module.js');
-        const { fieldOfViewForAspect, selectedFloorCamera } = await import('/floor-view.mjs?v=floor-navigation-4');
-        const aspect = element.clientWidth / element.clientHeight;
-        const camera = new THREE.PerspectiveCamera(fieldOfViewForAspect(aspect), aspect, 0.1, 150);
-        const preset = values.selectedFloor
-          ? selectedFloorCamera(2, window.innerWidth)
-          : { position: { x: 13, y: 14, z: 18 }, target: { x: 0, y: 3.3, z: 0 } };
-        camera.position.set(preset.position.x, preset.position.y, preset.position.z);
-        camera.lookAt(preset.target.x, preset.target.y, preset.target.z);
-        camera.updateMatrixWorld();
-        const projected = new THREE.Vector3(...values.point).project(camera);
-        return {
-          x: (projected.x + 1) * element.clientWidth / 2,
-          y: (1 - projected.y) * element.clientHeight / 2
-        };
-      }, { point, selectedFloor });
-      await canvas.click({ position });
-    };
-
-    await page.getByRole('button', { name: /^Floor 2/ }).click();
-    if (await page.getByRole('button', { name: /^Floor 2/ }).getAttribute('aria-pressed') !== 'true') {
-      throw new Error('Floor 2 selection failed.');
-    }
-    await clickPosition([3.8, 3.1, 1.47], true);
-    if ((await page.locator('#roomInspectorTitle').textContent()).trim() !== 'Floor 2 — Meeting Office') {
-      throw new Error('Floor 2 Meeting Office selection failed.');
-    }
-  };
   const restoreBaseline = async () => {
     await page.goto(simulatorUrl, { waitUntil: 'domcontentloaded' });
     await postAndWait(
@@ -209,8 +224,7 @@ export async function captureBuildingLightingDemo(page, outputDirectory, {
       'Resetting the building'
     );
     await waitForCounts({ occupied: 0, faults: 0, lights: 0 }, 'Verifying the building reset');
-    const roomSelect = await ensureRoomControls();
-    await roomSelect.selectOption('floor-1-main');
+    await selectBaselineRoom(page);
     await postAndWait(
       page.getByRole('button', { name: 'Trigger selected room sensor' }),
       '/api/rooms/floor-1-main/sensor/trigger',
@@ -234,8 +248,7 @@ export async function captureBuildingLightingDemo(page, outputDirectory, {
       'Resetting the building'
     );
     await waitForCounts({ occupied: 0, faults: 0, lights: 0 }, 'Verifying the building reset');
-    const roomSelect = await ensureRoomControls();
-    await roomSelect.selectOption('floor-1-main');
+    await selectBaselineRoom(page);
     await postAndWait(
       page.getByRole('button', { name: 'Trigger selected room sensor' }),
       '/api/rooms/floor-1-main/sensor/trigger',
@@ -273,7 +286,7 @@ export async function captureBuildingLightingDemo(page, outputDirectory, {
     recordingStarted = true;
     try {
       await page.screencast.showActions();
-      const canvas = page.locator('#buildingCanvas');
+      const canvas = page.locator('canvas.simulator-canvas');
       await canvas.scrollIntoViewIfNeeded();
       const box = await canvas.boundingBox();
       if (!box) {
@@ -314,16 +327,13 @@ export async function captureBuildingLightingDemo(page, outputDirectory, {
       await page.mouse.up({ button: 'right' });
       await page.waitForTimeout(200);
 
-      await selectFloor2OfficeA();
+      await selectFloor2OfficeA(page);
       await page.locator('.room-inspector').scrollIntoViewIfNeeded();
       await page.waitForTimeout(200);
 
       await page.screencast.showChapter('Presence updates instrumentation');
-      await page.getByRole('switch', { name: 'Presence' }).check();
-      await waitForCounts({ occupied: 2, faults: 0, lights: 7 }, 'Activating presence');
-      if (!await page.getByRole('switch', { name: 'Presence' }).isChecked()) {
-        throw new Error('Presence did not remain selected.');
-      }
+      await activateRoomControl(page, 'Presence', waitForCounts,
+        { occupied: 2, faults: 0, lights: 7 }, 'Activating presence');
       await page.waitForTimeout(1300);
       await page.goto(instrumentationUrl, { waitUntil: 'domcontentloaded' });
       await showSiteAddress();
@@ -334,14 +344,11 @@ export async function captureBuildingLightingDemo(page, outputDirectory, {
       await page.goto(simulatorUrl, { waitUntil: 'domcontentloaded' });
       await showSiteAddress();
       await page.getByRole('button', { name: 'All floors' }).waitFor({ state: 'visible' });
-      await selectFloor2OfficeA();
+      await selectFloor2OfficeA(page);
       await page.locator('.room-inspector').scrollIntoViewIfNeeded();
       await page.screencast.showChapter('Sensor fault updates instrumentation');
-      await page.getByRole('switch', { name: 'Sensor fault' }).check();
-      await waitForCounts({ occupied: 1, faults: 1 }, 'Activating the sensor fault');
-      if (!await page.getByRole('switch', { name: 'Sensor fault' }).isChecked()) {
-        throw new Error('Sensor fault did not remain selected.');
-      }
+      await activateRoomControl(page, 'Sensor fault', waitForCounts,
+        { occupied: 1, faults: 1 }, 'Activating the sensor fault');
       await page.waitForTimeout(1300);
       await page.goto(instrumentationUrl, { waitUntil: 'domcontentloaded' });
       await showSiteAddress();
