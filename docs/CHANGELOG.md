@@ -4,6 +4,17 @@ This log records the project's development from its initial planning through the
 
 The first commit, `120bfb3`, imported an existing project as well as quality and security changes. Conversation entries group related iterations and record superseded designs as history, not current behavior. They are reconstructed from available session records and may omit details unavailable in those records. The commit ledger below covers the current branch's complete recorded history.
 
+## Agentic statistics snapshot — 24 November 2026
+
+As of 15:13 UTC:
+
+- **Project history:** 33 commits, including 24 explicitly crediting Copilot as co-author.
+- **Current session:** 1,457 model calls, 152.1 million input tokens and 708,000 output tokens. Input includes 146.6 million cached tokens.
+- **Custom agents:** four, covering build-review-rebuild coordination, code review, UX review and security review.
+- **Latest validation:** 329 .NET tests, 96 component tests and 59 Node tests passed.
+
+Usage figures cover the session in progress at the time of this snapshot, not the whole project. Commit trailers do not capture every instance of AI assistance.
+
 ## Initial development — 21–22 November 2026
 
 ### Planning and first implementation
@@ -93,12 +104,21 @@ The revised walkthrough shows floor selection, camera movement, presence and fau
 - Refreshed screenshots, documentation diagrams, and the walkthrough. The video cycles through the floor layouts, shows the presence and fault controls and lighting changes, and holds each corresponding instrumentation view for five seconds.
 - Refined the occupancy-demo recording to select **All floors**, show the popup and click, show lights turning on, and hold the instrumentation view for five seconds.
 
-## Upcoming release — 23 November 2026
+## Subsequent commits — 23–24 November 2026
 
-The following changes are prepared for the next release and are not included in the commits listed above:
+| Date (UTC) | Commit | Change |
+|---|---|---|
+| 23 November | `b36467e` | Added English localization for both applications and shared room names, with tests and documentation. |
+| 23 November | `8a3c9a1` | Added simulator design assets and documentation. |
+| 23 November | `d5deec4` | Updated agent instructions and contributor guidance for review handoffs and security reviews. |
+| 23 November | `822a3fb` | Specified the building editor and reorganized its guides. |
+| 24 November | `372af23` | Implemented the local building editor with design persistence. |
+| 24 November | `f2edac0` | Modernized both interfaces, enhanced the editor and building geometry, and refreshed documentation and demos. |
 
-- Added English browser localization resources for both applications and an embedded English resource for shared room names. Static HTML retains matching English fallbacks; there is no language selector or automatic language negotiation.
-- Kept stable IDs and protocol values unchanged, and kept shared room names independent of server UI culture.
-- Added localization, dashboard rendering, escaping, and error/recovery tests; updated CI test commands and application documentation.
-- Added localization guidance to the repository's agent instructions.
-- Added this changelog, including conversation-driven changes and the recorded commit history.
+### Interface, editor and documentation updates in `f2edac0`
+
+- Rebuilt the browser interfaces with React, TypeScript, Material UI and Vite, retaining the Three.js building view and English localization.
+- Enhanced the editor with blank and default starting layouts, plan tools, drag-to-move, zoom, contextual deletion, and editable stairs and walkways. Aligned saved design dimensions and geometry with the 3D view.
+- Simplified building activation and cleanup status, improved mobile navigation, and made instrumentation source, controller details and event history clearer.
+- Updated frontend build and test tooling, CI and Docker, and added focused simulator, editor and dashboard tests.
+- Refreshed the plans, technical and UX guides, screenshots, and lighting walkthrough. Added a building-editor walkthrough and a [demo page](demo.html) presenting both videos.
