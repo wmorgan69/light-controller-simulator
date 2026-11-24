@@ -21,14 +21,14 @@ dotnet test Devices.slnx --no-build --no-restore --collect:"XPlat Code Coverage"
 
 Coverage XML files appear in: `tests/**/TestResults/*/coverage.cobertura.xml`
 
-The CI workflow adds simulator view-logic and recording-helper Node tests and a Docker Compose smoke test:
+The CI workflow adds simulator view-logic and recording-helper Node tests and a Docker Compose smoke test. To run a focused subset of the Node tests and start the Compose services locally:
 
 ```powershell
 node --import tsx --test tests/building-access.test.mjs tests/wiring-routes.test.mjs tests/floor-view.test.mjs tests/room-state.test.mjs tests/record-demo.test.mjs
 docker compose up --build -d
 ```
 
-The CI smoke test starts both Compose services, verifies the simulator controller count and instrumentation status, triggers room presence, confirms the telemetry update, then stops both services and recreates only the instrumentation service to verify persisted presence remains visible. Readiness GET requests have bounded retries, including connection resets; the presence-changing POST is not retried. The CI job cleans up its disposable Compose resources after the check.
+The Compose command above only starts the services; it does not run the [CI smoke-test checks](../../.github/workflows/ci.yml). Stop local services with `docker compose down` when finished. The CI smoke test verifies the simulator controller count and confirms that a room-presence mutation is rejected with HTTP 403. It checks that instrumentation receives the initial unoccupied room state over HTTP while MQTT is disconnected, then stops both services and recreates only instrumentation to verify that state is restored from SQLite while the simulator is offline. Readiness GET requests have bounded retries, including connection resets; the rejected POST is not retried. The CI job cleans up its disposable Compose resources after the check.
 
 ### 2. Add Focused Tests (If Coverage Drops)
 

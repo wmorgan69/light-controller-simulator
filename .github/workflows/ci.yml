@@ -96,10 +96,15 @@ jobs:
           curl --fail --silent --show-error --retry 30 --retry-delay 1 --retry-max-time 30 --max-time 5 --retry-all-errors --output "$response_file" http://localhost:5080/api/controllers
           jq -e 'length == 4' "$response_file"
           curl --fail --silent --show-error --retry 30 --retry-delay 1 --retry-max-time 30 --max-time 5 --retry-all-errors --output /dev/null http://localhost:5081/api/status
-          curl --fail --silent --show-error --max-time 5 -X POST http://localhost:5080/api/rooms/floor-1-main/sensor/trigger > /dev/null
+          mutation_status=$(curl --silent --show-error --max-time 5 --output "$response_file" --write-out '%{http_code}' -X POST http://localhost:5080/api/rooms/floor-1-main/sensor/trigger)
+          if [ "$mutation_status" != 403 ]; then
+            echo "Expected HTTP 403 for disabled simulator mutation, got $mutation_status"
+            exit 1
+          fi
           observed=false
           for attempt in {1..30}; do
-            if curl --fail --silent --max-time 5 http://localhost:5081/api/telemetry/controller-floor-1 | jq -e '.rooms[] | select(.id == "floor-1-main" and .presence == true)' > /dev/null; then
+            if curl --fail --silent --max-time 5 http://localhost:5081/api/status | jq -e '.httpAvailable == true and .mqttConnected == false and .simulatorHttpSource == "http://simulator:8080"' > /dev/null &&
+              curl --fail --silent --max-time 5 http://localhost:5081/api/telemetry/controller-floor-1 | jq -e '.id == "controller-floor-1" and any(.rooms[]; .id == "floor-1-main" and .presence == false)' > /dev/null; then
               observed=true
               break
             fi
@@ -109,4 +114,4 @@ jobs:
           docker compose stop instrumentation simulator
           docker compose up -d --no-deps --force-recreate instrumentation
           curl --fail --silent --show-error --retry 30 --retry-delay 1 --retry-max-time 30 --max-time 5 --retry-all-errors --output "$response_file" http://localhost:5081/api/telemetry/controller-floor-1
-          jq -e '.rooms[] | select(.id == "floor-1-main" and .presence == true)' "$response_file"
+          jq -e '.id == "controller-floor-1" and any(.rooms[]; .id == "floor-1-main" and .presence == false)' "$response_file"
