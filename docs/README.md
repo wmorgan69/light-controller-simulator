@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Architecture overview](#architecture-overview)
+- [Production IoT architecture proposal](infrastructure/production-iot-architecture.md)
 - [Project plan](plans/plan.md)
 - [Building editor specification](plans/building-editor-spec.md)
 - [Building editor technical guide](technical/building-editor.md)
@@ -224,6 +225,7 @@ The CI workflow also runs the Node.js tests, builds both container images (inclu
 | [Building Light Simulator](technical/building-light-simulator.md) | 3D model, controls, state model, APIs, MQTT commands, scenarios, source map |
 | [Building editor](technical/building-editor.md) | Editing, validation, editor API, persistence and recovery |
 | [Lighting Instrumentation](technical/lighting-instrumentation.md) | Dashboard design, telemetry flow, persistence, stale/offline behavior, source map |
+| [Production IoT architecture proposal](infrastructure/production-iot-architecture.md) | Proposed AWS and Azure deployments, IoT integration, scaling prerequisites and security |
 | [UX design references](ux/README.md) | Shared design baseline, app-specific design guides, and desktop and mobile references |
 | [Project plan](plans/plan.md) | Goals, delivery phases, implementation decisions, acceptance criteria |
 | [Building editor specification](plans/building-editor-spec.md) | Current editor workflow, validation, storage, access limits, and remaining gaps |
