@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="1280" viewBox="0 0 390 1280" role="img" aria-labelledby="title description">
+  <title id="title">Building editor mobile modernization concept</title>
+  <desc id="description">Proposed dark narrow-screen editor with a menu, unsaved status and save action, labelled icon tools, a schematic floor plan, item list and room properties. This is not a screenshot of the current application.</desc>
+  <defs><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" fill="none" stroke="#334155"/></pattern></defs>
+  <rect width="390" height="1280" fill="#111827"/>
+  <g font-family="Arial, sans-serif">
+    <rect width="390" height="60" fill="#0f172a"/>
+    <path d="M16 22h20M16 30h20M16 38h20" stroke="#f8fafc" stroke-width="2"/>
+    <text x="52" y="37" fill="#f8fafc" font-size="16" font-weight="bold">Building editor</text>
+    <rect x="300" y="8" width="78" height="44" rx="22" fill="#2563eb"/><text x="339" y="36" fill="#fff" text-anchor="middle" font-size="14">Save</text>
+    <rect x="12" y="72" width="366" height="64" rx="12" fill="#172033"/>
+    <text x="28" y="98" fill="#fde68a" font-size="13">Unsaved changes</text><text x="28" y="120" fill="#cbd5e1" font-size="12">Saved design active · cleanup status available</text>
+    <rect x="12" y="148" width="366" height="72" rx="12" fill="#172033"/>
+    <text x="28" y="176" fill="#f8fafc" font-size="14" font-weight="bold">Floor 3</text><text x="28" y="200" fill="#94a3b8" font-size="12">Change floor or building settings</text><text x="350" y="187" fill="#cbd5e1" font-size="18">⌄</text>
+    <rect x="12" y="232" width="366" height="112" rx="12" fill="#172033"/>
+    <text x="28" y="256" fill="#f8fafc" font-size="14" font-weight="bold">Tools</text>
+    <rect x="24" y="268" width="60" height="60" rx="10" fill="#1d4ed8"/>
+    <g fill="#e2e8f0" text-anchor="middle"><text x="54" y="292" font-size="20">↖</text><text x="54" y="316" font-size="11">Select</text><text x="124" y="292" font-size="20">✥</text><text x="124" y="316" font-size="11">Move</text><text x="194" y="292" font-size="20">▣</text><text x="194" y="316" font-size="11">Room</text><text x="264" y="292" font-size="20">▱</text><text x="264" y="316" font-size="11">Door</text><text x="334" y="292" font-size="20">☼</text><text x="334" y="316" font-size="11">Light</text></g>
+    <rect x="12" y="356" width="366" height="400" rx="12" fill="#172033"/>
+    <text x="28" y="386" fill="#f8fafc" font-size="15" font-weight="bold">Floor plan</text>
+    <text x="28" y="409" fill="#cbd5e1" font-size="12">Move items by dragging or using properties.</text>
+    <rect x="28" y="425" width="334" height="304" rx="8" fill="#0f172a"/><rect x="28" y="425" width="334" height="304" rx="8" fill="url(#grid)"/>
+    <rect x="48" y="450" width="177" height="199" rx="4" fill="#1e3a65" stroke="#93c5fd" stroke-width="3"/>
+    <text x="60" y="473" fill="#f8fafc" font-size="11">Collaboration Space</text>
+    <rect x="237" y="450" width="105" height="91" fill="#334155" stroke="#94a3b8"/><text x="247" y="472" fill="#f8fafc" font-size="10">Project Office</text>
+    <rect x="237" y="558" width="105" height="91" fill="#334155" stroke="#94a3b8"/><text x="247" y="580" fill="#f8fafc" font-size="10">Focus Office</text>
+    <g fill="#fcd34d"><circle cx="90" cy="530" r="5"/><circle cx="135" cy="530" r="5"/><circle cx="180" cy="530" r="5"/><circle cx="90" cy="570" r="5"/><circle cx="135" cy="570" r="5"/><circle cx="180" cy="570" r="5"/></g>
+    <circle cx="135" cy="501" r="6" fill="#38bdf8"/><rect x="130" y="643" width="26" height="8" fill="#f8fafc"/>
+    <rect x="12" y="768" width="366" height="148" rx="12" fill="#172033"/>
+    <text x="28" y="798" fill="#f8fafc" font-size="15" font-weight="bold">Items</text>
+    <rect x="28" y="814" width="334" height="44" rx="10" fill="#1d4ed8"/><text x="44" y="841" fill="#fff" font-size="13">Collaboration Space</text>
+    <text x="44" y="887" fill="#cbd5e1" font-size="13">Project Office · Focus Office</text>
+    <rect x="12" y="928" width="366" height="336" rx="12" fill="#172033"/>
+    <text x="28" y="958" fill="#f8fafc" font-size="15" font-weight="bold">Room properties</text>
+    <text x="28" y="988" fill="#cbd5e1" font-size="13">Name</text>
+    <rect x="28" y="1000" width="334" height="44" rx="8" fill="#0f172a" stroke="#475569"/><text x="42" y="1027" fill="#e2e8f0" font-size="13">Collaboration Space</text>
+    <text x="28" y="1076" fill="#cbd5e1" font-size="13">Position and size (m)</text>
+    <g fill="#0f172a" stroke="#475569"><rect x="28" y="1088" width="157" height="44" rx="8"/><rect x="205" y="1088" width="157" height="44" rx="8"/><rect x="28" y="1144" width="157" height="44" rx="8"/><rect x="205" y="1144" width="157" height="44" rx="8"/></g>
+    <g fill="#e2e8f0" font-size="13"><text x="42" y="1115">X   2</text><text x="219" y="1115">Z   2</text><text x="42" y="1171">Width   11</text><text x="219" y="1171">Depth   9</text></g>
+    <rect x="28" y="1202" width="334" height="44" rx="22" fill="#2563eb"/><text x="195" y="1229" text-anchor="middle" fill="#fff" font-size="14">Apply changes</text>
+  </g>
+</svg>

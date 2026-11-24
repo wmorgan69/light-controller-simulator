@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { designControllerPosition, designRoomView, syncRunningDesign } from '../src/Devices.Simulator.Web/wwwroot/building-design-view.mjs';
+import { designControllerPosition, designRoomView, syncRunningDesign } from '../src/Devices.Simulator.Web/frontend/scene/building-design-view.ts';
 
 test('running revision changes refresh the displayed building and failures remain retryable', async () => {
   let displayed = 1;

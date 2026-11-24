@@ -1,9 +1,31 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { FloorView, applyFloorMaterialEmphasis, fieldOfViewForAspect, selectedFloorCamera, cameraPresetNeedsUpdate, isFloorVisible, floorNavigation } from '../src/Devices.Simulator.Web/wwwroot/floor-view.mjs';
-import { createFloorPillars } from '../src/Devices.Simulator.Web/wwwroot/building-pillars.mjs';
-import * as THREE from '../src/Devices.Simulator.Web/wwwroot/vendor/three.module.js';
-import { createFloorSlab, createFloorStairLandings, createFloorStairs, createIncomingFloorStairs } from '../src/Devices.Simulator.Web/wwwroot/building-stairs.mjs';
+import { FloorView, applyFloorMaterialEmphasis, fieldOfViewForAspect, overviewCameraScale, selectedFloorCamera, cameraPresetNeedsUpdate, isFloorVisible, floorNavigation } from '../src/Devices.Simulator.Web/frontend/scene/floor-view.ts';
+import { createFloorPillars } from '../src/Devices.Simulator.Web/frontend/scene/building-pillars.ts';
+import * as THREE from 'three';
+import { createFloorSlab, createFloorStairLandings, createFloorStairs, createIncomingFloorStairs } from '../src/Devices.Simulator.Web/frontend/scene/building-stairs.ts';
+
+test('overview camera keeps the full building visible for tall and wide designs', () => {
+  for (const [width, depth, floors] of [[10, 8, 10], [20, 20, 4]]) {
+    const targetY = (floors - 1) * 2.45 / 2;
+    const scale = overviewCameraScale(width, depth, floors);
+    for (const aspect of [0.5, 2]) {
+      const camera = new THREE.PerspectiveCamera(fieldOfViewForAspect(aspect), aspect, 0.1, 1000);
+      camera.position.set(13 * scale, targetY + 10.7 * scale, 18 * scale);
+      camera.lookAt(0, targetY, 0);
+      camera.updateMatrixWorld();
+      for (const x of [-width / 2, width / 2]) {
+        for (const z of [-depth / 2, depth / 2]) {
+          for (const y of [0, (floors - 1) * 2.45 + 1.4]) {
+            const point = new THREE.Vector3(x, y, z).project(camera);
+            assert.ok(Math.abs(point.x) <= 1 && Math.abs(point.y) <= 1,
+              `building corner outside view for ${width}x${depth}, ${floors} floors, aspect ${aspect}`);
+          }
+        }
+      }
+    }
+  }
+});
 
 test('places translucent, non-selectable pillars at the four floor corners', () => {
   const group = createFloorPillars(2.45, false);

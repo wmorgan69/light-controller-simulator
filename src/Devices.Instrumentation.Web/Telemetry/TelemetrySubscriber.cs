@@ -5,6 +5,14 @@ using System.Text.Json.Serialization;
 using Devices.Contracts;
 using MQTTnet;
 
+/// <summary>Connection status and the configured HTTP polling origin, without credentials or paths.</summary>
+public sealed record InstrumentationTransportStatus(
+    bool MqttConnected,
+    bool HttpAvailable,
+    DateTimeOffset? LastMqttConnectedAt,
+    string Message,
+    string? SimulatorHttpSource);
+
 public sealed class TelemetrySubscriber : IHostedService
 {
     private readonly ILogger<TelemetrySubscriber> logger;
@@ -35,13 +43,19 @@ public sealed class TelemetrySubscriber : IHostedService
         reconnectTask = ReconnectAsync(pollingCts.Token);
     }
 
-    public DeviceTransportStatus Status
+    private string SimulatorBaseUrl => configuration["Telemetry:SimulatorBaseUrl"] ?? "http://localhost:5080";
+
+    public InstrumentationTransportStatus Status
     {
         get
         {
             lock (statusGate)
             {
-                return new DeviceTransportStatus(
+                var source = Uri.TryCreate(SimulatorBaseUrl, UriKind.Absolute, out var uri) &&
+                    (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+                    ? uri.GetComponents(UriComponents.SchemeAndServer, UriFormat.UriEscaped)
+                    : null;
+                return new InstrumentationTransportStatus(
                     mqttConnected,
                     httpAvailable,
                     lastMqttConnectedAt,
@@ -49,7 +63,8 @@ public sealed class TelemetrySubscriber : IHostedService
                         ? "MQTT connected"
                         : httpAvailable
                             ? "MQTT unavailable; HTTP fallback active"
-                            : "MQTT unavailable; HTTP fallback unavailable");
+                            : "MQTT unavailable; HTTP fallback unavailable",
+                    source);
             }
         }
     }
@@ -90,8 +105,7 @@ public sealed class TelemetrySubscriber : IHostedService
 
     private async Task PollSimulatorAsync(CancellationToken cancellationToken)
     {
-        var baseUrl = configuration["Telemetry:SimulatorBaseUrl"] ?? "http://localhost:5080";
-        using var http = new HttpClient { BaseAddress = new Uri(baseUrl), Timeout = TimeSpan.FromSeconds(3) };
+        using var http = new HttpClient { BaseAddress = new Uri(SimulatorBaseUrl), Timeout = TimeSpan.FromSeconds(3) };
         while (!cancellationToken.IsCancellationRequested)
         {
             try

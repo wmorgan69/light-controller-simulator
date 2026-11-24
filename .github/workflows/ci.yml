@@ -20,6 +20,21 @@ jobs:
         with:
           dotnet-version: 11.0.x
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontends
+        run: npm run build
+
+      - name: Test frontend components
+        run: npm run test:components
+
       - name: Restore
         run: dotnet restore Devices.slnx
 
@@ -64,7 +79,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Test browser logic and localization
-        run: node --test tests/building-access.test.mjs tests/wiring-routes.test.mjs tests/floor-view.test.mjs tests/room-state.test.mjs tests/record-demo.test.mjs tests/localization-en.test.mjs tests/instrumentation-localization.test.mjs tests/instrumentation-dashboard.test.mjs
+        run: node --import tsx --test tests/building-access.test.mjs tests/wiring-routes.test.mjs tests/floor-view.test.mjs tests/room-state.test.mjs tests/record-demo.test.mjs tests/localization-en.test.mjs tests/building-design-view.test.mjs tests/building-editor.test.mjs tests/building-editor-ui.test.mjs tests/simulator-react-model.test.mjs tests/instrumentation-localization.test.mjs tests/instrumentation-react-telemetry.test.mjs
 
       - name: Smoke test Docker Compose
         shell: bash

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { EditorSession, newFloor, newRoom, validateDesign } from '../src/Devices.Simulator.Web/wwwroot/building-editor-state.mjs';
+import { EditorSession, newFloor, newRoom, validateDesign } from '../src/Devices.Simulator.Web/frontend/editor/building-editor-state.ts';
+import { materializeLegacyAccess } from '../src/Devices.Simulator.Web/frontend/shared/building-editor-access.ts';
 
 const clone = value => structuredClone(value);
 const makeDesign = () => {
@@ -32,6 +33,55 @@ function server() {
   return { state, fetcher };
 }
 
+test('legacy interior and edited exterior access become editable without changing existing arrays', () => {
+  for (const revision of [1, 2]) {
+    const design = { revision, width: 20, depth: 20, floors: [
+      { ...newFloor(1), walkways: null, stairs: null },
+      { ...newFloor(2), walkways: [], stairs: null }
+    ] };
+    let id = 0;
+    materializeLegacyAccess(design, prefix => `${prefix}-${++id}`);
+    assert.equal(design.floors[0].walkways.length, revision === 1 ? 2 : 5);
+    assert.deepEqual(design.floors[1].walkways, []);
+    assert.equal(design.floors[0].stairs.length, 1);
+    assert.deepEqual(design.floors[1].stairs, []);
+    assert.equal(design.floors[0].stairs[0].direction, 'east');
+    assert.equal(design.floors[0].stairs[0].z, revision === 1 ? 6.24 : -2.96);
+    assert.equal(validateDesign(design), null);
+  }
+});
+
+test('access edits are validated and undo after a saved deletion assigns a fresh ID', async () => {
+  const { state, fetcher } = server();
+  state.design.floors.push(newFloor(2));
+  state.design.floors[0].stairs.push({ id: 'stair-existing', x: 2, z: 2, width: 2.5, depth: 1, direction: 'east' });
+  const session = new EditorSession(fetcher);
+  await session.open();
+  assert.equal(session.dirty, false);
+  session.edit(d => { d.floors[0].stairs[0].depth = 0; });
+  assert.match(validateDesign(session.design), /positive dimensions/);
+  session.history(session.undoStack, session.redoStack);
+  session.edit(d => { d.floors[0].stairs = []; });
+  await session.save();
+  session.history(session.undoStack, session.redoStack);
+  assert.notEqual(session.design.floors[0].stairs[0].id, 'stair-existing');
+  session.edit(d => { d.floors[1].stairs.push({ id: 'top-stair', x: 0, z: 0, width: 1, depth: 1, direction: 'east' }); });
+  assert.match(validateDesign(session.design), /Stairs/);
+});
+
+test('opening unordered legacy floors preserves stair relationships and does not dirty the session', async () => {
+  const { state, fetcher } = server();
+  const first = { ...newFloor(1), walkways: null, stairs: null };
+  const second = { ...newFloor(2), walkways: null, stairs: null };
+  state.design.floors = [second, first];
+  const session = new EditorSession(fetcher);
+  await session.open();
+  assert.deepEqual(session.design.floors.map(floor => floor.number), [1, 2]);
+  assert.equal(session.design.floors[0].stairs.length, 1);
+  assert.equal(session.design.floors[1].stairs.length, 0);
+  assert.equal(session.dirty, false);
+});
+
 test('edits remain local until explicitly saved and reopening starts from saved design', async () => {
   const { state, fetcher } = server();
   const session = new EditorSession(fetcher);
@@ -48,6 +98,36 @@ test('edits remain local until explicitly saved and reopening starts from saved 
   assert.equal(state.calls.find(c => c.url.endsWith('/save')).body.expectedRevision, 1);
   assert.equal(state.calls.some(c => c.url.endsWith('/draft')), false);
   assert.equal(state.design.width, 22);
+});
+
+test('default template gets fresh identities and keeps connections without modifying the saved design', async () => {
+  const { state, fetcher } = server();
+  const template = clone(state.design);
+  template.floors.push(newFloor(2));
+  const session = new EditorSession((url, options) => url.endsWith('/default-design')
+    ? Promise.resolve(reply(template)) : fetcher(url, options));
+  await session.open();
+  const replacement = await session.defaultDesign();
+  assert.notEqual(replacement.floors[0].id, template.floors[0].id);
+  assert.notEqual(replacement.floors[0].controllerId, template.floors[0].controllerId);
+  assert.notEqual(replacement.floors[0].rooms[0].sensor.id, template.floors[0].rooms[0].sensor.id);
+  assert.equal(replacement.floors[0].rooms[0].sensor.controllerId, replacement.floors[0].controllerId);
+  assert.deepEqual(state.design, session.saved);
+  assert.equal(session.dirty, false);
+});
+
+test('rejects malformed or unavailable default templates without changing local edits', async () => {
+  const { fetcher } = server();
+  let template = reply({});
+  const session = new EditorSession((url, options) => url.endsWith('/default-design')
+    ? Promise.resolve(template) : fetcher(url, options));
+  await session.open();
+  session.edit(d => { d.width = 21; });
+  await assert.rejects(session.defaultDesign(), /valid editor state/i);
+  template = reply({ detail: 'Template unavailable' }, 503);
+  await assert.rejects(session.defaultDesign(), /Template unavailable/);
+  assert.equal(session.design.width, 21);
+  assert.equal(session.dirty, true);
 });
 
 test('save failure preserves local edits for retry', async () => {
@@ -114,6 +194,28 @@ test('failed conflict recovery keeps local edits and allows retry', async () => 
   failRead = false;
   await session.useCurrent();
   assert.equal(session.conflict, false);
+});
+
+test('malformed editor state is rejected without discarding local conflict edits', async () => {
+  const { state, fetcher } = server();
+  let malformed = false;
+  const session = new EditorSession((url, options) =>
+    malformed && url.endsWith('/building-editor')
+      ? reply({ design: { ...state.design, floors: null }, activeDesign: state.activeDesign,
+        editRevision: state.editRevision, activationStatus: 'active', cleanup: [] })
+      : fetcher(url, options));
+  await session.open();
+  session.edit(d => { d.width = 21; });
+  state.editRevision++;
+  await assert.rejects(session.save(), /Revision conflict/);
+  malformed = true;
+  await assert.rejects(session.useCurrent(), /valid editor state/i);
+  assert.equal(session.design.width, 21);
+  assert.equal(session.conflict, true);
+  malformed = false;
+  await session.useCurrent();
+  assert.equal(session.conflict, false);
+  assert.equal(session.design.width, 20);
 });
 
 test('retry activation updates running and cleanup status without replacing local edits', async () => {

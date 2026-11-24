@@ -233,6 +233,8 @@ public sealed class BuildingDesignStore
         {
             ids.Add(floor.Id, "floor");
             ids.Add(floor.ControllerId, "controller");
+            foreach (var walkway in floor.Walkways ?? []) ids.Add(walkway.Id, "walkway");
+            foreach (var stair in floor.Stairs ?? []) ids.Add(stair.Id, "stair");
             foreach (var room in floor.Rooms)
             {
                 ids.Add(room.Id, "room");

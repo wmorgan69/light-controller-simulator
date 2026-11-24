@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Data.Sqlite;
+using System.Text.Json;
 
 public sealed class BuildingEditorServiceTests : IDisposable
 {
@@ -37,6 +38,30 @@ public sealed class BuildingEditorServiceTests : IDisposable
         var stale = editor.Save(new BuildingEditorWriteRequest(state.EditRevision, state.Design));
         Assert.Equal(409, ((IStatusCodeHttpResult)stale).StatusCode);
         Assert.Equal(state.Design.Revision + 1, editor.Read().Design.Revision);
+    }
+
+    [Fact]
+    public void InvalidPlaceableSaveReturnsExplicitValidationErrors()
+    {
+        var (editor, _) = Create();
+        var state = editor.Read();
+        var topFloor = state.Design.Floors[^1] with
+        {
+            Stairs = [new StairDesign("invalid-stair", 1, 1, 2, 2, "north")]
+        };
+        var invalid = state.Design with
+        {
+            Floors = [.. state.Design.Floors.SkipLast(1), topFloor]
+        };
+
+        var response = editor.Save(new BuildingEditorWriteRequest(state.EditRevision, invalid));
+        Assert.Equal(400, ((IStatusCodeHttpResult)response).StatusCode);
+        var body = JsonSerializer.SerializeToElement(((IValueHttpResult)response).Value,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        Assert.Equal("The building design is invalid.", body.GetProperty("detail").GetString());
+        var errors = body.GetProperty("errors").EnumerateArray().ToArray();
+        Assert.Contains(errors, error => error.GetProperty("path").GetString() == "floors[3].stairs[0].direction");
+        Assert.Contains(errors, error => error.GetProperty("path").GetString() == "floors[3].stairs[0]");
     }
 
     [Fact]

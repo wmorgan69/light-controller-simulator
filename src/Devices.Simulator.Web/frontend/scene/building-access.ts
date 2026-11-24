@@ -1,5 +1,5 @@
-import * as THREE from './vendor/three.module.js';
-import { stairwellFront } from './building-stairs.mjs?v=stairs-11';
+import * as THREE from 'three';
+import { stairwellFront } from './building-stairs.js';
 
 const wallHeight = 1.2;
 const doorWidth = 0.75;
@@ -7,15 +7,55 @@ const doorHeight = 0.9;
 const walkwayFront = -1.4;
 export const designWalkwayWidth = 1.2;
 
-export function roomWallSegments(area) {
-  if (area.doors) return designWallSegments(area);
+export type WallSide = 'front' | 'back' | 'left' | 'right';
+
+export interface Doorway {
+  side: WallSide;
+  center: number;
+}
+
+export interface RoomDimensions {
+  x: number;
+  z: number;
+  width: number;
+  depth: number;
+}
+
+export interface RoomArea extends RoomDimensions {
+  door?: Doorway;
+  doors?: Doorway[];
+}
+
+export type DesignRoomArea = RoomArea & { doors: Doorway[] };
+export type LegacyRoomArea = RoomArea & { door: Doorway };
+
+export interface WallSegment {
+  x1: number;
+  z1: number;
+  x2: number;
+  z2: number;
+  y: number;
+  height: number;
+}
+
+function isDesignRoomArea(area: RoomArea): area is DesignRoomArea {
+  return Array.isArray(area.doors);
+}
+
+function isLegacyRoomArea(area: RoomArea): area is LegacyRoomArea {
+  return area.door !== undefined;
+}
+
+export function roomWallSegments(area: RoomArea): WallSegment[] {
+  if (isDesignRoomArea(area)) return designWallSegments(area);
+  if (!isLegacyRoomArea(area)) throw new TypeError('Room area must include a door or doors.');
   const left = area.x - area.width / 2;
   const right = area.x + area.width / 2;
   const front = area.z - area.depth / 2;
   const back = area.z + area.depth / 2;
   const { side, center } = area.door;
-  const walls = [];
-  const add = (x1, z1, x2, z2, y = 0, height = wallHeight) =>
+  const walls: WallSegment[] = [];
+  const add = (x1: number, z1: number, x2: number, z2: number, y = 0, height = wallHeight) =>
     walls.push({ x1, z1, x2, z2, y, height });
   if (side === 'front') {
     add(left, front, center - doorWidth / 2, front);
@@ -36,26 +76,29 @@ export function roomWallSegments(area) {
   return walls;
 }
 
-function designWallSegments(area) {
+function designWallSegments(area: DesignRoomArea): WallSegment[] {
   const left = area.x - area.width / 2;
   const right = area.x + area.width / 2;
   const front = area.z - area.depth / 2;
   const back = area.z + area.depth / 2;
-  const walls = [];
+  const walls: WallSegment[] = [];
   for (const [side, start, end, fixed, horizontal] of [
     ['front', left, right, front, true],
     ['back', left, right, back, true],
     ['left', front, back, left, false],
     ['right', front, back, right, false]
-  ]) {
-    const add = (from, to, y = 0, height = wallHeight) => {
+  ] as const) {
+    const add = (from: number, to: number, y = 0, height = wallHeight) => {
       if (to <= from) return;
       walls.push(horizontal
         ? { x1: from, z1: fixed, x2: to, z2: fixed, y, height }
         : { x1: fixed, z1: from, x2: fixed, z2: to, y, height });
     };
-    const openings = area.doors.filter(door => door.side === side)
-      .map(door => [Math.max(start, door.center - doorWidth / 2), Math.min(end, door.center + doorWidth / 2)])
+    const openings: [number, number][] = area.doors.filter(door => door.side === side)
+      .map(door => [
+        Math.max(start, door.center - doorWidth / 2),
+        Math.min(end, door.center + doorWidth / 2)
+      ] as [number, number])
       .filter(([from, to]) => to > from)
       .sort((a, b) => a[0] - b[0]);
     let cursor = start;
@@ -69,7 +112,8 @@ function designWallSegments(area) {
   return walls;
 }
 
-export function createDesignDoors(area, baseY) {
+export function createDesignDoors(area: RoomArea, baseY: number): THREE.Mesh[] {
+  if (!isDesignRoomArea(area)) throw new TypeError('Design room area must include doors.');
   return area.doors.map(({ side, center }) => {
     const horizontalWall = side === 'front' || side === 'back';
     const wallCenter = horizontalWall ? area.x : area.z;
@@ -91,7 +135,8 @@ export function createDesignDoors(area, baseY) {
   });
 }
 
-export function createOpenDoor(area, baseY) {
+export function createOpenDoor(area: RoomArea, baseY: number): THREE.Mesh {
+  if (!isLegacyRoomArea(area)) throw new TypeError('Legacy room area must include a door.');
   const { side, center } = area.door;
   const door = new THREE.Mesh(
     new THREE.BoxGeometry(side === 'front' ? 0.06 : doorWidth, doorHeight, side === 'front' ? doorWidth : 0.06),
@@ -104,7 +149,7 @@ export function createOpenDoor(area, baseY) {
   return door;
 }
 
-export function createFloorWalkway(baseY) {
+export function createFloorWalkway(baseY: number): THREE.Mesh {
   const left = -0.1;
   const right = 4.3;
   const walkway = new THREE.Mesh(
@@ -114,15 +159,16 @@ export function createFloorWalkway(baseY) {
   return walkway;
 }
 
-export function createDesignWalkways(baseY, width, depth) {
+export function createDesignWalkways(baseY: number, width: number, depth: number): THREE.Mesh[] {
   const w = designWalkwayWidth;
   const material = () => new THREE.MeshStandardMaterial({ color: '#64748b', roughness: 0.9 });
-  return [
+  const dimensions: [number, number, number, number][] = [
     [width + 2 * w, w, 0, -(depth + w) / 2],
     [width + 2 * w, w, 0, (depth + w) / 2],
     [w, depth, -(width + w) / 2, 0],
     [w, depth, (width + w) / 2, 0]
-  ].map(([xSize, zSize, x, z]) => {
+  ];
+  return dimensions.map(([xSize, zSize, x, z]) => {
     const walkway = new THREE.Mesh(new THREE.BoxGeometry(xSize, 0.06, zSize), material());
     walkway.position.set(x, baseY, z);
     return walkway;

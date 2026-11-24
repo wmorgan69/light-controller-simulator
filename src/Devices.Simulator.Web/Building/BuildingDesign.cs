@@ -1,11 +1,21 @@
 using Devices.Contracts;
 
 public sealed record BuildingDesign(long Revision, decimal Width, decimal Depth, IReadOnlyList<FloorDesign> Floors);
-public sealed record FloorDesign(string Id, int Number, string ControllerId, decimal ControllerX, decimal ControllerZ, IReadOnlyList<RoomDesign> Rooms);
+public sealed record FloorDesign(
+    string Id,
+    int Number,
+    string ControllerId,
+    decimal ControllerX,
+    decimal ControllerZ,
+    IReadOnlyList<RoomDesign> Rooms,
+    IReadOnlyList<WalkwayDesign>? Walkways = null,
+    IReadOnlyList<StairDesign>? Stairs = null);
 public sealed record RoomDesign(string Id, string Name, decimal X, decimal Z, decimal Width, decimal Depth, SensorDesign Sensor, IReadOnlyList<DoorDesign> Doors, IReadOnlyList<LightDesign> Lights);
 public sealed record SensorDesign(string Id, decimal X, decimal Z, string? ControllerId);
 public sealed record LightDesign(string Id, decimal X, decimal Z, string? ControllerId);
 public sealed record DoorDesign(string Id, decimal X, decimal Z);
+public sealed record WalkwayDesign(string Id, decimal X, decimal Z, decimal Width, decimal Depth);
+public sealed record StairDesign(string Id, decimal X, decimal Z, decimal Width, decimal Depth, string Direction);
 
 public sealed record BuildingDesignValidationError(string Path, string Message);
 
@@ -14,6 +24,8 @@ public static class BuildingDesignValidator
     public static IReadOnlyList<BuildingDesignValidationError> ValidateStructure(BuildingDesign? design)
     {
         const int maxEntities = 10_000;
+        const int maxWalkwaysPerFloor = 256;
+        const int maxStairsPerFloor = 32;
         var errors = new List<BuildingDesignValidationError>();
         void Error(string path, string message) => errors.Add(new(path, message));
         if (design is null) { Error("design", "A design is required."); return errors; }
@@ -41,6 +53,40 @@ public static class BuildingDesignValidator
             count += 2;
             Id(floor.Id, fp + ".id");
             Id(floor.ControllerId, fp + ".controllerId");
+            if (floor.Walkways is not null)
+            {
+                if (floor.Walkways.Count > maxWalkwaysPerFloor)
+                {
+                    Error(fp + ".walkways", $"A floor may contain at most {maxWalkwaysPerFloor} walkways.");
+                    return errors;
+                }
+                count += floor.Walkways.Count;
+                if (count > maxEntities) { Error(fp + ".walkways", "Design contains too many entities."); return errors; }
+                for (var wi = 0; wi < floor.Walkways.Count; wi++)
+                {
+                    var walkway = floor.Walkways[wi];
+                    var wp = $"{fp}.walkways[{wi}]";
+                    if (walkway is null) Error(wp, "Walkway is required.");
+                    else Id(walkway.Id, wp + ".id");
+                }
+            }
+            if (floor.Stairs is not null)
+            {
+                if (floor.Stairs.Count > maxStairsPerFloor)
+                {
+                    Error(fp + ".stairs", $"A floor may contain at most {maxStairsPerFloor} stairs.");
+                    return errors;
+                }
+                count += floor.Stairs.Count;
+                if (count > maxEntities) { Error(fp + ".stairs", "Design contains too many entities."); return errors; }
+                for (var si = 0; si < floor.Stairs.Count; si++)
+                {
+                    var stair = floor.Stairs[si];
+                    var sp = $"{fp}.stairs[{si}]";
+                    if (stair is null) Error(sp, "Stair is required.");
+                    else Id(stair.Id, sp + ".id");
+                }
+            }
             if (floor.Rooms is null) { Error(fp + ".rooms", "Rooms are required."); continue; }
             if (count + 2L * floor.Rooms.Count > maxEntities) { Error(fp + ".rooms", "Design contains too many entities."); return errors; }
             for (var ri = 0; ri < floor.Rooms.Count; ri++)
@@ -94,6 +140,19 @@ public static class BuildingDesignValidator
         if (design is null) { Error("design", "A design is required."); return errors; }
         bool Grid(decimal value) => value % 0.5m == 0;
         bool Dimension(decimal value) => value >= 2 && value <= 100 && Grid(value);
+        bool PlaceableRectangle(decimal x, decimal z, decimal width, decimal depth)
+        {
+            const decimal margin = 4;
+            const decimal maximumDimension = 108;
+            var maximumX = Math.Min(design.Width, 100m) + margin;
+            var maximumZ = Math.Min(design.Depth, 100m) + margin;
+            return width > 0 && width <= maximumDimension &&
+                depth > 0 && depth <= maximumDimension &&
+                x >= -margin && x <= maximumX &&
+                z >= -margin && z <= maximumZ &&
+                x + width <= maximumX &&
+                z + depth <= maximumZ;
+        }
         if (design.Revision < 0) Error("revision", "Revision cannot be negative.");
         if (!Dimension(design.Width)) Error("width", "Width must be 2–100 metres on the 0.5 metre grid.");
         if (!Dimension(design.Depth)) Error("depth", "Depth must be 2–100 metres on the 0.5 metre grid.");
@@ -119,6 +178,8 @@ public static class BuildingDesignValidator
         if (design.Floors is null) { Error("floors", "Floors are required."); return errors; }
         if (design.Floors.Count is < 1 or > 10) Error("floors", "A building must have 1–10 floors.");
         var numbers = new HashSet<int>();
+        var topFloorNumber = design.Floors.Where(floor => floor is not null)
+            .Select(floor => floor!.Number).DefaultIfEmpty(0).Max();
         for (var fi = 0; fi < design.Floors.Count; fi++)
         {
             var floor = design.Floors[fi];
@@ -129,6 +190,31 @@ public static class BuildingDesignValidator
             if (floor.Number < 1 || floor.Number > design.Floors.Count || !numbers.Add(floor.Number))
                 Error(fp + ".number", "Floor numbers must be unique and contiguous from 1.");
             Point(floor.ControllerX, floor.ControllerZ, 0, 0, design.Width, design.Depth, fp + ".controller");
+            if (floor.Walkways is not null)
+            {
+                for (var wi = 0; wi < floor.Walkways.Count; wi++)
+                {
+                    var walkway = floor.Walkways[wi];
+                    var wp = $"{fp}.walkways[{wi}]";
+                    if (walkway is not null && !PlaceableRectangle(walkway.X, walkway.Z, walkway.Width, walkway.Depth))
+                        Error(wp, "Walkway must have positive dimensions and remain within 4 metres of the building footprint.");
+                }
+            }
+            if (floor.Stairs is not null)
+            {
+                for (var si = 0; si < floor.Stairs.Count; si++)
+                {
+                    var stair = floor.Stairs[si];
+                    var sp = $"{fp}.stairs[{si}]";
+                    if (stair is null) continue;
+                    if (!PlaceableRectangle(stair.X, stair.Z, stair.Width, stair.Depth))
+                        Error(sp, "Stair must have positive dimensions and remain within 4 metres of the building footprint.");
+                    if (stair.Direction is not ("east" or "west"))
+                        Error(sp + ".direction", "Stair direction must be east or west.");
+                    if (floor.Number == topFloorNumber)
+                        Error(sp, "Stairs cannot be placed on the top floor.");
+                }
+            }
             if (floor.Rooms is null) { Error(fp + ".rooms", "Rooms are required."); continue; }
             var rectangles = new List<(decimal X, decimal Z, decimal Right, decimal Bottom)>();
             for (var ri = 0; ri < floor.Rooms.Count; ri++)
@@ -196,6 +282,10 @@ public static class BuildingDesignSeed
 
     public static BuildingDesign Create()
     {
+        const decimal width = 10;
+        const decimal depth = 8;
+        const decimal originX = width / 2;
+        const decimal originZ = depth / 2;
         var floors = DeviceIds.CreateBuilding().Select(controller =>
         {
             var rooms = controller.Rooms.Select(room =>
@@ -211,10 +301,10 @@ public static class BuildingDesignSeed
                     (_, "office-b") => (3.8m, 0m, 2.35m, 2.8m, "front", 3.8m),
                     _ => throw new InvalidOperationException($"Unexpected seed room {room.Id}.")
                 };
-                var x = Grid(10 + centerX - originalWidth / 2);
-                var z = Grid(10 + centerZ - originalDepth / 2);
-                var right = Grid(10 + centerX + originalWidth / 2);
-                var bottom = Grid(10 + centerZ + originalDepth / 2);
+                var x = Grid(originX + centerX - originalWidth / 2);
+                var z = Grid(originZ + centerZ - originalDepth / 2);
+                var right = Grid(originX + centerX + originalWidth / 2);
+                var bottom = Grid(originZ + centerZ + originalDepth / 2);
                 var count = room.LightStrips.Count;
                 var columns = count is 8 or 12 ? count / 2 : 0;
                 var lights = room.LightStrips.Select((light, i) =>
@@ -223,18 +313,18 @@ public static class BuildingDesignSeed
                         : count == 6 ? (i % 3 - 1) * 1.3m : 0m;
                     var dz = columns > 0 ? (i < columns ? -1 : 1) * originalDepth * 0.24m
                         : count == 6 ? (i < 3 ? -1.6m : 1.6m) : 0m;
-                    return new LightDesign(light.Id, Grid(10 + centerX + dx), Grid(10 + centerZ + dz), controller.Id);
+                    return new LightDesign(light.Id, Grid(originX + centerX + dx), Grid(originZ + centerZ + dz), controller.Id);
                 }).ToArray();
                 var door = doorSide == "right"
-                    ? new DoorDesign($"door-{room.Id}-1", right, Grid(10 + doorCenter))
-                    : new DoorDesign($"door-{room.Id}-1", Grid(10 + doorCenter), z);
+                    ? new DoorDesign($"door-{room.Id}-1", right, Grid(originZ + doorCenter))
+                    : new DoorDesign($"door-{room.Id}-1", Grid(originX + doorCenter), z);
                 return new RoomDesign(room.Id, room.Name, x, z, right - x, bottom - z,
-                    new SensorDesign(DeviceIds.Sensor(controller.Floor, key), Grid(10 + centerX + 0.22m),
-                        Grid(10 + centerZ + (count >= 4 ? 0 : 0.9m)), controller.Id),
+                    new SensorDesign(DeviceIds.Sensor(controller.Floor, key), Grid(originX + centerX + 0.22m),
+                        Grid(originZ + centerZ + (count >= 4 ? 0 : 0.9m)), controller.Id),
                     [door], lights);
             }).ToArray();
-            return new FloorDesign($"floor-{controller.Floor}", controller.Floor, controller.Id, 5.5m, 6.5m, rooms);
+            return new FloorDesign($"floor-{controller.Floor}", controller.Floor, controller.Id, 0.5m, 0.5m, rooms);
         }).ToArray();
-        return new BuildingDesign(1, 20, 20, floors);
+        return new BuildingDesign(1, width, depth, floors);
     }
 }

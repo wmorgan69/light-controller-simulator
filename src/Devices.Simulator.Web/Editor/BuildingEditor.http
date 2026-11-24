@@ -15,6 +15,9 @@ GET {{baseUrl}}/api/building-design-status
 ### Read saved design (Development with loopback-only binding)
 GET {{baseUrl}}/api/building-editor
 
+### Read the original four-floor design template without changing the saved building
+GET {{baseUrl}}/api/building-editor/default-design
+
 ### Save and activate the design; this replaces the running building
 # Set @revision to the editRevision from the editor response.
 POST {{baseUrl}}/api/building-editor/save

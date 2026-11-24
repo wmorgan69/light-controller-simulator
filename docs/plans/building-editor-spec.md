@@ -19,7 +19,11 @@ The simulator supports editing one building's dimensions, floors, rooms, doors, 
 
 ## Current workflow
 
-When editing is available, open **Edit building** to load the saved design. Multiple editors may work concurrently. The editor offers an SVG plan, item list and forms, session undo/redo, save, JSON export and exit. Edits remain in browser memory and do not change the running simulation until saved. Floor and item deletion and leaving with changes prompt for confirmation. Save validates, persists and attempts activation; the UI reports saved and running revisions separately, with activation and cleanup status and retry controls.
+When editing is available, choose **Building menu**, then **Edit building** to load the saved design. Multiple editors may work concurrently. The editor offers an SVG plan, item list and forms, session undo/redo, save, JSON export and exit. Edits remain in browser memory and do not change the running simulation until saved. Floor and item deletion and leaving with changes prompt for confirmation. Save validates, persists and attempts activation; the UI reports saved and running revisions separately, with activation and cleanup status and retry controls.
+
+The editor can replace its local design with a one-floor blank building or the original four-floor template after confirmation. The replacement is undoable, but unapplied form values are discarded. New IDs prevent reuse of retired entities; saving replaces previous devices and initiates controller cleanup.
+
+Existing plan items can be dragged in select or move mode. The preview snaps to the grid, Escape cancels, and moving a room translates its fixtures. A completed move is undoable; invalid intermediate positions remain in the editor with validation feedback. Click-to-place and labelled item-list and form alternatives remain available.
 
 The browser refreshes status every 20 seconds. Unsaved changes and undo/redo history are held only in the open browser session; undo after a save creates unsaved changes. Save compares the observed revision with the current saved revision. On conflict, editing and saving stop; users can export local edits or explicitly discard them and load the current saved design.
 
@@ -41,12 +45,15 @@ flowchart TB
     Check -->|available| Entry("Open editor")
     Entry --> Load("Load saved design")
     Load -->|load failed| Error("Show error and retry")
-    Load -->|loaded| Edit("Edit in browser memory")
+    Load -->|loaded| Access("Represent legacy access as editable objects")
+    Access --> Edit("Edit in browser memory")
+    Edit -->|confirm blank or default| Template("Replace local design with new identities")
+    Template --> Edit
     Edit -->|save| Validate("Validate for save")
     Validate -->|invalid| Edit
     Validate -->|valid| Saved("Persist saved design")
     Saved --> Activate("Attempt activation")
-    Activate -->|success| Active("Running design updated")
+    Activate -->|success| Active("Running design and access geometry updated")
     Activate -->|failure| Failed("Saved; activation failed")
     Failed --> Retry("Editor retry or restart")
     Retry --> Activate
@@ -58,15 +65,16 @@ flowchart TB
 
 ## Building design and validation
 
-The JSON design contains `revision`, `width`, `depth` and `floors`. Each floor has an ID, number, controller ID and X/Z position, and rooms. Each room has ID, name, X/Z top-left, width, depth, one sensor, and door and light arrays. Doors have IDs and positions; sensors and lights also carry their controller ID. Coordinates are absolute metres in the building footprint. Names are display text, not identifiers.
+The JSON design contains `revision`, `width`, `depth` and `floors`. Each floor has an ID, number, controller ID and X/Z position, rooms, and optional `walkways` and `stairs` arrays. Each room has ID, name, X/Z top-left, width, depth, one sensor, and door and light arrays. Doors have IDs and positions; sensors and lights also carry their controller ID. Walkways and stairs have IDs, X/Z top-left and width/depth; stairs also specify `east` or `west` as the direction of ascent. A stair belongs to its lower floor and connects it to the next numbered floor. Coordinates are absolute metres. Names are display text, not identifiers.
 
-The initial design is 20 × 20 m with four floors, nine rooms, nine sensors and 37 strips. It preserves the IDs and English names from `DeviceIds.CreateBuilding()`, including `DeviceIds.Sensor` for each room. Its room rectangles, door and fixture positions approximate the baseline 3D arrangement on the 0.5 m grid; generated door IDs are stable. New rooms and floors receive new IDs, a sensor or controller respectively, and logical connections can be edited. Room state exposes `sensorId`; legacy state without it uses the original floor/room-derived ID.
+Fresh databases and the default template use a 10 × 8 m design with four floors, nine rooms, nine sensors and 37 strips. It preserves the IDs and English names from `DeviceIds.CreateBuilding()`, including `DeviceIds.Sensor` for each room. Its room rectangles, door and fixture positions approximate the original 3D arrangement on the 0.5 m grid; generated door IDs are stable. Existing saved and active designs retain their dimensions and coordinates. The editor shows its local design, while the 3D view uses the active design geometry; legacy access is generated relative to its footprint without modifying stored data. New rooms and floors receive new IDs, a sensor or controller respectively, and logical connections can be edited. Room state exposes `sensorId`; legacy state without it uses the original floor/room-derived ID.
 
 For save, server validation requires:
 
 - 1–10 floors, numbered contiguously from 1, and building width/depth each 2–100 m on the 0.5 m grid.
 - Non-overlapping rectangular rooms, at least 1 × 1 m, on the grid and within the footprint; room names must not be blank.
 - Controllers within the footprint; doors on a room boundary; sensors and lights within or on their room boundary. All positions are on the grid.
+- Walkway and stair rectangles have positive dimensions and fit within four metres of the footprint; their coordinates need not be on the grid. Each floor has at most 256 walkways and 32 stairs. Stairs cannot start on the top floor, and ascent direction must be `east` or `west`.
 - One sensor per room and every sensor and light connected to that floor's controller. Doors and light lists may be empty.
 - Globally unique, nonempty IDs of at most 128 ASCII letters, digits, hyphens or underscores; removed saved IDs cannot be reused or changed to another entity type.
 
@@ -77,6 +85,8 @@ Unsaved in-memory edits may temporarily be invalid. A save request must be struc
 `BuildingDesign:SqlitePath` defaults to `building-design.db` relative to the simulator content root. Compose sets `BuildingDesign__SqlitePath=/data/building-design.db` and mounts `building-design-data` at `/data`; instrumentation uses its own `telemetry-data` volume. Fresh databases receive the seed only once. Schema version 4 migrates versions 1–3 while retaining saved and active designs and revision. An unsupported version or nonempty unversioned database is rejected. Migration cannot recover IDs deleted before version 1, except IDs still visible in the old active design. See [backup and restore](../technical/building-light-simulator.md#persistence-and-backup).
 
 The database stores saved and last active designs, edit revision, retired IDs and cleanup status. Save compares the client's observed edit revision and atomically replaces the saved design, then separately attempts activation. Activation retains compatible live state for retained device IDs and drops removed devices; state itself is not restored across process restart. Removed controllers are enqueued for cleanup only as part of successful activation. Older active work is fenced by saved or active revision and retired IDs cannot be reused.
+
+Older designs with absent or null access arrays retain their legacy generated geometry. Opening one in the editor creates editable access objects in the browser; saving persists those objects with stable IDs. Empty arrays explicitly remove that floor's corresponding generated objects. Session undo includes changes to access objects.
 
 On startup the service restores the last active design and retries a different saved revision. If it fails, the restored active design remains running. Activation failure is represented in the current process and recomputed by startup retry, not stored as a separate durable failure record. After a runtime failure, an editor can retry, or restart can retry; no periodic activation retry is implemented.
 
@@ -142,7 +152,7 @@ The read-only `GET /api/building-design-status` is not editor-restricted. It ret
 
 ## Remaining gaps
 
-- Edited-design 3D views add illustrative perimeter walkways, exterior stairs, landings and pillars outside the editable footprint. These are not editable and do not guarantee an accessible route from each interior door. The seed is an approximation of the baseline room geometry.
+- Access objects and room geometry are illustrative and do not guarantee a connected or accessible route from each interior door. The seed approximates the baseline room geometry.
 - Authentication, authorization and safe editor access for non-loopback, proxy or Compose deployments are not implemented.
 - Automatic backups and a periodic activation retry are not implemented.
 - Cleanup indicates broker publication, not acknowledgement by every subscriber. A [broker-backed test](../technical/building-light-simulator.md#running-and-testing) covers ingestion, direct snapshot reconciliation and retained-message cleanup; it does not cover HTTP polling, disconnects or process restarts. Accessibility and desktop/mobile verification remain broader than this test.

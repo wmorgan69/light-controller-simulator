@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { controllerStatusLabel, localizeMarkup, plural, t } from '../src/Devices.Simulator.Web/wwwroot/localization.en.mjs';
-import { createMutationAccess, responseDetail, syncMutationControls } from '../src/Devices.Simulator.Web/wwwroot/mutation-access.mjs';
+import { controllerStatusLabel, localizeMarkup, plural, t } from '../src/Devices.Simulator.Web/frontend/shared/localization.en.ts';
+import { createMutationAccess, responseDetail, syncMutationControls } from '../src/Devices.Simulator.Web/frontend/shared/mutation-access.ts';
 
 test('looks up English labels and interpolates dynamic values without changing their text', () => {
   assert.equal(t('pageTitle'), 'Building Light Simulator');
@@ -24,9 +24,24 @@ test('backs every static markup localization reference with a resource entry', a
   for (const key of keys) assert.equal(typeof t(key), 'string', `missing markup resource: ${key}`);
 });
 
+test('startup and no-script fallbacks match the English resources', async () => {
+  const markup = await readFile(new URL('../src/Devices.Simulator.Web/wwwroot/index.html', import.meta.url), 'utf8');
+  for (const key of ['appInitializing', 'appJavaScriptRequired']) {
+    const match = markup.match(new RegExp(`<p[^>]*data-i18n="${key}"[^>]*>([^<]+)</p>`));
+    assert.ok(match, `missing ${key} fallback`);
+    assert.equal(match[1], t(key));
+  }
+  assert.match(markup, /<noscript>[\s\S]*data-i18n="appJavaScriptRequired"[\s\S]*<\/noscript>/);
+});
+
 test('backs every statically referenced browser message with a resource entry', async () => {
-  const app = await readFile(new URL('../src/Devices.Simulator.Web/wwwroot/app.js', import.meta.url), 'utf8');
-  const keys = [...app.matchAll(/\bt\('([^']+)'/g)].map(([, key]) => key);
+  const sources = await Promise.all([
+    readFile(new URL('../src/Devices.Simulator.Web/frontend/SimulatorApp.tsx', import.meta.url), 'utf8'),
+    readFile(new URL('../src/Devices.Simulator.Web/frontend/scene/SceneCanvas.tsx', import.meta.url), 'utf8'),
+    readFile(new URL('../src/Devices.Simulator.Web/frontend/shared/simulator-model.ts', import.meta.url), 'utf8'),
+    readFile(new URL('../src/Devices.Simulator.Web/frontend/editor/BuildingEditor.tsx', import.meta.url), 'utf8')
+  ]);
+  const keys = sources.flatMap(source => [...source.matchAll(/\bt\('([^']+)'/g)].map(([, key]) => key));
   const values = new Proxy({}, {
     get: () => 'value',
     getOwnPropertyDescriptor: () => ({ configurable: true, enumerable: true, value: 'value', writable: true })

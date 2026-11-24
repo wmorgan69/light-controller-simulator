@@ -22,7 +22,7 @@ The first commit, `120bfb3`, imported an existing project as well as quality and
 
 ### IoT, scenarios, and workflow
 
-- Added retained MQTT snapshots, reconnect handling, controller revision and replay protection, command acknowledgements, stale/offline detection, and transport status. Added target validation and MQTT fault commands for sensors, light strips, and controllers.
+- Added retained MQTT snapshots, reconnect handling, controller telemetry revision protection, command acknowledgements, stale/offline detection, and transport status. Added target validation and MQTT fault commands for sensors, light strips, and controllers. Command replay protection is not implemented.
 - Bundled Three.js and OrbitControls locally rather than relying on a runtime CDN.
 - Added reset and occupancy scenarios. Changed the occupancy demo from a fixed office selection to one or two random rooms per floor, subject to room availability.
 - Added repository instructions, independent code and UX reviewers, a build-review-rebuild agent, clean-code and testing standards, and documentation-review requirements. Later additions introduced security review and coverage guidance.

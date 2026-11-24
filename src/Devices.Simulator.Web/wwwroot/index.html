@@ -4,104 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title data-i18n="pageTitle">Building Light Simulator</title>
-  <link rel="stylesheet" href="/styles.css?v=mutation-access-1">
+  <link rel="stylesheet" href="/dist/app.css">
 </head>
 <body>
-  <header>
-    <h1 data-i18n="pageTitle">Building Light Simulator</h1>
-    <p data-i18n="pageSubtitle">Building controller simulation</p>
-    <p id="floorSelectionHint" class="wiring-legend" data-i18n="floorSelectionHint">Choose a floor; select it again to reset the camera.</p>
-    <p id="transportStatus" class="transport-status" role="status" data-i18n="checkingMqtt">Checking MQTT...</p>
-    <p id="buildingDesignStatus" role="status" data-i18n="buildingDesignStatusLoading">Checking building design...</p>
-    <p id="mutationAccessStatus" role="status" data-i18n="mutationAccess_checking">Checking control access. Changes are disabled until access is confirmed; viewing and navigation remain available.</p>
-    <details class="editor-menu">
-      <summary data-i18n="editorMenu">Building menu</summary>
-      <button id="openEditor" type="button" disabled aria-describedby="editorAccessStatus" data-i18n="editBuilding">Edit building</button>
-      <p id="editorAccessStatus" role="status" data-i18n="mutationAccess_checking">Checking control access. Changes are disabled until access is confirmed; viewing and navigation remain available.</p>
-    </details>
-  </header>
-  <section id="buildingEditor" class="building-editor" aria-labelledby="editorHeading" hidden>
-    <h2 id="editorHeading" tabindex="-1" data-i18n="editBuilding">Edit building</h2>
-    <p id="editorStatus" role="status" aria-live="polite"></p>
-    <p id="editorError" role="alert" hidden></p>
-    <div id="editorContent"></div>
-  </section>
-  <main>
-    <nav class="floor-navigation" aria-label="Building floors" data-i18n-aria-label="buildingFloors">
-      <h2 data-i18n="building">Building</h2>
-      <div class="floor-options">
-        <button id="showAllFloors" class="floor-button" type="button" aria-pressed="true" disabled data-i18n="allFloors">All floors</button>
-        <div id="floorButtons" class="floor-buttons"></div>
-      </div>
-      <p id="floorLoading" role="status" data-i18n="loadingFloors">Loading floors...</p>
-      <div class="scenario-controls" role="group" aria-labelledby="scenarioHeading">
-        <h3 id="scenarioHeading" data-i18n="scenarios">Scenarios</h3>
-        <button id="scenarioReset" type="button" disabled data-mutation data-i18n="resetBuilding">Reset building</button>
-        <button id="scenarioOccupied" type="button" disabled data-mutation title="Randomly occupy up to 2 rooms on each floor" data-i18n="occupancyDemo" data-i18n-title="occupancyDemoTitle">Occupancy demo</button>
-        <p id="scenarioError" role="alert" hidden></p>
-        <p id="scenarioStatusWarning" role="alert" hidden></p>
-      </div>
-    </nav>
-    <section class="canvas-panel" aria-label="3D building view" data-i18n-aria-label="simulatorView">
-      <canvas id="buildingCanvas" role="img" aria-label="Interactive 3D view of the building. Use the accessible controls below to select rooms and trigger sensors or faults." data-i18n-aria-label="simulatorCanvas"></canvas>
-      <div class="scene-overlays">
-        <div class="scene-messages">
-          <div class="view-help">
-            <div id="viewStatus" role="status"></div>
-            <p class="wiring-legend" data-i18n="stairsHelp">Stairs are at the back; orbit to view them.</p>
-            <p id="wiringLegend" class="wiring-legend" hidden><span data-i18n="wiringLabel">Wiring:</span> <span class="sensor-wire" data-i18n="sensorWiringLegend">blue = sensors</span> · <span class="light-wire" data-i18n="lightWiringLegend">yellow = lights</span></p>
-          </div>
-          <div id="loadError" class="load-error" role="alert" hidden></div>
-        </div>
-        <section id="roomInspector" class="room-inspector" aria-label="Room controls" data-i18n-aria-label="roomControls" hidden>
-          <div class="room-inspector-heading">
-            <span id="roomInspectorTitle" data-i18n="roomControls">Room controls</span>
-            <button id="closeRoomInspector" type="button" aria-label="Close room controls" data-i18n-aria-label="closeRoomControls" data-i18n="closeSymbol">×</button>
-          </div>
-          <div class="room-inspector-controls">
-            <label class="inspector-switch" for="inspectorPresence">
-              <span data-i18n="presence">Presence</span>
-              <input id="inspectorPresence" type="checkbox" role="switch" disabled data-mutation>
-            </label>
-            <label class="inspector-switch" for="inspectorFault">
-              <span data-i18n="sensorFault">Sensor fault</span>
-              <input id="inspectorFault" type="checkbox" role="switch" disabled data-mutation>
-            </label>
-          </div>
-          <p id="inspectorError" role="alert" hidden></p>
-        </section>
-      </div>
-    </section>
-  </main>
-  <section class="status-panel">
-    <h2 data-i18n="liveStatus">Live status</h2>
-    <div id="statusTable"></div>
-    <details class="accessible-controls">
-      <summary data-i18n="accessibleControls">Accessible controls</summary>
-      <label for="accessibleFloor" data-i18n="floorView">Floor view</label>
-      <select id="accessibleFloor" disabled><option value="" data-i18n="allFloors">All floors</option></select>
-      <label for="accessibleRoom" data-i18n="roomSensor">Room sensor</label>
-      <select id="accessibleRoom"></select>
-      <button id="accessibleTrigger" type="button" disabled data-mutation data-i18n="triggerSelectedRoomSensor">Trigger selected room sensor</button>
-      <label for="accessibleFaultScope" data-i18n="faultType">Fault type</label>
-      <select id="accessibleFaultScope" disabled data-mutation>
-        <option value="sensor" data-i18n="sensor">Sensor</option>
-        <option value="light" data-i18n="lightStrip">Light strip</option>
-        <option value="controller" data-i18n="controller">Controller</option>
-      </select>
-      <select id="accessibleFaultTarget" disabled data-mutation aria-label="Accessible fault target" data-i18n-aria-label="accessibleFaultTarget"></select>
-      <button id="accessibleInjectFault" type="button" disabled data-mutation data-i18n="injectSelectedFault">Inject selected fault</button>
-      <div id="accessibleFaults" role="group" aria-label="All active faults" data-i18n-aria-label="allActiveFaults"></div>
-      <p id="accessibleError" role="alert" hidden></p>
-      <div id="refreshWarning" class="load-error" hidden>
-        <span id="refreshWarningText" role="alert"></span>
-        <button id="dismissRefreshWarning" type="button" data-i18n="dismiss">Dismiss</button>
-      </div>
-    </details>
-  </section>
-  <script type="importmap">
-    { "imports": { "three": "/vendor/three.module.js" } }
-  </script>
-  <script type="module" src="/app.js?v=local-edits-6"></script>
+  <div id="root">
+    <p id="simulator-initializing" role="status" data-i18n="appInitializing">Initializing simulator… If it does not start, check that JavaScript is enabled and reload the page.</p>
+  </div>
+  <noscript><style>#simulator-initializing { display: none; }</style><p data-i18n="appJavaScriptRequired">JavaScript is required to run the simulator. Enable JavaScript and reload the page.</p></noscript>
+  <script type="module" src="/dist/app.js"></script>
 </body>
 </html>

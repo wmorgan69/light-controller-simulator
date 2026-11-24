@@ -13,7 +13,7 @@
 
 ## Purpose
 
-The building editor is part of the [Building Light Simulator](building-light-simulator.md). It edits a building's dimensions, floors, rooms, doors, sensors, light strips, controllers and logical connections. The plan and wiring are illustrative, not an electrical or compliance design.
+The building editor is part of the [Building Light Simulator](building-light-simulator.md). It edits a building's dimensions, floors, rooms, doors, sensors, light strips, controllers, walkways, stairs and logical connections. The plan and wiring are illustrative, not an electrical or compliance design.
 
 The [editor specification](../plans/building-editor-spec.md) describes the design contract, validation rules, state flow and remaining gaps. The [editor UX guide](../ux/simulator/editor/ux.md) describes the interface.
 
@@ -28,17 +28,23 @@ dotnet run --no-launch-profile --project src\Devices.Simulator.Web\Devices.Simul
 
 Open `http://localhost:5080/`, then choose **Building menu** and **Edit building**. Use a direct loopback connection: the editor is available only in Development, with loopback client and server addresses and listeners, a matching loopback host, scheme and port, and no forwarding headers. Editor mutations require a same-origin `Origin`. The editor has no authentication; local users and processes share access. Compose disables simulator HTTP mutations and does not expose editor access.
 
-The browser checks `GET /api/capabilities`; `editorAllowed` must be `true`. Do not expose the simulator through a proxy or a non-loopback listener.
+The browser checks `GET /api/capabilities`; `editorAllowed` must be `true`. Otherwise the menu's edit item is disabled and its access status explains the restriction. Do not expose the simulator through a proxy or a non-loopback listener.
 
 ## Editing and saving
 
 Opening the editor loads the saved design. Multiple editors may work concurrently. Applied design changes exist only in the open browser session until saved. Undo/redo history and unapplied form values are session-only and are not saved with the design. **Exit editor** confirms before discarding unsaved changes; closing or reloading also loses session-only state. JSON export can preserve local work, including a marked recovery export when pending form values cannot form a valid design.
 
-**Save and activate** validates and persists the design, then attempts activation. The editor displays saved and running revisions, activation status and controller cleanup counts. A successful save does not guarantee activation: if activation fails, the previous design remains running and the saved design can be retried. Undo after saving creates new unsaved changes.
+**Start blank** replaces the editor design with one empty floor in a 20 × 20 m building. **Start with default building** uses the four-floor layout in a 10 × 8 m footprint. Both ask for confirmation, discard unapplied form values, and can be undone before or after saving. They do not affect the saved or running design until **Save and activate**. The replacement uses new identities, so saving it replaces the previous devices and schedules removed controllers for cleanup.
+
+The plan's icon toolbar selects select, move, room, door, light, walkway and stairs tools. Tooltips identify the icons, and the active tool is shown in text. In select or move mode, drag an existing item to move it. The preview snaps to the 0.5 m grid; moving a room also translates its fixtures. Escape cancels the preview, and a completed move is one undoable edit. Pending form values require confirmation before they are replaced. An invalid drop remains in the session with a validation message and must be corrected before saving. Creation and move tools also support click-to-place; the item list and labelled forms remain available for selection and precise positioning without dragging. The item list offers buttons to add a walkway or stairs at the origin, then edit their properties. Stairs begin on the selected lower floor and connect to the next numbered floor; the upper floor shows the incoming stairs and links back to their properties. A walkway or stairs can be resized, moved, or deleted with confirmation and undo. Removing upper floors also removes stairs that would no longer connect to a floor. Each room requires a sensor and each floor requires a controller. Logical plan connections use right-angle routes and are not physical cable routes.
+
+Doors appear as wall-aligned rectangles and controllers as boxes on the plan. Zoom and pan controls provide a closer view; **Fit all** restores the full plan and its exterior margin. Room labels are clipped to their boundaries, with full names available in **Items and connections** and the selection label. To delete an item, select it on the plan or in **Items and connections**, then choose **Delete selected item** above the plan and confirm. Controllers and sensors cannot be deleted independently.
+
+**Save and activate** validates and persists the design, then attempts activation. The editor shows a brief status and highlights pending or failed controller cleanup; expandable details show saved and running revisions, activation status and cleanup counts. A successful save does not guarantee activation: if activation fails, the previous design remains running and the saved design can be retried. Undo after saving creates new unsaved changes.
 
 ## Design and validation
 
-Design JSON contains `revision`, `width`, `depth` and `floors`. A floor contains its stable ID, number, controller ID and position, and rooms. Each room contains its stable ID, name, geometry, one sensor, doors and light strips; sensors and lights reference a controller.
+Design JSON contains `revision`, `width`, `depth` and `floors`. A floor contains its stable ID, number, controller ID and position, rooms, and optional walkway and stair arrays. Each room contains its stable ID, name, geometry, one sensor, doors and light strips; sensors and lights reference a controller. Each walkway and stair has an ID and rectangle in metres; each stair has an ascent direction. Stairs connect adjacent floors. Legacy null or absent arrays are represented as editable objects when opened and are persisted on save; empty arrays mean no corresponding objects. Existing saved and active designs retain their dimensions and coordinates. The 3D view uses the active design geometry at every revision and generates missing legacy access in memory; no stored design is rewritten merely by viewing it.
 
 For save, the server requires 1–10 consecutively numbered floors, dimensions from 2–100 metres on a 0.5-metre grid, and non-overlapping rooms within the building footprint. Doors must lie on room boundaries; sensors and lights must lie within or on their rooms and connect to their floor's controller. IDs must be unique, safe and stable; retired IDs cannot be reused. Server validation is authoritative and returns field-path errors. See the [complete validation rules](../plans/building-editor-spec.md#building-design-and-validation).
 
@@ -49,6 +55,7 @@ The simulator exposes these editor endpoints using camelCase JSON:
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/api/building-editor` | Read saved and active designs, edit revision, activation and cleanup status |
+| `GET` | `/api/building-editor/default-design` | Read the original four-floor template without changing saved or running state |
 | `POST` | `/api/building-editor/save` | Save `{ "expectedRevision": n, "design": {...} }` and attempt activation |
 | `POST` | `/api/building-editor/retry` | Retry activation |
 | `POST` | `/api/building-editor/retry-cleanup` | Request asynchronous controller cleanup retry |
@@ -60,6 +67,25 @@ Use the returned `editRevision` as the next save's `expectedRevision`. A stale r
 ## Persistence and activation
 
 `BuildingDesign:SqlitePath` defaults to `building-design.db` relative to the simulator content root. The database stores saved and active designs, edit revision, retired IDs and cleanup work. Schema version 4 migrates versions 1–3, retaining saved and active designs and revision; migration from versions 1–2 discards stored drafts. Unknown schema versions and nonempty unversioned databases are rejected. For backup instructions, see [simulator persistence and backup](building-light-simulator.md#persistence-and-backup).
+
+[BuildingDesignStore.cs](../../src/Devices.Simulator.Web/Building/BuildingDesignStore.cs) initializes a fresh database with this version 4 schema:
+
+```sql
+CREATE TABLE building_design (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    saved TEXT NOT NULL, active TEXT NOT NULL,
+    edit_revision INTEGER NOT NULL
+);
+CREATE TABLE retired_design_id (id TEXT PRIMARY KEY);
+CREATE TABLE controller_cleanup (
+    controller_id TEXT PRIMARY KEY,
+    active_revision INTEGER NOT NULL,
+    status INTEGER NOT NULL
+);
+PRAGMA user_version = 4;
+```
+
+`building_design` is a single-row table whose `saved` and `active` columns hold the camelCase design JSON; each design carries its own `revision`, and `edit_revision` is the optimistic-concurrency revision compared on save. `retired_design_id` lists stable IDs that can never be reused. `controller_cleanup` tracks removed-controller MQTT cleanup, fenced by `active_revision`; `status` values are `0` pending, `1` completed, `2` cancelled and `3` failed. The separate instrumentation telemetry schema is in the [instrumentation guide](lighting-instrumentation.md#persistence).
 
 Save and activation are separate. Activation preserves compatible live state for retained device IDs and queues removed-controller MQTT cleanup only after activation succeeds. On startup, the last active design is restored and a different saved revision is retried. Cleanup is durable and asynchronous; its status represents broker publication, not acknowledgement by every subscriber. See the [runtime and persistence flow](../plans/building-editor-spec.md#persistence-and-runtime-integration).
 
@@ -73,13 +99,14 @@ Save and activation are separate. Activation preserves compatible live state for
 
 ## Implementation and tests
 
-The editor uses [building-editor.mjs](../../src/Devices.Simulator.Web/wwwroot/building-editor.mjs) and [building-editor-state.mjs](../../src/Devices.Simulator.Web/wwwroot/building-editor-state.mjs) in the browser. The server uses [BuildingEditorService.cs](../../src/Devices.Simulator.Web/Editor/BuildingEditorService.cs), [BuildingDesignStore.cs](../../src/Devices.Simulator.Web/Building/BuildingDesignStore.cs), and [BuildingDesign.cs](../../src/Devices.Simulator.Web/Building/BuildingDesign.cs). Access policy is enforced by [EditorAccessPolicy.cs](../../src/Devices.Simulator.Web/Editor/EditorAccessPolicy.cs).
+The editor interface is the React component [BuildingEditor.tsx](../../src/Devices.Simulator.Web/frontend/editor/BuildingEditor.tsx), with editor-specific types in [BuildingEditor.types.ts](../../src/Devices.Simulator.Web/frontend/editor/BuildingEditor.types.ts). Its TypeScript helpers [building-editor.ts](../../src/Devices.Simulator.Web/frontend/editor/building-editor.ts) and [building-editor-state.ts](../../src/Devices.Simulator.Web/frontend/editor/building-editor-state.ts) handle validation and session state. The server uses [BuildingEditorService.cs](../../src/Devices.Simulator.Web/Editor/BuildingEditorService.cs), [BuildingDesignStore.cs](../../src/Devices.Simulator.Web/Building/BuildingDesignStore.cs), and [BuildingDesign.cs](../../src/Devices.Simulator.Web/Building/BuildingDesign.cs). Access policy is enforced by [EditorAccessPolicy.cs](../../src/Devices.Simulator.Web/Editor/EditorAccessPolicy.cs).
 
 From the repository root:
 
 ```powershell
 dotnet test tests\Devices.Simulator.Tests\Devices.Simulator.Tests.csproj --filter "FullyQualifiedName~BuildingDesignTests|FullyQualifiedName~BuildingEditorServiceTests|FullyQualifiedName~EditorAccessPolicyTests"
-node --test tests\building-editor.test.mjs tests\building-editor-ui.test.mjs tests\localization-en.test.mjs
+node --import tsx --test tests\building-editor.test.mjs tests\building-editor-ui.test.mjs tests\localization-en.test.mjs
+npm run test:components
 ```
 
 These focused tests supplement the solution build and test commands in the [simulator guide](building-light-simulator.md#running-and-testing).

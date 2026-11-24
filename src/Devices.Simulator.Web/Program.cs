@@ -59,6 +59,7 @@ app.MapGet("/api/building-view", (BuildingSimulator simulator) => Results.Ok(sim
 app.MapGet("/api/building-design-status", (BuildingEditorService editor) => Results.Ok(editor.ReadStatus()));
 SimulatorCapabilities.Map(app, allowHttpMutations);
 app.MapGet("/api/building-editor", (BuildingEditorService editor) => Results.Ok(editor.Read()));
+app.MapGet("/api/building-editor/default-design", () => Results.Ok(BuildingDesignSeed.Create()));
 app.MapPost("/api/building-editor/save", (BuildingEditorWriteRequest request, BuildingEditorService editor) => editor.Save(request));
 app.MapPost("/api/building-editor/retry", (BuildingEditorService editor) => editor.Retry());
 app.MapPost("/api/building-editor/retry-cleanup", (BuildingEditorService editor) => editor.RetryCleanup());

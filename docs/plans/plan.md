@@ -46,14 +46,16 @@ devices/
 
 ![Architecture: the simulator maintains authoritative state, which reaches the instrumentation dashboard through HTTP polling and optional MQTT telemetry.](../assets/diagrams/plan-architecture.svg)
 
-## Delivery phases
+## Original delivery phases
+
+These phases record the original implementation sequence, not outstanding work. The first five are implemented. Hardening is partially complete: revisioning, stale/offline detection, and broker status are implemented; MQTT command replay protection is not.
 
 1. **Foundation:** create the solution, contracts, stable IDs, configuration, and focused tests.
 2. **Simulation:** implement controllers, rooms, sensors, light strips, faults, and HTTP mutations.
 3. **3D simulator UI:** render the building and provide floor, room, sensor, fault, scenario, and camera controls.
 4. **Telemetry:** publish retained MQTT state and command acknowledgements.
 5. **Instrumentation:** ingest MQTT and HTTP-polled telemetry, persist state, and render the latest view.
-6. **Hardening:** add revisioning, stale/offline detection, replay protection, and broker status.
+6. **Hardening:** complete replay protection and any remaining resilience work.
 
 ## Acceptance criteria
 
@@ -78,11 +80,12 @@ devices/
 
 ## Building editor and remaining work
 
-- The [building editor](building-editor-spec.md) is implemented for loopback-only Development hosts, with local unsaved edits, revision-checked saves, validation, activation and cleanup. Editing UX fixes and verification are in progress.
-- Edited-design 3D views include illustrative perimeter walkways, exterior stairs, landings and pillars outside the editable footprint; they do not guarantee routes from interior doors.
-- Protected editor access for non-loopback, proxy and Compose deployments, automatic backups and periodic activation retry remain unimplemented.
+- The [building editor](building-editor-spec.md) is implemented for direct loopback Development hosts, with local unsaved edits, revision-checked saves, validation, activation and cleanup. Current editing interactions, including drag-to-move, are implemented; broader accessibility and desktop/mobile verification remain open.
+- Walkways and stairs are editable access objects; legacy designs retain generated geometry until edited and saved. They do not guarantee routes from interior doors.
+- Editor access beyond direct loopback Development hosts, automatic backups and periodic activation retry remain unimplemented.
+- MQTT command replay protection is not implemented; duplicate command IDs and command timestamps are not tracked.
 - Decide whether to add inactivity timers.
-- Decide whether to retain historical utilization charts.
+- Historical utilization charts are not implemented; decide whether to add them.
 - The optional broker-backed MQTT integration test requires Docker and a cached Mosquitto image; provisioning it in CI and covering disconnects and restarts remain open.
 - Decide whether to add authentication and TLS for broker deployments.
 

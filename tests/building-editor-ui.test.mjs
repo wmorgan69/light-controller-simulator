@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { adjustNumericInput, canFocusValidationField, createFormGuard, createRecoveryExport, initBuildingEditor, locateValidation, projectPendingForms, reshapeRoom, sameEditorContext, unappliedFormStatus, validateNumericInput } from '../src/Devices.Simulator.Web/wwwroot/building-editor.mjs';
-import { createMutationAccess } from '../src/Devices.Simulator.Web/wwwroot/mutation-access.mjs';
-import { newFloor, newRoom } from '../src/Devices.Simulator.Web/wwwroot/building-editor-state.mjs';
-import { t } from '../src/Devices.Simulator.Web/wwwroot/localization.en.mjs';
+import { adjustNumericInput, canFocusValidationField, createFormGuard, createRecoveryExport, initBuildingEditor, locateValidation, projectPendingForms, reshapeRoom, sameEditorContext, unappliedFormStatus, validateNumericInput } from '../src/Devices.Simulator.Web/frontend/editor/building-editor.ts';
+import { createMutationAccess } from '../src/Devices.Simulator.Web/frontend/shared/mutation-access.ts';
+import { newFloor, newRoom } from '../src/Devices.Simulator.Web/frontend/editor/building-editor-state.ts';
+import { t } from '../src/Devices.Simulator.Web/frontend/shared/localization.en.ts';
 
 const form = (...fields) => ({ querySelectorAll: () => fields });
 
@@ -523,6 +523,23 @@ test('locates invalid Z coordinates and room dimensions at their correction fiel
   room.width = 4;
   room.depth = 0.5;
   assert.equal(locateValidation(design).field, 'depth');
+});
+
+test('locates invalid access coordinates, dimensions, and stair direction', () => {
+  const floors = [newFloor(1), newFloor(2)];
+  const stair = { id: 'stair', x: 0, z: 0, width: 2, depth: 1, direction: 'east' };
+  floors[0].stairs.push(stair);
+  const design = { revision: 1, width: 20, depth: 20, floors };
+  for (const [field, value] of [
+    ['x', -5], ['z', 24], ['width', 25], ['depth', 0], ['direction', 'north']
+  ]) {
+    const previous = stair[field];
+    stair[field] = value;
+    const problem = locateValidation(design);
+    assert.equal(problem.field, field);
+    assert.deepEqual(problem.selection, { kind: 'stair', id: 'stair' });
+    stair[field] = previous;
+  }
 });
 
 test('room origins at or beyond the building bounds focus their coordinate fields', () => {

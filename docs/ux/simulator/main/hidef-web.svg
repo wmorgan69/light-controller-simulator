@@ -1,0 +1,156 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900" role="img" aria-labelledby="title desc">
+  <title id="title">Building Light Simulator modernized desktop design target</title>
+  <desc id="desc">Illustrative desktop design target with a Material app bar holding status chips and the Building menu, a permanent navigation drawer with floor list and scenarios, a rounded 3D scene card with a floating room inspector, and a live status card. It is a design target, not a browser capture.</desc>
+  <defs>
+    <radialGradient id="scene" cx="50%" cy="42%" r="78%">
+      <stop offset="0%" stop-color="#273449"/>
+      <stop offset="100%" stop-color="#0d1320"/>
+    </radialGradient>
+  </defs>
+  <rect width="1400" height="900" fill="#111827"/>
+  <g font-family="Arial, sans-serif">
+    <!-- App bar -->
+    <rect width="1400" height="64" fill="#0f172a"/>
+    <line x1="0" y1="64.5" x2="1400" y2="64.5" stroke="#334155"/>
+    <rect x="20" y="16" width="32" height="32" rx="9" fill="#2563eb"/>
+    <circle cx="36" cy="29" r="7" fill="#f8fafc"/>
+    <rect x="32" y="36" width="8" height="5" rx="1.5" fill="#cbd5e1"/>
+    <text x="64" y="40" font-size="19" font-weight="bold" fill="#f8fafc">Building Light Simulator</text>
+    <rect x="876" y="14" width="160" height="36" rx="18" fill="#14321f" stroke="#166534"/>
+    <circle cx="896" cy="32" r="4" fill="#4ade80"/>
+    <text x="908" y="36" font-size="12" fill="#86efac">MQTT connected</text>
+    <rect x="1052" y="14" width="164" height="36" rx="18" fill="#1e293b" stroke="#334155"/>
+    <circle cx="1072" cy="32" r="4" fill="#60a5fa"/>
+    <text x="1084" y="36" font-size="12" fill="#cbd5e1">Design rev 12 · active</text>
+    <rect x="1232" y="14" width="112" height="36" rx="18" fill="none" stroke="#475569"/>
+    <text x="1288" y="36" font-size="13" fill="#bfdbfe" text-anchor="middle">Building ▾</text>
+    <circle cx="1372" cy="25" r="2.2" fill="#cbd5e1"/>
+    <circle cx="1372" cy="32" r="2.2" fill="#cbd5e1"/>
+    <circle cx="1372" cy="39" r="2.2" fill="#cbd5e1"/>
+    <!-- Navigation drawer -->
+    <rect x="0" y="65" width="280" height="835" fill="#172033"/>
+    <line x1="280.5" y1="65" x2="280.5" y2="900" stroke="#334155"/>
+    <text x="24" y="102" font-size="11" font-weight="bold" letter-spacing="1.5" fill="#94a3b8">BUILDING</text>
+    <rect x="12" y="114" width="256" height="44" rx="10" fill="#1d4ed8"/>
+    <g fill="#f8fafc">
+      <rect x="28" y="126" width="9" height="9" rx="1.5"/>
+      <rect x="39" y="126" width="9" height="9" rx="1.5"/>
+      <rect x="28" y="137" width="9" height="9" rx="1.5"/>
+      <rect x="39" y="137" width="9" height="9" rx="1.5"/>
+    </g>
+    <text x="60" y="141" font-size="14" font-weight="600" fill="#ffffff">All floors</text>
+    <g stroke="#64748b" stroke-width="1.6" fill="none">
+      <path d="M28 190l12-6 12 6-12 6z"/><path d="M28 196v4l12 6 12-6v-4"/>
+      <path d="M28 254l12-6 12 6-12 6z"/><path d="M28 260v4l12 6 12-6v-4"/>
+      <path d="M28 318l12-6 12 6-12 6z"/><path d="M28 324v4l12 6 12-6v-4"/>
+      <path d="M28 382l12-6 12 6-12 6z"/><path d="M28 388v4l12 6 12-6v-4"/>
+    </g>
+    <g fill="#e9eef7" font-size="14">
+      <text x="60" y="194">Floor 4</text>
+      <text x="60" y="258">Floor 3</text>
+      <text x="60" y="322">Floor 2</text>
+      <text x="60" y="386">Floor 1</text>
+    </g>
+    <g fill="#94a3b8" font-size="11">
+      <text x="60" y="212">Healthy · 0/1 rooms occupied</text>
+      <text x="60" y="276">Healthy · 0/3 rooms occupied</text>
+      <text x="60" y="404">Healthy · 1/3 rooms occupied</text>
+    </g>
+    <text x="60" y="340" font-size="11" fill="#fbbf24">⚠ Faulted · 0/2 rooms occupied</text>
+    <line x1="16" y1="430" x2="264" y2="430" stroke="#334155"/>
+    <text x="24" y="460" font-size="11" font-weight="bold" letter-spacing="1.5" fill="#94a3b8">SCENARIOS</text>
+    <rect x="16" y="474" width="248" height="44" rx="22" fill="none" stroke="#475569"/>
+    <path d="M78 490a7 7 0 1 1-2 10" fill="none" stroke="#bfdbfe" stroke-width="1.8"/>
+    <path d="M74 498l2 4 4-2" fill="none" stroke="#bfdbfe" stroke-width="1.8"/>
+    <text x="96" y="501" font-size="13" fill="#bfdbfe">Reset building</text>
+    <rect x="16" y="528" width="248" height="44" rx="22" fill="none" stroke="#475569"/>
+    <circle cx="80" cy="546" r="4" fill="none" stroke="#bfdbfe" stroke-width="1.8"/>
+    <path d="M72 560c1-6 15-6 16 0" fill="none" stroke="#bfdbfe" stroke-width="1.8"/>
+    <text x="96" y="555" font-size="13" fill="#bfdbfe">Occupancy demo</text>
+    <text x="24" y="872" font-size="11" fill="#64748b">Four-floor controller simulation</text>
+    <!-- Scene card -->
+    <rect x="304" y="88" width="1072" height="560" rx="16" fill="url(#scene)" stroke="#1e293b"/>
+    <rect x="328" y="110" width="614" height="40" rx="20" fill="#0f172a" opacity=".92"/>
+    <text x="348" y="135" font-size="13" fill="#e2e8f0">Click a room to select · drag to orbit · right-drag to pan · scroll to zoom</text>
+    <text x="332" y="172" font-size="12" fill="#94a3b8">Stairs are at the back; orbit to view them.</text>
+    <!-- Isometric four-floor building -->
+    <g stroke-linejoin="round">
+      <!-- Floor 4 -->
+      <path d="M630 240 840 178 1050 240 840 302Z" fill="#33455e" stroke="#5d708c" stroke-width="2"/>
+      <path d="M630 240v20l210 62v-20Z" fill="#223049" stroke="#3b4e6b"/>
+      <path d="M840 302v20l210-62v-20Z" fill="#2a3a57" stroke="#3b4e6b"/>
+      <path d="M730 240 840 207 950 240 840 272Z" fill="#3d5273" stroke="#7c90ad" stroke-width="1.5"/>
+      <rect x="806" y="232" width="68" height="14" rx="3" fill="#0b1220"/>
+      <text x="840" y="242" font-size="8" fill="#f8fafc" text-anchor="middle">THE FORUM</text>
+      <!-- Floor 3 -->
+      <path d="M630 330 840 268 1050 330 840 392Z" fill="#31425c" stroke="#5d708c" stroke-width="2"/>
+      <path d="M630 330v20l210 62v-20Z" fill="#223049" stroke="#3b4e6b"/>
+      <path d="M840 392v20l210-62v-20Z" fill="#2a3a57" stroke="#3b4e6b"/>
+      <path d="M700 326 822 290 900 312 778 350Z" fill="#3d5273" stroke="#7c90ad" stroke-width="1.5"/>
+      <path d="M912 316 964 300 1012 314 960 331Z" fill="#3d5273" stroke="#7c90ad" stroke-width="1.5"/>
+      <rect x="730" y="314" width="118" height="13" rx="3" fill="#0b1220"/>
+      <text x="789" y="323.5" font-size="8" fill="#f8fafc" text-anchor="middle">COLLABORATION SPACE</text>
+      <rect x="928" y="309" width="70" height="12" rx="3" fill="#0b1220"/>
+      <text x="963" y="318" font-size="7.5" fill="#f8fafc" text-anchor="middle">FOCUS OFFICE</text>
+      <!-- Floor 2 -->
+      <path d="M630 420 840 358 1050 420 840 482Z" fill="#33455e" stroke="#5d708c" stroke-width="2"/>
+      <path d="M630 420v20l210 62v-20Z" fill="#223049" stroke="#3b4e6b"/>
+      <path d="M840 482v20l210-62v-20Z" fill="#2a3a57" stroke="#3b4e6b"/>
+      <path d="M706 418 846 376 972 412 832 455Z" fill="#3d5273" stroke="#7c90ad" stroke-width="1.5"/>
+      <rect x="800" y="408" width="80" height="13" rx="3" fill="#0b1220"/>
+      <text x="840" y="417.5" font-size="8" fill="#f8fafc" text-anchor="middle">BOARDROOM</text>
+      <!-- Floor 1 (occupied, lights on) -->
+      <path d="M630 510 840 448 1050 510 840 572Z" fill="#33455e" stroke="#5d708c" stroke-width="2"/>
+      <path d="M630 510v20l210 62v-20Z" fill="#223049" stroke="#3b4e6b"/>
+      <path d="M840 572v20l210-62v-20Z" fill="#2a3a57" stroke="#3b4e6b"/>
+      <path d="M700 506 826 468 920 496 794 535Z" fill="#6b5d3f" stroke="#fcd34d" stroke-width="1.5"/>
+      <circle cx="812" cy="500" r="5" fill="#4ade80"/>
+      <rect x="752" y="494" width="104" height="13" rx="3" fill="#0b1220"/>
+      <text x="804" y="503.5" font-size="8" fill="#f8fafc" text-anchor="middle">OPEN WORKSPACE</text>
+      <!-- Corner pillars -->
+      <g stroke="#475569" stroke-width="2">
+        <path d="M630 260v70M1050 260v70M840 322v36"/>
+        <path d="M630 350v70M1050 350v70M840 412v36"/>
+        <path d="M630 440v70M1050 440v70M840 502v36"/>
+      </g>
+    </g>
+    <!-- Room inspector card -->
+    <rect x="328" y="464" width="380" height="160" rx="16" fill="#0f172a" opacity=".96" stroke="#334155"/>
+    <text x="348" y="494" font-size="15" font-weight="bold" fill="#f8fafc">Floor 1 — Open Workspace</text>
+    <text x="676" y="495" font-size="16" fill="#94a3b8">✕</text>
+    <line x1="328" y1="508" x2="708" y2="508" stroke="#1e293b"/>
+    <text x="348" y="543" font-size="13" fill="#e2e8f0">Presence</text>
+    <rect x="620" y="531" width="44" height="22" rx="11" fill="#2563eb"/>
+    <circle cx="653" cy="542" r="9" fill="#ffffff"/>
+    <text x="348" y="585" font-size="13" fill="#e2e8f0">Sensor fault</text>
+    <rect x="620" y="573" width="44" height="22" rx="11" fill="#475569"/>
+    <circle cx="631" cy="584" r="9" fill="#cbd5e1"/>
+    <text x="348" y="612" font-size="11" fill="#64748b">Changes apply immediately</text>
+    <!-- Live status card -->
+    <rect x="304" y="672" width="1072" height="204" rx="16" fill="#172033" stroke="#1e293b"/>
+    <text x="328" y="704" font-size="16" font-weight="bold" fill="#f8fafc">Live status</text>
+    <text x="1352" y="704" font-size="11" fill="#94a3b8" text-anchor="end">Updated 11:20:54</text>
+    <g font-size="11" font-weight="bold" fill="#94a3b8">
+      <text x="328" y="730">CONTROLLER</text>
+      <text x="640" y="730">FLOOR</text>
+      <text x="760" y="730">STATUS</text>
+      <text x="940" y="730">ROOMS AND LIGHTS</text>
+    </g>
+    <line x1="328" y1="740" x2="1352" y2="740" stroke="#334155"/>
+    <g font-size="12.5" fill="#e2e8f0">
+      <text x="328" y="764">controller-floor-4</text><text x="640" y="764">4</text><text x="940" y="764">The Forum 0/12 on</text>
+      <text x="328" y="796">controller-floor-3</text><text x="640" y="796">3</text><text x="940" y="796">Collaboration 0/6 · Project 0/1 · Focus 0/1</text>
+      <text x="328" y="828">controller-floor-2</text><text x="640" y="828">2</text><text x="940" y="828">Boardroom 0/8 · Meeting 0/1</text>
+      <text x="328" y="860">controller-floor-1</text><text x="640" y="860">1</text><text x="940" y="860">Open Workspace 6/6 on · Reception 0/1 · Support 0/1</text>
+    </g>
+    <g font-size="12.5">
+      <circle cx="766" cy="760" r="4" fill="#4ade80"/><text x="778" y="764" fill="#86efac">Healthy</text>
+      <circle cx="766" cy="792" r="4" fill="#4ade80"/><text x="778" y="796" fill="#86efac">Healthy</text>
+      <circle cx="766" cy="824" r="4" fill="#fbbf24"/><text x="778" y="828" fill="#fbbf24">⚠ Faulted</text>
+      <circle cx="766" cy="856" r="4" fill="#4ade80"/><text x="778" y="860" fill="#86efac">Healthy</text>
+    </g>
+    <g stroke="#233049">
+      <path d="M328 772h1024M328 804h1024M328 836h1024"/>
+    </g>
+  </g>
+</svg>

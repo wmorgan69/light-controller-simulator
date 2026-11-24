@@ -24,7 +24,7 @@ Coverage XML files appear in: `tests/**/TestResults/*/coverage.cobertura.xml`
 The CI workflow adds simulator view-logic and recording-helper Node tests and a Docker Compose smoke test:
 
 ```powershell
-node --test tests/building-access.test.mjs tests/wiring-routes.test.mjs tests/floor-view.test.mjs tests/room-state.test.mjs tests/record-demo.test.mjs
+node --import tsx --test tests/building-access.test.mjs tests/wiring-routes.test.mjs tests/floor-view.test.mjs tests/room-state.test.mjs tests/record-demo.test.mjs
 docker compose up --build -d
 ```
 

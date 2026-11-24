@@ -1,5 +1,10 @@
-const messages = Object.freeze({
+type PluralForms = { other: string } & Partial<Record<Intl.LDMLPluralRule, string>>;
+type LocalizationValues = Record<string, unknown>;
+
+const messages: Readonly<Record<string, string | PluralForms>> = Object.freeze({
   pageTitle: 'Building Light Simulator',
+  appInitializing: 'Initializing simulator… If it does not start, check that JavaScript is enabled and reload the page.',
+  appJavaScriptRequired: 'JavaScript is required to run the simulator. Enable JavaScript and reload the page.',
   pageSubtitle: 'Building controller simulation',
   floorSelectionHint: 'Choose a floor; select it again to reset the camera.',
   checkingMqtt: 'Checking MQTT...',
@@ -10,18 +15,26 @@ const messages = Object.freeze({
   editorUnavailableHost: 'Building editing is unavailable on this host. Use a direct loopback development host to edit.',
   requestNoDetail: 'No additional error detail is available.',
   buildingFloors: 'Building floors',
+  openNavigation: 'Open building navigation',
+  closeNavigation: 'Close building navigation',
   building: 'Building',
   allFloors: 'All floors',
   loadingFloors: 'Loading floors...',
   scenarios: 'Scenarios',
+  scenarioApplying: 'Applying scenario...',
+  scenarioApplied: 'Scenario applied.',
   resetBuilding: 'Reset building',
   occupancyDemo: 'Occupancy demo',
   occupancyDemoTitle: 'Randomly occupy up to 2 rooms on each floor',
   simulatorView: '3D building view',
+  sceneViewUnavailable: '3D view unavailable: {error}. Open Accessible controls below to operate the simulator.',
+  retryScene: 'Retry 3D view',
+  webglContextLost: 'The 3D graphics context was lost.',
   simulatorCanvas: 'Interactive 3D view of the building. Use the accessible controls below to select rooms and trigger sensors or faults.',
   stairsHelp: 'Stairs are at the back; orbit to view them.',
   wiringLabel: 'Wiring:',
   sensorWiringLegend: 'blue = sensors',
+  faultedSensorWiringLegend: 'red dashed = sensor fault',
   lightWiringLegend: 'yellow = lights',
   roomControls: 'Room controls',
   closeRoomControls: 'Close room controls',
@@ -42,6 +55,9 @@ const messages = Object.freeze({
   accessibleFaultTarget: 'Accessible fault target',
   injectSelectedFault: 'Inject selected fault',
   allActiveFaults: 'All active faults',
+  activeFaultLabel: '{controller}: {scope} — {target} — {description}',
+  faultTargetWithId: '{target} ({id})',
+  clearFaultFor: 'Clear fault {fault} for {target}',
   dismiss: 'Dismiss',
   floorName: 'Floor {floor}',
   floorSceneLabel: 'FLOOR {floor}',
@@ -71,6 +87,10 @@ const messages = Object.freeze({
   buildingDesignStatusUnavailable: 'Building design status unavailable.',
   buildingDesignRefreshFailed: 'The building view could not be refreshed: {error}',
   buildingDesignStatusSummary: 'Building: {status}; saved revision {saved}, running revision {running}. Cleanup: {pending} pending, {failed} failed, {completed} completed.',
+  buildingStatusBrief: 'Building {status}',
+  buildingStatusCleanupPending: 'Building {status} · controller cleanup pending',
+  buildingStatusCleanupFailed: 'Building {status} · controller cleanup needs attention',
+  buildingStatusDetails: 'Building status details',
   statusChangedDuringRefresh: 'Status changed during refresh; reload the page.',
   mqttConnected: 'MQTT connected',
   mqttUnavailableHttpActive: 'MQTT unavailable · HTTP active',
@@ -78,8 +98,13 @@ const messages = Object.freeze({
   actionStatusRefreshFailed: 'Action applied, but status refresh failed: {error}',
   scenarioStatusRefreshFailed: 'Scenario applied, but status refresh failed: {error}',
   floorListUnavailable: 'Floor list unavailable.',
+  noControllers: 'No controllers are configured.',
+  liveDataStale: 'A building refresh failed. Showing the last full snapshot from {time}; successful local changes may be newer.',
+  mutationResponseInvalid: 'The server returned invalid building state. Refresh and retry.',
   unableToLoadBuildingState: 'Unable to load building state: {error}',
+  resetSelectedRoomSensor: 'Reset selected room sensor',
   editorMenu: 'Building menu',
+  openBuildingMenu: 'Open building menu',
   editBuilding: 'Edit building',
   editorLoading: 'Loading editor…',
   editorLoadFailed: 'Editor unavailable: {error}',
@@ -90,6 +115,7 @@ const messages = Object.freeze({
   editorConflict: 'The saved design changed. Export your local changes, then load the current design and manually reapply them.',
   editorSaveFailed: 'Save failed: {error}',
   editorSaveSuccess: 'Design saved. {status}',
+  editorLiveRefreshFailed: 'The design is saved, but the live simulator could not be refreshed: {error}. Reload the simulator page to load the saved design.',
   editorActivation: 'Activation: {status}',
   editorActivationActive: 'active',
   editorActivationPending: 'pending',
@@ -97,16 +123,23 @@ const messages = Object.freeze({
   editorRevisions: 'Saved revision {saved}; running revision {running}.',
   editorCleanup: 'Controller cleanup: {pending} pending, {failed} failed, {completed} completed, {cancelled} cancelled.',
   editorCleanupUnavailable: 'Controller cleanup status unavailable.',
+  editorStatusDetails: 'Design status details',
+  editorCleanupNeedsAttention: 'Controller cleanup needs attention.',
+  editorCleanupPendingBrief: 'Controller cleanup is pending.',
   editorUnappliedFormStatus: 'Unapplied form changes have not been added to the design.',
   editorRetryActivation: 'Retry activation',
   editorRetryCleanup: 'Retry controller cleanup',
   editorStatusRefreshFailed: 'Activation and cleanup status could not be refreshed: {error}',
   editorProtocolError: 'The server did not return a valid edit revision.',
+  editorInvalidState: 'The server did not return a valid editor state.',
   editorUnknownStatus: 'Status unavailable',
   editorSave: 'Save and activate',
   editorUndo: 'Undo',
   editorRedo: 'Redo',
   editorHistory: 'Undo and redo are available only in this editor session, including after saving.',
+  editorStartBlank: 'Start blank',
+  editorStartDefault: 'Start with default building',
+  editorStartConfirm: 'Replace the current editor design? The design change can be undone, but unapplied form values will be discarded. Saving replaces the running devices with new identities.',
   editorExit: 'Exit editor',
   editorUnsafeExit: 'The latest changes are not stored. Exit and lose local changes?',
   editorExitConfirm: 'Leave the editor and discard your unsaved changes?',
@@ -118,6 +151,16 @@ const messages = Object.freeze({
   editorRecoveryExported: 'Downloaded recovery JSON. It contains the unchanged design and raw unapplied values; it is not a validated design.',
   editorNumericInputHelp: 'Enter a number. Use the arrow keys to adjust by the allowed increment.',
   editorNumericConstraint: 'Enter a number within the allowed range and increment.',
+  editorZoomIn: 'Zoom in',
+  editorZoomOut: 'Zoom out',
+  editorZoomFit: 'Fit all',
+  editorZoomLevel: 'Plan zoom: {percent}%',
+  editorPanLeft: 'Pan left',
+  editorPanRight: 'Pan right',
+  editorPanUp: 'Pan up',
+  editorPanDown: 'Pan down',
+  editorSelectedItem: 'Selected: {item}',
+  editorNoSelection: 'No item selected',
   editorResizeFixtures: 'Resize would leave a sensor or light outside the room, or a door off its boundary. Move the affected items first.',
   editorExport: 'Export local design',
   editorUseCurrent: 'Discard local changes and load saved design',
@@ -130,16 +173,42 @@ const messages = Object.freeze({
   editorApply: 'Apply',
   editorFloors: 'Floor',
   editorFloor: 'Floor {number}',
-  editorFloorRemove: 'Remove {floors} floor(s), {rooms} room(s), {doors} door(s), {lights} light(s), their sensors and controllers?',
+  editorFloorRemove: 'Remove {floors} floor(s), {rooms} room(s), {doors} door(s), {lights} light(s), {walkways} walkway(s), {stairs} stair(s), their sensors and controllers?',
   editorRoomRemove: 'Delete {room}, its sensor, {doors} door(s) and {lights} light(s)?',
   editorDeleteConfirm: 'Delete {item}?',
   editorPlan: 'Floor plan',
-  editorPlanHelp: 'Select an item on the plan or in the list. Choose a placement tool and click the plan; use the forms for precise positions. Connections are illustrative.',
+  editorPlanHelp: 'Select or drag an item on the plan, or use the item list and forms for precise positions. Choose a placement tool and click the plan to add items. Lines show logical connections, not physical cable routes.',
+  editorDragUnavailable: 'The plan position is unavailable. Use the item list and properties to move the item.',
+  editorDragCancelled: 'The design changed during the drag. The item was not moved.',
+  editorDragInvalid: 'The move leaves a design validation issue: {error} Correct it before saving.',
   editorTool: 'Plan tool',
+  editorActiveTool: 'Active tool: {tool}',
+  editorToolKeyboardHelp: 'Use left and right arrow keys to navigate tools, then press Space or Enter to select.',
   editorSelect: 'Select',
   editorAddRoom: 'Add room',
   editorAddDoor: 'Add door',
   editorAddLight: 'Add light',
+  editorAddWalkway: 'Place walkway',
+  editorAddStairs: 'Place stairs',
+  editorAddWalkwayForm: 'Add walkway at origin',
+  editorAddStairsForm: 'Add stairs at origin',
+  editorWalkway: 'Walkway',
+  editorStairs: 'Stairs',
+  editorWalkwayNumber: 'Walkway {number}',
+  editorStairsNumber: 'Stairs {number}',
+  editorStairsUp: 'Stairs {number}: up to floor {floor}',
+  editorStairsDown: 'Stairs {number}: down to floor {floor}',
+  editorStairsUpShort: 'Up {number}',
+  editorStairsDownShort: 'Down {number}',
+  editorStairsTopFloor: 'Stairs must start below the top floor and connect to the next floor.',
+  editorAccessHelp: 'Place stairs on the lower floor; they connect to the next floor. Select an incoming stair to edit it on its lower floor.',
+  editorStairsDirection: 'Stairs rise toward',
+  editorStairsEast: 'Right (increasing X)',
+  editorStairsWest: 'Left (decreasing X)',
+  editorAccessWidth: 'Width (m)',
+  editorAccessDepth: 'Depth (m)',
+  editorInvalidAccess: '{item} must have positive dimensions and fit within 4 metres of the building footprint.',
+  editorAccessLimit: '{item}: a floor supports at most {limit} objects.',
   editorMove: 'Move selected item',
   editorItems: 'Items and connections',
   editorController: 'Floor controller',
@@ -150,6 +219,7 @@ const messages = Object.freeze({
   editorConnected: 'Connected to floor controller',
   editorDisconnected: 'Not connected',
   editorProperties: 'Selected item properties',
+  editorPropertiesFor: 'Properties: {item}',
   editorName: 'Room name',
   editorX: 'X (m)',
   editorZ: 'Z (m)',
@@ -158,6 +228,7 @@ const messages = Object.freeze({
   editorConnection: 'Connection',
   editorNoConnection: 'Not connected',
   editorDelete: 'Delete selected item',
+  editorDeleteHelp: 'Select a room, door, light, walkway or stairs to delete it. Each room requires a sensor and each floor requires a controller.',
   editorNoRooms: 'No rooms on this floor. Add a room using the plan or the form.',
   editorNewRoom: 'New room',
   editorAddRoomForm: 'Add room with these properties',
@@ -169,7 +240,7 @@ const messages = Object.freeze({
   editorInvalidPoint: '{item}: position must be within its bounds on the 0.5 m grid.',
   editorInvalidDoor: '{item}: place the door on its room boundary.',
   editorInvalidConnection: '{item}: connect it to its floor controller.',
-  editorClickRoom: 'Choose a room before placing a door or light.',
+  editorClickRoom: 'Choose Select and select a room before placing a door or light.',
   editorNoMove: 'Select a controller, room, sensor, door or light to move.',
   roomCount: Object.freeze({
     one: '{count} room',
@@ -179,20 +250,20 @@ const messages = Object.freeze({
 
 const englishPluralRules = new Intl.PluralRules('en');
 const interpolationToken = /\{([A-Za-z][A-Za-z0-9_]*)\}/g;
-const controllerStatusKeys = Object.freeze({
+const controllerStatusKeys: Readonly<Record<string, string>> = Object.freeze({
   Healthy: 'healthyStatus',
   Faulted: 'faultedStatus',
   Offline: 'offlineStatus'
 });
 
-function getMessage(key) {
+function getMessage(key: string): string | PluralForms {
   if (typeof key !== 'string' || !Object.hasOwn(messages, key)) {
     throw new RangeError(`Missing English localization key: ${String(key)}`);
   }
   return messages[key];
 }
 
-function interpolate(template, values) {
+function interpolate(template: string, values: LocalizationValues): string {
   return template.replace(interpolationToken, (token, name) => {
     if (!Object.hasOwn(values, name)) {
       throw new RangeError(`Missing interpolation value "${name}" for English localization.`);
@@ -201,7 +272,7 @@ function interpolate(template, values) {
   });
 }
 
-export function t(key, values = {}) {
+export function t(key: string, values: LocalizationValues = {}): string {
   const message = getMessage(key);
   if (typeof message !== 'string') {
     throw new TypeError(`English localization key "${key}" requires plural().`);
@@ -212,7 +283,7 @@ export function t(key, values = {}) {
   return interpolate(message, values);
 }
 
-export function plural(key, count, values = {}) {
+export function plural(key: string, count: number, values: LocalizationValues = {}): string {
   const forms = getMessage(key);
   if (!forms || typeof forms !== 'object' || typeof forms.other !== 'string') {
     throw new TypeError(`English localization key "${key}" does not define plural forms.`);
@@ -227,20 +298,20 @@ export function plural(key, count, values = {}) {
   return interpolate(message, { ...values, count });
 }
 
-export function controllerStatusLabel(status) {
+export function controllerStatusLabel(status: string): string {
   return Object.hasOwn(controllerStatusKeys, status)
     ? t(controllerStatusKeys[status])
     : status;
 }
 
-export function localizeMarkup(root = document) {
-  root.querySelectorAll('[data-i18n]').forEach(element => {
-    element.textContent = t(element.dataset.i18n);
+export function localizeMarkup(root: ParentNode = document): void {
+  root.querySelectorAll<HTMLElement>('[data-i18n]').forEach(element => {
+    element.textContent = t(element.dataset.i18n!);
   });
-  root.querySelectorAll('[data-i18n-aria-label]').forEach(element => {
-    element.setAttribute('aria-label', t(element.dataset.i18nAriaLabel));
+  root.querySelectorAll<HTMLElement>('[data-i18n-aria-label]').forEach(element => {
+    element.setAttribute('aria-label', t(element.dataset.i18nAriaLabel!));
   });
-  root.querySelectorAll('[data-i18n-title]').forEach(element => {
-    element.setAttribute('title', t(element.dataset.i18nTitle));
+  root.querySelectorAll<HTMLElement>('[data-i18n-title]').forEach(element => {
+    element.setAttribute('title', t(element.dataset.i18nTitle!));
   });
 }

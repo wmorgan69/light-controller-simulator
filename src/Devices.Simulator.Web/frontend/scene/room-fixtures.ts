@@ -1,7 +1,11 @@
+import type { LegacyRoomArea, RoomArea } from './building-access.js';
+
 export const sensorRadius = 0.15;
 
-export function floorRoomLayout(floor, roomKeys) {
-  const standard = {
+type RoomLayout = Record<string, LegacyRoomArea>;
+
+export function floorRoomLayout(floor: number, roomKeys: string[]): RoomLayout {
+  const standard: RoomLayout = {
     main: { x: -2.4, z: 0, width: 4.7, depth: 7.1, door: { side: 'right', center: -1.7 } },
     'office-a': { x: 1.25, z: 0, width: 2.35, depth: 2.8, door: { side: 'front', center: 1.25 } },
     'office-b': { x: 3.8, z: 0, width: 2.35, depth: 2.8, door: { side: 'front', center: 3.8 } }
@@ -18,7 +22,24 @@ export function floorRoomLayout(floor, roomKeys) {
   return standard;
 }
 
-export function roomFixturePositions(area, floorY, lightCount) {
+export interface FixturePosition {
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface RoomFixturePositions {
+  ceiling: number;
+  lights: FixturePosition[];
+  sensor: FixturePosition;
+  sensorConnection: FixturePosition;
+}
+
+export function roomFixturePositions(
+  area: Pick<RoomArea, 'x' | 'z' | 'width' | 'depth'>,
+  floorY: number,
+  lightCount: number
+): RoomFixturePositions {
   const ceiling = floorY + 1.4;
   const expandedColumns = lightCount === 8 || lightCount === 12 ? lightCount / 2 : 0;
   const lights = Array.from({ length: lightCount }, (_, index) => ({

@@ -1,4 +1,7 @@
-const resources = Object.freeze({
+type PluralForms = { other: string } & Partial<Record<Intl.LDMLPluralRule, string>>;
+type LocalizationValues = Record<string, unknown>;
+
+const resources: Readonly<Record<string, string | PluralForms>> = Object.freeze({
   documentTitle: 'Lighting Instrumentation',
   brandLabel: 'Lighting instrumentation home',
   brandParent: 'Building systems',
@@ -34,7 +37,18 @@ const resources = Object.freeze({
   noLightingData: 'Lighting data will appear when controllers report.',
   occupied: 'Occupied',
   vacant: 'Vacant',
-  fixtureRowAriaLabel: '{on} of {total} lights on',
+  fixtureRowAriaLabel: '{on} of {total} lights on, {faulted} faulted',
+  faultedFixtureCount: {
+    one: '{count} faulted fixture',
+    other: '{count} faulted fixtures'
+  },
+  faultedFixtureIdentities: 'Faulted fixtures: {ids}',
+  controllersLastObservedOnline: 'Last observed online',
+  lastObservedStatus: 'Last observed: {status}',
+  activityCaptionObserved: '{on} of {total} fixtures last observed on',
+  telemetryUnavailable: 'Live telemetry unavailable',
+  lastObservedNotice: 'Neither MQTT nor HTTP fallback is available. All values below are last observed, not current. Retrying automatically.',
+  retryingTelemetry: 'Live data unavailable. Retrying automatically.',
   fixtureTitle: '{id}: {state}',
   fixtureOn: 'on',
   fixtureOff: 'off',
@@ -45,7 +59,8 @@ const resources = Object.freeze({
     other: '{count} FLOORS'
   },
   noRoomData: 'No room data reported.',
-  floorLabel: 'FLOOR {floor}',
+  floorLabel: 'Floor {floor}',
+  controllerId: 'Controller ID: {id}',
   controllerStatusHealthy: 'Healthy',
   controllerStatusFaulted: 'Faulted',
   controllerStatusOffline: 'Offline',
@@ -56,7 +71,10 @@ const resources = Object.freeze({
     other: '{count} active faults'
   },
   waitingForTelemetry: 'Waiting for telemetry or simulator connection.',
-  eventCount: '{count} TOTAL',
+  eventsShown: 'Showing {shown} of {total} available',
+  eventsListLabel: 'Available recent events',
+  showAllAvailableEvents: 'Show all available events',
+  showFewerEvents: 'Show fewer events',
   unknownTime: 'Unknown time',
   eventTime: '{date} · {time}',
   defaultEvent: 'event',
@@ -65,6 +83,7 @@ const resources = Object.freeze({
   noEvents: 'No events recorded yet.',
   apiRequestFailed: 'Instrumentation API request failed',
   mqttTransport: 'MQTT',
+  mqttAndHttpTransport: 'MQTT + HTTP polling',
   httpFallbackTransport: 'HTTP fallback',
   noLiveTransport: 'No live transport',
   reportingStatus: {
@@ -73,13 +92,19 @@ const resources = Object.freeze({
   },
   waitingForSimulatorTelemetry: 'Waiting for simulator telemetry',
   apiUnavailable: 'Instrumentation API unavailable',
+  httpPollingDetails: 'HTTP polling: {state} · {source}',
+  httpPollingAvailable: 'available',
+  httpPollingUnavailable: 'unavailable',
+  httpPollingSource: 'Source: {source}',
+  httpPollingSourceNotReported: 'Source not reported',
+  httpPollingUnknown: 'HTTP polling state and source unavailable.',
   liveSummaryUnavailable: 'Live summary unavailable.',
   lightingActivityUnavailable: 'Lighting activity unavailable.',
   controllerStateUnavailable: 'Could not load controller state. Check the instrumentation service.',
   recentEventsUnavailable: 'Recent events unavailable.'
 });
 
-export function localize(key, values = {}) {
+export function localize(key: string, values: LocalizationValues = {}): string {
   if (!Object.hasOwn(resources, key)) {
     throw new RangeError(`Unknown English resource key: ${key}`);
   }
@@ -101,8 +126,8 @@ export function localize(key, values = {}) {
   });
 }
 
-export function controllerStatusLabel(status) {
-  const keys = {
+export function controllerStatusLabel(status: string): string {
+  const keys: Record<string, string> = {
     healthy: 'controllerStatusHealthy',
     faulted: 'controllerStatusFaulted',
     offline: 'controllerStatusOffline'
@@ -111,8 +136,8 @@ export function controllerStatusLabel(status) {
   return Object.hasOwn(keys, normalized) ? localize(keys[normalized]) : String(status ?? '');
 }
 
-export function eventTypeLabel(eventType) {
-  const keys = {
+export function eventTypeLabel(eventType: string): string {
+  const keys: Record<string, string> = {
     'state.changed': 'stateChangedEvent',
     'fault.changed': 'faultChangedEvent'
   };

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { lightEmits, lightVisualState, roomIllumination, selectedRoomVisualState, sensorFaultForRoom, sensorPulseAmount } from '../src/Devices.Simulator.Web/wwwroot/room-state.mjs';
+import { lightEmits, lightVisualState, roomIllumination, selectedRoomVisualState, sensorFaultForRoom, sensorPulseAmount } from '../src/Devices.Simulator.Web/frontend/scene/room-state.ts';
 
 test('a sensor fault changes the sensor, not the selected room walls or floor', () => {
   for (const presence of [false, true]) {

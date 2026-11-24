@@ -20,6 +20,31 @@ public sealed class TelemetryMessageTests : IDisposable
         subscriber = new TelemetrySubscriber(NullLogger<TelemetrySubscriber>.Instance, configuration, store);
     }
 
+    [Theory]
+    [InlineData("http://user:password@localhost:5197/private?token=secret#fragment", "http://localhost:5197")]
+    [InlineData("https://example.test:8443/path", "https://example.test:8443")]
+    [InlineData("not a url", null)]
+    [InlineData("file:///private", null)]
+    public void StatusReportsOnlySafeHttpSourceOrigin(string baseUrl, string? expected)
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(
+            new Dictionary<string, string?> { ["Telemetry:SimulatorBaseUrl"] = baseUrl }).Build();
+        var instance = new TelemetrySubscriber(NullLogger<TelemetrySubscriber>.Instance, configuration, store);
+        Assert.Equal(expected, instance.Status.SimulatorHttpSource);
+    }
+
+    [Fact]
+    public void StatusIncludesDefaultHttpSourceAlongsideExistingTransportFields()
+    {
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(subscriber.Status, JsonSerializerOptions.Web));
+        var status = json.RootElement;
+        Assert.Equal("http://localhost:5080", status.GetProperty("simulatorHttpSource").GetString());
+        Assert.False(status.GetProperty("mqttConnected").GetBoolean());
+        Assert.False(status.GetProperty("httpAvailable").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, status.GetProperty("lastMqttConnectedAt").ValueKind);
+        Assert.False(string.IsNullOrEmpty(status.GetProperty("message").GetString()));
+    }
+
     [Fact]
     public void MatchingTopicAndPayloadAreIngested()
     {
