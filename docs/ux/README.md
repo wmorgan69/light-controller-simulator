@@ -1,6 +1,6 @@
 # UX design references
 
-The static, non-interactive design references below document the existing applications, not a proposed redesign. Values and statuses are illustrative snapshots and do not represent live telemetry. The desktop high-fidelity references reuse the supplied application screenshots; the mobile high-fidelity designs are illustrative renderings, not browser captures. Scroll to see the full mobile page. The proposed editor is documented separately below.
+The static, non-interactive design references below illustrate the applications and are not live telemetry. The desktop high-fidelity references reuse the supplied application screenshots; the mobile high-fidelity designs are illustrative renderings, not browser captures. Scroll to see the full mobile page. The editor implementation and its design targets are documented separately below.
 
 | Application | Desktop wireframe | Mobile wireframe | Desktop high fidelity | Mobile high fidelity |
 |---|---|---|---|---|
@@ -19,8 +19,8 @@ The simulator desktop reference shows the building overview; the [selected-floor
 
 See the [simulator guide](../technical/building-light-simulator.md#user-interactions) and [instrumentation guide](../technical/lighting-instrumentation.md#dashboard-information-hierarchy) for current behavior, loading and error states, and accessibility details.
 
-## Proposed building editor
+## Building editor
 
-- [Specification](../plans/building-editor-spec.md) - scope, persistence, acceptance criteria, and open decisions.
-- [UX design](simulator/editor/ux.md) - tasks, flows, and accessibility.
-- [UI design](simulator/editor/ui.md) - dimensioned desktop and mobile wireframes and design targets.
+- [Specification](../plans/building-editor-spec.md) - current behavior, persistence, access limits, and remaining gaps.
+- [UX design](simulator/editor/ux.md) - current tasks, flows, accessibility, and remaining work.
+- [UI design](simulator/editor/ui.md) - current layout and dimensioned desktop and mobile design targets.

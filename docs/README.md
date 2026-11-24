@@ -4,7 +4,8 @@
 
 - [Architecture overview](#architecture-overview)
 - [Project plan](plans/plan.md)
-- [Building editor specification (proposed)](plans/building-editor-spec.md)
+- [Building editor specification](plans/building-editor-spec.md)
+- [Building editor technical guide](technical/building-editor.md)
 - [Changelog](CHANGELOG.md)
 - [Applications](#applications)
 - [Directory structure](#directory-structure)
@@ -21,11 +22,12 @@ The solution has two web applications connected by shared contracts and optional
 
 ![System architecture: browser users access the simulator and dashboard; HTTP polling and optional MQTT telemetry feed the telemetry store, which persists data in SQLite.](assets/diagrams/architecture.svg)
 
-Both web applications use shared contracts. The instrumentation service polls the simulator over HTTP and can also ingest optional MQTT telemetry; both inputs feed the telemetry store, which persists it in SQLite.
+Both web applications use shared contracts. The instrumentation service polls the simulator over HTTP and can also ingest optional MQTT telemetry; both inputs feed the telemetry store, which persists it in SQLite. The simulator separately persists saved building designs in SQLite.
 
 ## Applications
 
-- [Building Light Simulator](technical/building-light-simulator.md) - Interactive 3D building model, HTTP device state, simulator scenarios, and MQTT publication.
+- [Building Light Simulator](technical/building-light-simulator.md) - Interactive 3D building model, local building editor, HTTP device state, simulator scenarios, and MQTT publication.
+- [Building editor](technical/building-editor.md) - Local editing, validation, API, persistence and recovery.
 - [Lighting Instrumentation](technical/lighting-instrumentation.md) - Live controller health, room/lighting state, events, SQLite persistence, and MQTT/HTTP transport status.
 
 ## Directory structure
@@ -76,14 +78,27 @@ Alternatively, run both applications with Docker and Docker Compose:
 docker compose up --build
 ```
 
-The same host ports are used. The dashboard polls `http://simulator:8080` on the Compose network and stores SQLite data in the `telemetry-data` named volume. Stop the containers with `docker compose down`. A CodeSandbox server environment must provide a Docker engine and Compose; forward ports 5080 and 5081.
+The same host ports are bound to loopback. The dashboard polls `http://simulator:8080` on the Compose network and stores SQLite data in the `telemetry-data` named volume; the simulator uses the separate `building-design-data` volume. Simulator HTTP mutations and editor access are disabled in Compose. Instrumentation APIs remain unauthenticated, and MQTT commands require a separately secured broker. Do not expose the services through proxies or non-loopback bindings; local users and processes share access. Stop the containers with `docker compose down`.
 
 ```mermaid
+---
+config:
+  theme: base
+  themeVariables:
+    darkMode: true
+    primaryColor: '#1E293B'
+    primaryTextColor: '#F8FAFC'
+    primaryBorderColor: '#60A5FA'
+    lineColor: '#60A5FA'
+    edgeLabelBackground: '#1E293B'
+    textColor: '#F8FAFC'
+---
 flowchart LR
-  Browser["Browser"] -->|5080| Simulator["Simulator container"]
-  Browser -->|5081| Dashboard["Instrumentation container"]
+  Browser("Browser") -->|5080| Simulator("Simulator container")
+  Browser -->|5081| Dashboard("Instrumentation container")
   Dashboard -->|HTTP: simulator:8080| Simulator
   Dashboard --> Volume[("telemetry-data volume")]
+  Simulator --> DesignVolume[("building-design-data volume")]
   classDef default fill:#1E293B,stroke:#60A5FA,color:#F8FAFC;
 ```
 
@@ -141,10 +156,11 @@ The CI workflow also runs the Node.js view-logic, recording-helper, and localiza
 | Document | Covers |
 |---|---|
 | [Building Light Simulator](technical/building-light-simulator.md) | 3D model, controls, state model, APIs, MQTT commands, scenarios, source map |
+| [Building editor](technical/building-editor.md) | Editing, validation, editor API, persistence and recovery |
 | [Lighting Instrumentation](technical/lighting-instrumentation.md) | Dashboard design, telemetry flow, persistence, stale/offline behavior, source map |
 | [UX design references](ux/README.md) | Shared design baseline, app-specific design guides, and desktop and mobile references |
 | [Project plan](plans/plan.md) | Goals, delivery phases, implementation decisions, acceptance criteria |
-| [Building editor specification](plans/building-editor-spec.md) | Proposed building editor, storage, acceptance criteria, and open decisions |
+| [Building editor specification](plans/building-editor-spec.md) | Current editor workflow, validation, storage, access limits, and remaining gaps |
 | [Changelog](CHANGELOG.md) | Project history, recorded commits, and upcoming changes |
 | [Contributor Guide](contributing/contributor-guide.md) | Code coverage workflow, testing tips, security review process, common questions |
 | [Branch Protection Configuration](contributing/branch-protection.md) | CI/CD enforcement, GitHub status checks, Codecov setup |

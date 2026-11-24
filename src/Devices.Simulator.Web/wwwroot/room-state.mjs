@@ -1,5 +1,5 @@
 export function sensorFaultForRoom(controller, room) {
-  const sensorId = `sensor-floor-${controller.floor}-${room.id.slice(`floor-${controller.floor}-`.length)}`;
+  const sensorId = room.sensorId ?? `sensor-floor-${controller.floor}-${room.id.slice(`floor-${controller.floor}-`.length)}`;
   return controller.faults.find(fault => fault.scope === 'sensor' && fault.targetId === sensorId);
 }
 

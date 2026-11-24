@@ -12,6 +12,32 @@ const stepCount = 18;
 const sectionSteps = 10;
 const floorHeight = 2.45;
 
+// Place the existing illustrative staircase beyond the outer edge of the rear walkway.
+export function designStairOffset(depth, walkwayWidth) {
+  return { x: -(stairStartX + stairRun / 2), z: -depth / 2 - walkwayWidth - stairwellFront };
+}
+
+export function positionDesignStairs(object, depth, walkwayWidth) {
+  if (object.userData.stairLanding) {
+    // Extend into the slab-clearance margin so the exterior landing meets the flight.
+    object.scale.x = (landingWidth + stairEndMargin) / landingWidth;
+    object.position.x += object.position.x < stairStartX + stairRun / 2
+      ? stairEndMargin / 2 : -stairEndMargin / 2;
+  }
+  const offset = designStairOffset(depth, walkwayWidth);
+  object.position.x += offset.x;
+  object.position.z += offset.z;
+  return object;
+}
+
+export function createDesignFloorSlab(baseY, width, depth) {
+  const slab = new THREE.Mesh(
+    new THREE.BoxGeometry(width, 0.18, depth),
+    new THREE.MeshStandardMaterial({ color: '#334155', roughness: 0.86 }));
+  slab.position.set(0, baseY - 0.12, 0);
+  return slab;
+}
+
 export function createFloorSlab(baseY, hasStairwell, incomingFloor = null) {
   const left = stairStartX - stairEndMargin;
   const right = stairStartX + stairRun + stairEndMargin;
@@ -37,6 +63,7 @@ export function createFloorStairLandings(baseY, floor) {
   const landing = new THREE.Mesh(
     new THREE.BoxGeometry(landingWidth, 0.06, stairwellFront - stairwellBack),
     new THREE.MeshStandardMaterial({ color: '#64748b', roughness: 0.85 }));
+  landing.userData.stairLanding = true;
   landing.position.set(edges[index] + (index === 0 ? -1 : 1) * landingWidth / 2,
     baseY - 0.03, (stairwellBack + stairwellFront) / 2);
   return [landing];

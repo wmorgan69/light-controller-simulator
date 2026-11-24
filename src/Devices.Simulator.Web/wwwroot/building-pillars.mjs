@@ -16,3 +16,12 @@ export function createFloorPillars(baseY, endsAtCeiling) {
 
   return group;
 }
+
+export function createDesignFloorPillars(baseY, endsAtCeiling, width, depth, walkwayWidth) {
+  const group = createFloorPillars(baseY, endsAtCeiling);
+  for (const pillar of group.children) {
+    pillar.position.x = Math.sign(pillar.position.x) * (width / 2 + walkwayWidth + 0.06);
+    pillar.position.z = Math.sign(pillar.position.z) * (depth / 2 + walkwayWidth + 0.06);
+  }
+  return group;
+}

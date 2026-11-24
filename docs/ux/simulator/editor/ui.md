@@ -1,6 +1,6 @@
-# Building editor UI design
+# Building editor UI
 
-**Status: proposed, not implemented.** These wireframes and dimensions are design targets, not screenshots or current CSS. The [editor specification](../../../plans/building-editor-spec.md) and [UX flow](ux.md) govern behavior; unresolved product decisions remain open.
+The editor uses the simulator's dark theme, an SVG floor plan and forms. The illustrations below are design targets, not screenshots; see the [editor specification](../../../plans/building-editor-spec.md) and [UX flow](ux.md) for implemented behavior and limitations.
 
 ## Table of contents
 
@@ -8,13 +8,11 @@
 - [Layout wireframes](#layout-wireframes)
 - [Dimensions and components](#dimensions-and-components)
 - [States and accessibility](#states-and-accessibility)
-- [Validation](#validation)
+- [Validation and remaining work](#validation-and-remaining-work)
 
 ## Visual direction
 
-Retain the simulator's dark theme, typography, and existing meanings for sensor and light wiring. Follow the [shared design language](../../design-language.md) for target contrast, spacing, focus, and minimum interactive target size, and use the [main simulator design guide](../main/design-language.md) as the current-style reference. These are targets for the editor; they do not imply the current interface already meets them.
-
-Use descriptive labels alongside icons and color. The plan is schematic: connections represent the selected design model, not verified cable routes or electrical compliance.
+The editor follows the simulator's dark theme and uses distinct visual connections for sensors and lights. The plan is schematic: connections represent logical associations, not verified cable routes or electrical compliance. See the [shared design language](../../design-language.md) and [main simulator design guide](../main/design-language.md) for broader visual and accessibility targets.
 
 ## Layout wireframes
 
@@ -22,29 +20,28 @@ Use descriptive labels alongside icons and color. The plan is schematic: connect
 
 ![Mobile editor wireframe showing header, floor selector, toolbar, plan, item list and properties in a vertical stack, with target spacing and control dimensions.](wireframe-mobile.svg)
 
-The illustrations are schematic and not to scale. Desktop is illustrated at `1200px` and mobile at `390px`; these are examples, not minimum widths. The labels describe target CSS dimensions. Do not treat the drawn heights or positions as fixed screen measurements.
+These static illustrations are not current browser captures or fixed measurements. Desktop is illustrated at `1200px` and mobile at `390px`; controls and workflow can differ from the wireframes.
 
 ## Dimensions and components
 
-| Element | Proposed target |
+| Element | Current implementation |
 |---|---|
-| Breakpoint | Stack primary regions at `760px` and below; use a fluid layout above it. |
-| Desktop columns | `220px` floor navigation, flexible plan, and `280px` properties; collapse earlier if content cannot fit without overflow. |
-| Outer inset / region gap | `1rem` / `1rem` desktop; `.75rem` / `.75rem` narrow. |
-| Toolbar | Wrap labelled tools with `.5rem` gaps; each interactive target at least `44 × 44px`. |
-| Undo and redo | Provide labelled, keyboard-operable controls for draft history. They are not shown in the schematic wireframes. |
-| Workspace | Flexible width; plan may pan/zoom locally, with equivalent list and form controls outside the plan. |
-| Properties and item list | Desktop properties beside the plan; mobile item list and properties below it in reading order. Inputs fill available width without clipping. |
-| Save feedback | Saved/unsaved status and Save are adjacent in the header area; allow wrapping on small screens. |
+| Entry | A labelled **Edit building** button opens the editor on an eligible local Development host. |
+| Layout | Three columns at wider widths: building/floor controls, plan, and item list/properties. Regions stack at `900px` and below. |
+| Spacing | The editor uses a `1rem` outer inset, reduced to `.75rem` at `760px` and below; layout gap is `1rem`, or `.75rem` when stacked. |
+| Controls | Actions wrap; editor buttons, selects and inputs have a `44px` minimum height. Undo/redo use session history. |
+| Plan | An SVG plan shows rooms, fixtures, doors, controller and connections. Plan tools supplement the item list and property forms. |
+| Properties | Labelled forms edit building and item properties; an item list exposes selection without relying on the plan. |
+| Status | Text reports unsaved changes, activation and cleanup states; the simulator header shows saved/running revisions and cleanup counts. |
 
-Sizes are CSS targets; `rem` depends on the root font size. At `320px`, around `760px`, and at zoomed text sizes, verify that controls wrap and the page has no horizontal overflow. No fixed minimum plan height should make form controls inaccessible.
+These CSS values describe the implementation, not a guarantee of responsive or accessibility conformance. The 3D view of an edited design includes illustrative exterior stairs, landings, pillars and perimeter walkways outside the editable footprint; they do not guarantee routes from interior doors.
 
 ## States and accessibility
 
-Show the active tool with a visible label and programmatically exposed selected or pressed state, such as a labelled radio group or appropriately pressed buttons; provide a distinct text label for the selected item. Empty floors prompt users to add a room. Place errors beside relevant fields and provide a summary for errors elsewhere in the plan. Loading, saving, dirty, saved, editor-in-use, lease-lost, draft-not-persisted, failed storage, activation failure, and cleanup pending/failed/complete must be textually distinct. Show activation and cleanup statuses separately in the simulator and editor, with retry controls where local editor access is enabled. When a lease is lost, disable writes and expose local export and lease-recovery actions. Disable unavailable undo/redo actions and explain that history is session-only.
+The editor displays loading, persistence, invalid-save, conflict, activation and cleanup feedback in text. A conflict disables edits and offers recovery or export; unavailable undo/redo actions are disabled. Invalid pending values are included in a marked recovery export rather than silently discarded.
 
-Use semantic controls, keyboard-operable lists and forms, visible focus, and appropriately announced results. Keep pointer placement optional; provide equivalent selection, geometry, and connection controls without requiring the plan. Preserve focus and draft data after validation errors or canceled confirmation. Verify actual rendered contrast and focus behavior rather than inferring compliance from the palette.
+The intended standard remains semantic controls, visible focus, meaningful labels, keyboard-operable list and forms, and non-color status indicators. Precise placement must not depend solely on pointer or 3D interaction. Verify actual focus, contrast, announcements, field-error correction and interaction parity rather than inferring compliance from the palette or wireframes.
 
-## Validation
+## Validation and remaining work
 
-These are static wireframes, not a running prototype. Before implementation is accepted, inspect real desktop and narrow-mobile layouts, including `320px`, both sides of the breakpoint, keyboard operation, zoom, wrapping, and all relevant error and confirmation states. Conduct independent UX review and record any limitations.
+Continue accessibility and responsive verification, including both sides of the layout breakpoint, zoom, keyboard operation and error/confirmation states. Authentication and non-loopback editor access are not implemented.

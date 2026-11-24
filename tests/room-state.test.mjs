@@ -38,6 +38,12 @@ test('finds only the selected room sensor fault', () => {
   assert.equal(sensorFaultForRoom(controller, { id: 'floor-4-office-a' }), undefined);
 });
 
+test('uses the explicit sensor identity for an edited room', () => {
+  const fault = { scope: 'sensor', targetId: 'sensor-new-id' };
+  const controller = { floor: 1, faults: [fault] };
+  assert.equal(sensorFaultForRoom(controller, { id: 'room-new-id', sensorId: 'sensor-new-id' }), fault);
+});
+
 test('only faulted sensors pulse, and reduced motion keeps them steady', () => {
   assert.equal(sensorPulseAmount(true, false, 0), 0);
   assert.ok(Math.abs(sensorPulseAmount(true, false, 600) - 0.5) < 1e-10);

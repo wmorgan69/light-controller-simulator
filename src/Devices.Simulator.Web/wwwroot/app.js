@@ -2,18 +2,37 @@ import * as THREE from 'three';
 import { OrbitControls } from './vendor/OrbitControls.js';
 import { isWiringVisible, wiringRoute } from './wiring-routes.mjs?v=wiring-7';
 import { FloorView, applyFloorMaterialEmphasis, fieldOfViewForAspect, selectedFloorCamera, cameraPresetNeedsUpdate, isFloorVisible, floorNavigation } from './floor-view.mjs?v=floor-navigation-5';
-import { createFloorPillars } from './building-pillars.mjs?v=pillars-2';
-import { createFloorSlab, createFloorStairLandings, createFloorStairs, createIncomingFloorStairs } from './building-stairs.mjs?v=stairs-8';
-import { createFloorWalkway, createOpenDoor, roomWallSegments } from './building-access.mjs?v=access-2';
+import { createDesignFloorPillars, createFloorPillars } from './building-pillars.mjs?v=pillars-3';
+import { createDesignFloorSlab, createFloorSlab, createFloorStairLandings, createFloorStairs, createIncomingFloorStairs, positionDesignStairs } from './building-stairs.mjs?v=stairs-11';
+import { createDesignDoors, createDesignWalkways, createFloorWalkway, createOpenDoor, designWalkwayWidth, roomWallSegments } from './building-access.mjs?v=access-5';
+import { designControllerPosition, designRoomView, syncRunningDesign } from './building-design-view.mjs';
 import { floorRoomLayout, roomFixturePositions, sensorRadius } from './room-fixtures.mjs?v=room-access-4';
-import { lightEmits, lightVisualState, roomIllumination, selectedRoomVisualState, sensorFaultForRoom, sensorPulseAmount } from './room-state.mjs?v=7';
-import { controllerStatusLabel, localizeMarkup, t } from './localization.en.mjs?v=1';
+import { lightEmits, lightVisualState, roomIllumination, selectedRoomVisualState, sensorFaultForRoom, sensorPulseAmount } from './room-state.mjs?v=8';
+import { controllerStatusLabel, localizeMarkup, t } from './localization.en.mjs?v=6';
+import { initBuildingEditor } from './building-editor.mjs?v=local-edits-6';
+import { createMutationAccess, responseDetail, syncMutationControls } from './mutation-access.mjs?v=local-edits-6';
 
 localizeMarkup(document);
+const mutationAccess = createMutationAccess();
+let scenarioBusy = false;
+const syncMutationAccess = () => {
+  const status = document.querySelector('#mutationAccessStatus');
+  if (status.textContent !== mutationAccess.message) status.textContent = mutationAccess.message;
+  syncMutationControls(document, mutationAccess);
+  syncMutationControls(document.querySelector('.scenario-controls'), mutationAccess, scenarioBusy);
+};
+mutationAccess.subscribe(syncMutationAccess);
+initBuildingEditor({
+  mutationAccess,
+  onActivated: async () => {
+    try { await Promise.all([refresh(), refreshDesignStatus()]); }
+    catch (error) { showActionError(error, '#loadError'); }
+  }
+});
 
 const canvas = document.querySelector('#buildingCanvas');
 const building = new THREE.Group();
-const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 150);
+const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 1000);
 const scene = new THREE.Scene();
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -24,6 +43,8 @@ const floorGroups = new Map();
 const floorView = new FloorView();
 let activeFloorGroup = null;
 let controllers = [];
+let activeDesign = null;
+let designStatusPromise = null;
 let selection = null;
 let selectedRoomId = null;
 let refreshSequence = 0;
@@ -40,6 +61,10 @@ let previousViewportWidth = window.innerWidth;
 const roomVisuals = new Map();
 const coarsePointer = matchMedia('(pointer: coarse)');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+
+function roomSensorId(controller, room) {
+  return room.sensorId ?? `sensor-floor-${controller.floor}-${room.id.slice(`floor-${controller.floor}-`.length)}`;
+}
 
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
@@ -175,6 +200,7 @@ function rebuildBuilding() {
   roomVisuals.clear();
   const highestFloor = Math.max(...controllers.map(controller => controller.floor));
   const floorNumbers = new Set(controllers.map(controller => controller.floor));
+  const editedDesign = activeDesign?.revision > 1 ? activeDesign : null;
 
   controllers.forEach(controller => {
     if (!isFloorVisible(floorView.current, controller.floor)) return;
@@ -189,21 +215,32 @@ function rebuildBuilding() {
     wiringGroup.visible = isWiringVisible(floorView.current, controller.floor);
     floorGroup.add(wiringGroup);
     const wiringTargets = [];
+    const designFloor = editedDesign?.floors.find(floor => floor.controllerId === controller.id);
+    if (editedDesign && !designFloor) throw new Error(t('buildingDesignMismatch'));
 
     const incomingFloor = floorView.current !== null && controller.floor === highestFloor
       ? controller.floor - 1 : null;
-    for (const slab of createFloorSlab(y, floorNumbers.has(controller.floor - 1), incomingFloor)) {
+    const slabs = editedDesign
+      ? [createDesignFloorSlab(y, editedDesign.width, editedDesign.depth)]
+      : createFloorSlab(y, floorNumbers.has(controller.floor - 1), incomingFloor);
+    for (const slab of slabs) {
       addSelectable(slab, { type: 'floor', controllerId: controller.id, floor: controller.floor });
     }
     for (const landing of createFloorStairLandings(y, controller.floor)) {
+      if (editedDesign) positionDesignStairs(landing, editedDesign.depth, designWalkwayWidth);
       addSelectable(landing, { type: 'floor', controllerId: controller.id, floor: controller.floor });
     }
-    addSelectable(createFloorWalkway(y), { type: 'floor', controllerId: controller.id, floor: controller.floor });
+    const walkways = editedDesign
+      ? createDesignWalkways(y, editedDesign.width, editedDesign.depth) : [createFloorWalkway(y)];
+    for (const walkway of walkways) {
+      addSelectable(walkway, { type: 'floor', controllerId: controller.id, floor: controller.floor });
+    }
 
     const floorLabel = new THREE.Mesh(
       new THREE.PlaneGeometry(1.35, 0.42),
       new THREE.MeshBasicMaterial({ map: textTexture(t('floorSceneLabel', { floor: controller.floor })), side: THREE.DoubleSide }));
-    floorLabel.position.set(-4.45, y + 0.62, 4.06);
+    floorLabel.position.set(editedDesign ? -editedDesign.width / 2 + 0.7 : -4.45,
+      y + 0.62, editedDesign ? editedDesign.depth / 2 + 0.06 : 4.06);
     addSelectable(floorLabel, { type: 'floor', controllerId: controller.id, floor: controller.floor });
 
     const layout = floorRoomLayout(controller.floor,
@@ -211,7 +248,10 @@ function rebuildBuilding() {
 
     controller.rooms.forEach(room => {
       const roomKey = room.id.slice(`floor-${controller.floor}-`.length);
-      const area = layout[roomKey];
+      const designRoom = designFloor?.rooms.find(item => item.id === room.id);
+      if (editedDesign && !designRoom) throw new Error(t('buildingDesignMismatch'));
+      const designView = designRoom ? designRoomView(editedDesign, designRoom, y) : null;
+      const area = designView?.area ?? layout[roomKey];
       if (!area) return;
       const roomSelection = { type: 'room', roomId: room.id, controllerId: controller.id, floor: controller.floor };
       const surface = new THREE.Mesh(
@@ -245,7 +285,11 @@ function rebuildBuilding() {
         addWall(wall.x1, wall.z1, wall.x2, wall.z2, y + wall.y, wall.height,
           room.id, controller.id, controller.floor);
       }
-      addSelectable(createOpenDoor(area, y), roomSelection);
+      if (designView) {
+        for (const door of createDesignDoors(area, y)) addSelectable(door, roomSelection);
+      } else {
+        addSelectable(createOpenDoor(area, y), roomSelection);
+      }
 
       const roomName = new THREE.Mesh(
         new THREE.PlaneGeometry(Math.min(area.width * 0.72, 2.6), 0.48),
@@ -253,8 +297,8 @@ function rebuildBuilding() {
       roomName.position.set(area.x, y + 0.64, area.z + area.depth / 2 + 0.07);
       addToFloor(roomName);
 
-      const roomKeySensor = `sensor-floor-${controller.floor}-${roomKey}`;
-      const fixtures = roomFixturePositions(area, y, room.lightStrips.length);
+      const roomKeySensor = roomSensorId(controller, room);
+      const fixtures = designView?.fixtures ?? roomFixturePositions(area, y, room.lightStrips.length);
 
       room.lightStrips.forEach((strip, index) => {
         const light = new THREE.Mesh(
@@ -291,7 +335,7 @@ function rebuildBuilding() {
       roomVisuals.get(room.id).sensor = sensor;
       roomVisuals.get(room.id).sensorFaulted = sensorFaulted;
 
-      if (room.lightStrips.length === 4) {
+      if (!designView && room.lightStrips.length === 4) {
         room.lightStrips.forEach((strip, index) => {
           const marker = new THREE.Mesh(
             new THREE.SphereGeometry(0.09),
@@ -305,7 +349,9 @@ function rebuildBuilding() {
     const controllerBox = new THREE.Mesh(
       new THREE.BoxGeometry(0.58, 0.58, 0.42),
       new THREE.MeshStandardMaterial({ color: controller.status === 'Faulted' ? '#ef4444' : '#22c55e' }));
-    controllerBox.position.set(-4.65, y + 0.38, -3.4);
+    const position = designFloor ? designControllerPosition(editedDesign, designFloor, y) :
+      { x: -4.65, y: y + 0.38, z: -3.4 };
+    controllerBox.position.set(position.x, position.y, position.z);
     addSelectable(controllerBox, { type: 'controller', controllerId: controller.id, roomId: controller.rooms[0]?.id, floor: controller.floor });
 
     wiringTargets.forEach(target => {
@@ -321,15 +367,22 @@ function rebuildBuilding() {
         new THREE.MeshStandardMaterial({ color: target.color, emissive: target.color, emissiveIntensity: 0.45 }));
       wiringGroup.add(wire);
     });
-    floorGroup.add(createFloorStairs(y, controller.floor === highestFloor, floorView.current === null, controller.floor));
+    const stairs = createFloorStairs(y, controller.floor === highestFloor, floorView.current === null, controller.floor);
+    if (editedDesign) positionDesignStairs(stairs, editedDesign.depth, designWalkwayWidth);
+    floorGroup.add(stairs);
     if (floorView.current !== null && floorNumbers.has(controller.floor - 1)) {
-      floorGroup.add(createIncomingFloorStairs(y, controller.floor));
+      const incoming = createIncomingFloorStairs(y, controller.floor);
+      if (editedDesign) positionDesignStairs(incoming, editedDesign.depth, designWalkwayWidth);
+      floorGroup.add(incoming);
     }
   });
 
   activeFloorGroup = null;
   applyFloorEmphasis();
-  if (floorView.current === null) {
+  if (editedDesign) {
+    floorGroups.forEach((group, floor) => group.add(createDesignFloorPillars(
+      (floor - 1) * 2.45, floor === highestFloor, editedDesign.width, editedDesign.depth, designWalkwayWidth)));
+  } else if (floorView.current === null) {
     controllers.forEach(controller => {
       floorGroups.get(controller.floor).add(createFloorPillars(
         (controller.floor - 1) * 2.45, controller.floor === highestFloor));
@@ -518,6 +571,8 @@ function createFaultRow(controller, fault, list, errorTarget) {
   label.textContent = `${controller.id}: ${fault.scope} — ${fault.description}`;
   const clear = document.createElement('button');
   clear.type = 'button';
+  clear.dataset.mutation = '';
+  clear.disabled = !mutationAccess.allowed;
   clear.textContent = t('clear');
   clear.addEventListener('click', () => clearFault(controller, fault, errorTarget));
   row.append(label, clear);
@@ -596,8 +651,7 @@ function populateAccessibleFaultTargets() {
   let options = [];
   if (scope === 'sensor') {
     options = controllers.flatMap(controller => controller.rooms.map(room => {
-      const key = room.id.slice(`floor-${controller.floor}-`.length);
-      return { id: `sensor-floor-${controller.floor}-${key}`, label: t('sensorTarget', { floor: controller.floor, room: room.name }) };
+      return { id: roomSensorId(controller, room), label: t('sensorTarget', { floor: controller.floor, room: room.name }) };
     }));
   } else if (scope === 'light') {
     options = controllers.flatMap(controller => controller.rooms.flatMap(room =>
@@ -616,7 +670,7 @@ function ownerForTarget(scope, targetId) {
     scope === 'controller'
       ? controller.id === targetId
       : scope === 'sensor'
-        ? controller.rooms.some(room => `sensor-floor-${controller.floor}-${room.id.slice(`floor-${controller.floor}-`.length)}` === targetId)
+        ? controller.rooms.some(room => roomSensorId(controller, room) === targetId)
         : controller.rooms.some(room => room.lightStrips.some(strip => strip.id === targetId)));
 }
 
@@ -635,8 +689,8 @@ function showActionError(error, target = '#actionError') {
 }
 
 async function request(url, options) {
-  const response = await fetch(url, options);
-  if (!response.ok) throw new Error(t('requestFailed', { status: response.status, body: await response.text() }));
+  const response = await mutationAccess.request(url, options);
+  if (!response.ok) throw new Error(t('requestFailed', { status: response.status, body: await responseDetail(response) }));
   const loadError = document.querySelector('#loadError');
   if (loadError) loadError.hidden = true;
   const actionError = document.querySelector('#actionError');
@@ -670,16 +724,21 @@ async function clearFault(controller, fault, errorTarget) {
 async function refresh() {
   const sequence = ++refreshSequence;
   const [controllerResponse, statusResponse] = await Promise.all([
-    fetch('/api/controllers'),
-    fetch('/api/status')
+    fetch('/api/building-view', { signal: AbortSignal.timeout(4000) }),
+    fetch('/api/status', { signal: AbortSignal.timeout(4000) })
   ]);
   if (!controllerResponse.ok) throw new Error(t('controllerApiFailed', { status: controllerResponse.status }));
-  const updatedControllers = await controllerResponse.json();
+  const view = await controllerResponse.json();
   const transport = statusResponse.ok ? await statusResponse.json() : null;
   if (sequence < lastAppliedRefresh) return;
   if (sequence < minimumRefreshSequence) throw new Error(t('statusChangedDuringRefresh'));
   lastAppliedRefresh = sequence;
-  controllers = updatedControllers;
+  const previousDesignRevision = activeDesign?.revision;
+  controllers = view.controllers;
+  activeDesign = view.design;
+  document.querySelector('[data-i18n="stairsHelp"]').hidden =
+    Boolean(activeDesign?.revision > 1 && activeDesign.floors.length === 1);
+  controls.maxDistance = 42 * designScale();
   if (statusResponse.ok) {
     const transportStatus = document.querySelector('#transportStatus');
     transportStatus.textContent = transport.mqttConnected
@@ -701,7 +760,15 @@ async function refresh() {
     }
     initialSelectionPending = false;
   }
-  if (selection?.roomId && !currentRoom()) selection = null;
+  if (floorView.current !== null && !controllers.some(controller => controller.floor === floorView.current)) {
+    floorView.showAll();
+    selection = null;
+    selectedRoomId = null;
+  }
+  if (selection?.roomId && !currentRoom()) {
+    selection = null;
+    selectedRoomId = null;
+  }
   if (selection?.roomId) selectedRoomId = selection.roomId;
   rebuildBuilding();
   renderStatus();
@@ -710,8 +777,10 @@ async function refresh() {
   populateAccessibleControls();
   renderAccessibleFaults();
   updateGestureHelp();
-  if (startupCameraPending && floorView.current === 3) {
-    moveCameraToFloor(3);
+  if (startupCameraPending || (previousDesignRevision !== undefined &&
+      previousDesignRevision !== activeDesign?.revision && (cameraPresetActive || floorView.current === null))) {
+    if (floorView.current !== null) moveCameraToFloor(floorView.current);
+    else moveCameraToOverview();
     startupCameraPending = false;
   }
   if (scenarioWarningAfterRefresh !== null && sequence > scenarioWarningAfterRefresh) {
@@ -725,6 +794,41 @@ async function refresh() {
     document.querySelector('#refreshWarning').hidden = true;
     actionWarningAfterRefresh = null;
   }
+}
+
+async function refreshDesignStatus() {
+  if (designStatusPromise) return designStatusPromise;
+  designStatusPromise = (async () => {
+    const element = document.querySelector('#buildingDesignStatus');
+    try {
+      const response = await fetch('/api/building-design-status', { signal: AbortSignal.timeout(4000) });
+      if (!response.ok) throw new Error(t('controllerApiFailed', { status: response.status }));
+      const state = await response.json();
+      const label = state.activationStatus === 'active' ? t('editorActivationActive') :
+        state.activationStatus === 'failed' ? t('editorActivationFailed') : t('editorActivationPending');
+      const text = t('buildingDesignStatusSummary', {
+        status: label, saved: state.savedRevision, running: state.runningRevision,
+        pending: state.pendingCleanup, failed: state.failedCleanup, completed: state.completedCleanup
+      });
+      let displayText = text;
+      try {
+        await syncRunningDesign(state.runningRevision, activeDesign?.revision, refresh);
+      } catch (error) {
+        displayText = `${text} ${t('buildingDesignRefreshFailed', { error: error.message })}`;
+      }
+      if (element.textContent !== displayText) element.textContent = displayText;
+    } catch (error) {
+      const text = `${t('buildingDesignStatusUnavailable')} ${error.message}`;
+      if (element.textContent !== text) element.textContent = text;
+    }
+  })();
+  try { await designStatusPromise; }
+  finally { designStatusPromise = null; }
+}
+
+async function pollDesignStatus() {
+  await refreshDesignStatus();
+  setTimeout(pollDesignStatus, 5000);
 }
 
 async function refreshAfterAction() {
@@ -825,7 +929,7 @@ function showAllFloors() {
   renderStatus();
   syncRoomInspector();
   updateFloorStatus();
-  moveCamera({ x: 13, y: 14, z: 18 }, { x: 0, y: 3.3, z: 0 });
+  moveCameraToOverview();
 }
 
 document.querySelector('#accessibleFloor').addEventListener('change', event => {
@@ -866,7 +970,7 @@ document.querySelector('#inspectorFault').addEventListener('change', async event
   const room = currentRoom();
   const controller = currentController();
   if (!room || !controller) return;
-  const sensorId = `sensor-floor-${controller.floor}-${room.id.slice(`floor-${controller.floor}-`.length)}`;
+  const sensorId = roomSensorId(controller, room);
   const existingFault = sensorFaultForRoom(controller, room);
   try {
     let response;
@@ -931,13 +1035,28 @@ function moveCamera(position, target) {
 
 function moveCameraToFloor(floor) {
   const { position, target } = selectedFloorCamera(floor, window.innerWidth);
-  moveCamera(position, target);
+  const scale = designScale();
+  controls.maxDistance = 42 * scale;
+  moveCamera({ x: position.x * scale, y: target.y + (position.y - target.y) * scale, z: position.z * scale }, target);
   cameraPresetActive = true;
 }
 
+function designScale() {
+  return activeDesign?.revision > 1 ? Math.max(1, activeDesign.width / 10, activeDesign.depth / 8) : 1;
+}
+
+function moveCameraToOverview() {
+  const scale = designScale();
+  controls.maxDistance = 42 * scale;
+  const targetY = activeDesign?.revision > 1 && controllers.length > 0
+    ? (Math.max(...controllers.map(controller => controller.floor)) - 1) * 2.45 / 2 : 3.3;
+  moveCamera({ x: 13 * scale, y: targetY + 10.7 * scale, z: 18 * scale }, { x: 0, y: targetY, z: 0 });
+}
+
 async function runScenario(url) {
-  const buttons = document.querySelectorAll('.scenario-controls button');
-  buttons.forEach(button => { button.disabled = true; });
+  if (scenarioBusy || !mutationAccess.allowed) return;
+  scenarioBusy = true;
+  syncMutationAccess();
   document.querySelector('#scenarioError').hidden = true;
   try {
     try {
@@ -956,7 +1075,8 @@ async function runScenario(url) {
       }
     }
   } finally {
-    buttons.forEach(button => { button.disabled = false; });
+    scenarioBusy = false;
+    syncMutationAccess();
   }
 }
 
@@ -1001,3 +1121,9 @@ refresh().catch(error => {
   loadError.textContent = t('unableToLoadBuildingState', { error: error.message });
   loadError.hidden = false;
 });
+void pollDesignStatus();
+async function pollMutationAccess() {
+  await mutationAccess.refresh();
+  setTimeout(pollMutationAccess, 5000);
+}
+void pollMutationAccess();
