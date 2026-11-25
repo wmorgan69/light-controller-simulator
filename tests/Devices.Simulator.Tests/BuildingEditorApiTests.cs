@@ -6,6 +6,36 @@ using System.Text.Json.Nodes;
 public sealed class BuildingEditorApiTests
 {
     [Fact]
+    public async Task SimulatedMutationAndBuildingViewUseTheSameConnectorState()
+    {
+        var path = Path.GetFullPath($"building-editor-api-{Guid.NewGuid():N}.db");
+        try
+        {
+            using var server = await StartServer(path, "Development", allowMutations: true);
+            using var client = new HttpClient { BaseAddress = server.Address };
+            var before = JsonNode.Parse(await client.GetStringAsync("/api/building-view"))!;
+            var roomId = before["controllers"]![0]!["rooms"]![0]!["id"]!.GetValue<string>();
+            using var response = await client.PostAsync($"/api/rooms/{roomId}/sensor/trigger", null);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            var returned = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
+            var view = JsonNode.Parse(await client.GetStringAsync("/api/building-view"))!;
+            var controllerId = returned["id"]!.GetValue<string>();
+            var observed = view["controllers"]!.AsArray()
+                .Single(controller => controller!["id"]!.GetValue<string>() == controllerId);
+            Assert.True(JsonNode.DeepEquals(returned, observed));
+            Assert.True(observed!["rooms"]!.AsArray()
+                .Single(room => room!["id"]!.GetValue<string>() == roomId)!["presence"]!.GetValue<bool>());
+            Assert.Equal(view["design"]!["revision"]!.GetValue<long>(),
+                JsonNode.Parse(await client.GetStringAsync("/api/controller-snapshot"))!["revision"]!.GetValue<long>());
+        }
+        finally
+        {
+            DeleteDatabase(path);
+        }
+    }
+
+    [Fact]
     public async Task DefaultDesignReturnsSeedWithoutChangingSavedOrRunningState()
     {
         var path = Path.GetFullPath($"building-editor-api-{Guid.NewGuid():N}.db");
@@ -64,7 +94,7 @@ public sealed class BuildingEditorApiTests
         }
     }
 
-    private static async Task<TestServer> StartServer(string path, string environment)
+    private static async Task<TestServer> StartServer(string path, string environment, bool allowMutations = false)
     {
         var start = new ProcessStartInfo("dotnet")
         {
@@ -72,12 +102,12 @@ public sealed class BuildingEditorApiTests
             RedirectStandardOutput = true,
             RedirectStandardError = true
         };
-        start.ArgumentList.Add(typeof(BuildingDesign).Assembly.Location);
+        start.ArgumentList.Add(typeof(BuildingEditorService).Assembly.Location);
         start.ArgumentList.Add("--urls");
         start.ArgumentList.Add("http://127.0.0.1:0");
         start.Environment["ASPNETCORE_ENVIRONMENT"] = environment;
         start.Environment["BuildingDesign__SqlitePath"] = path;
-        start.Environment["Simulator__AllowHttpMutations"] = "false";
+        start.Environment["Simulator__AllowHttpMutations"] = allowMutations ? "true" : "false";
         start.Environment["Mqtt__Host"] = "127.0.0.1";
         start.Environment["Mqtt__Port"] = "0";
         start.Environment["Logging__LogLevel__Microsoft.Hosting.Lifetime"] = "Information";

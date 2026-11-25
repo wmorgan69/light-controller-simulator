@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { adjustNumericInput, canFocusValidationField, createFormGuard, createRecoveryExport, initBuildingEditor, locateValidation, projectPendingForms, reshapeRoom, sameEditorContext, unappliedFormStatus, validateNumericInput } from '../src/Devices.Simulator.Web/frontend/editor/building-editor.ts';
-import { createMutationAccess } from '../src/Devices.Simulator.Web/frontend/shared/mutation-access.ts';
-import { newFloor, newRoom } from '../src/Devices.Simulator.Web/frontend/editor/building-editor-state.ts';
-import { t } from '../src/Devices.Simulator.Web/frontend/shared/localization.en.ts';
+import { adjustNumericInput, canFocusValidationField, createFormGuard, createRecoveryExport, initBuildingEditor, locateValidation, projectPendingForms, reshapeRoom, sameEditorContext, unappliedFormStatus, validateNumericInput } from '../src/Devices.BuildingControl.Web/frontend/editor/building-editor.ts';
+import { createMutationAccess } from '../src/Devices.BuildingControl.Web/frontend/shared/mutation-access.ts';
+import { newFloor, newRoom } from '../src/Devices.BuildingControl.Web/frontend/editor/building-editor-state.ts';
+import { t } from '../src/Devices.BuildingControl.Web/frontend/shared/localization.en.ts';
 
 const form = (...fields) => ({ querySelectorAll: () => fields });
 

@@ -15,7 +15,7 @@
 
 ## Purpose and scope
 
-The simulator supports editing one building's dimensions, floors, rooms, doors, lights, sensors and controller connections, with a saved design in SQLite. This is a local-development simulator, not an electrical engineering or code-compliance tool. Instrumentation has a separate telemetry database. See the [editor technical guide](../technical/building-editor.md), [simulator guide](../technical/building-light-simulator.md) and [instrumentation guide](../technical/lighting-instrumentation.md).
+The simulator supports editing one building's dimensions, floors, rooms, doors, lights, sensors and controller connections, with a saved design in SQLite. This is a local-development simulator, not an electrical engineering or code-compliance tool. Instrumentation has a separate telemetry database. See the [editor technical guide](../technical/building-editor.md), [simulator guide](../technical/building-control.md) and [instrumentation guide](../technical/building-instrumentation.md).
 
 ## Current workflow
 
@@ -67,7 +67,7 @@ flowchart TB
 
 The JSON design contains `revision`, `width`, `depth` and `floors`. Each floor has an ID, number, controller ID and X/Z position, rooms, and optional `walkways` and `stairs` arrays. Each room has ID, name, X/Z top-left, width, depth, one sensor, and door and light arrays. Doors have IDs and positions; sensors and lights also carry their controller ID. Walkways and stairs have IDs, X/Z top-left and width/depth; stairs also specify `east` or `west` as the direction of ascent. A stair belongs to its lower floor and connects it to the next numbered floor. Coordinates are absolute metres. Names are display text, not identifiers.
 
-Fresh databases and the default template use a 10 × 8 m design with four floors, nine rooms, nine sensors and 37 strips. It preserves the IDs and English names from `DeviceIds.CreateBuilding()`, including `DeviceIds.Sensor` for each room. Its room rectangles, door and fixture positions approximate the original 3D arrangement on the 0.5 m grid; generated door IDs are stable. Existing saved and active designs retain their dimensions and coordinates. The editor shows its local design, while the 3D view uses the active design geometry; legacy access is generated relative to its footprint without modifying stored data. New rooms and floors receive new IDs, a sensor or controller respectively, and logical connections can be edited. Room state exposes `sensorId`; legacy state without it uses the original floor/room-derived ID.
+Fresh databases and the default template use a 10 × 8 m design with four floors, nine rooms, nine sensors and 37 strips. The seed preserves the IDs and English names from `DeviceIds.CreateBuilding()`, including `DeviceIds.Sensor` for each room, and has stable generated door IDs. When the editor starts from the default template, it replaces the template's IDs with new ones to avoid reusing retired identities. Room rectangles, door and fixture positions approximate the original 3D arrangement on the 0.5 m grid. Existing saved and active designs retain their dimensions and coordinates. The editor shows its local design, while the 3D view uses the active design geometry; legacy access is generated relative to its footprint without modifying stored data. New rooms and floors receive new IDs, a sensor or controller respectively, and logical connections can be edited. Room state exposes `sensorId`; legacy state without it uses the original floor/room-derived ID.
 
 For save, server validation requires:
 
@@ -82,7 +82,7 @@ Unsaved in-memory edits may temporarily be invalid. A save request must be struc
 
 ## Persistence and runtime integration
 
-`BuildingDesign:SqlitePath` defaults to `building-design.db` relative to the simulator content root. Compose sets `BuildingDesign__SqlitePath=/data/building-design.db` and mounts `building-design-data` at `/data`; instrumentation uses its own `telemetry-data` volume. Fresh databases receive the seed only once. Schema version 4 migrates versions 1–3 while retaining saved and active designs and revision. An unsupported version or nonempty unversioned database is rejected. Migration cannot recover IDs deleted before version 1, except IDs still visible in the old active design. See [backup and restore](../technical/building-light-simulator.md#persistence-and-backup).
+`BuildingDesign:SqlitePath` defaults to `building-design.db` relative to the simulator content root. Compose sets `BuildingDesign__SqlitePath=/data/building-design.db` and mounts `building-design-data` at `/data`; instrumentation uses its own `telemetry-data` volume. Fresh databases receive the seed only once. Schema version 4 migrates versions 1–3 while retaining saved and active designs and revision. An unsupported version or nonempty unversioned database is rejected. Migration cannot recover IDs deleted before version 1, except IDs still visible in the old active design. See [backup and restore](../technical/building-control.md#persistence-and-backup).
 
 The database stores saved and last active designs, edit revision, retired IDs and cleanup status. Save compares the client's observed edit revision and atomically replaces the saved design, then separately attempts activation. Activation retains compatible live state for retained device IDs and drops removed devices; state itself is not restored across process restart. Removed controllers are enqueued for cleanup only as part of successful activation. Older active work is fenced by saved or active revision and retired IDs cannot be reused.
 
@@ -134,6 +134,7 @@ The API uses camelCase JSON and exposes:
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/api/building-editor` | Saved `design`, `activeDesign`, `editRevision`, `activationStatus`, cleanup |
+| `GET` | `/api/building-editor/default-design` | Original seed design used by the editor's default template |
 | `POST` | `/api/building-editor/save` | Save `{ "expectedRevision": n, "design": {...} }`, then attempt activation |
 | `POST` | `/api/building-editor/retry` | Retry activation |
 | `POST` | `/api/building-editor/retry-cleanup` | Request cleanup retry; returns `202` |
@@ -155,13 +156,13 @@ The read-only `GET /api/building-design-status` is not editor-restricted. It ret
 - Access objects and room geometry are illustrative and do not guarantee a connected or accessible route from each interior door. The seed approximates the baseline room geometry.
 - Authentication, authorization and safe editor access for non-loopback, proxy or Compose deployments are not implemented.
 - Automatic backups and a periodic activation retry are not implemented.
-- Cleanup indicates broker publication, not acknowledgement by every subscriber. A [broker-backed test](../technical/building-light-simulator.md#running-and-testing) covers ingestion, direct snapshot reconciliation and retained-message cleanup; it does not cover HTTP polling, disconnects or process restarts. Accessibility and desktop/mobile verification remain broader than this test.
+- Cleanup indicates broker publication, not acknowledgement by every subscriber. A [broker-backed test](../technical/building-control.md#running-and-testing) covers ingestion, direct snapshot reconciliation and retained-message cleanup; it does not cover HTTP polling, disconnects or process restarts. Accessibility and desktop/mobile verification remain broader than this test.
 - Legacy UX and design documents remain design references and may describe proposed behavior beyond the current implementation.
 
 ## Related designs
 
-- [Editor UX](../ux/simulator/editor/ux.md)
-- [Editor UI](../ux/simulator/editor/ui.md)
+- [Editor UX](../ux/building-control/editor/ux.md)
+- [Editor UI](../ux/building-control/editor/ui.md)
 - [Shared design language](../ux/design-language.md)
-- [Main simulator design](../ux/simulator/main/design-language.md)
+- [Building Control design](../ux/building-control/main/design-language.md)
 - [Original project plan](plan.md)

@@ -1,11 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { controllerStatusLabel, localizeMarkup, plural, t } from '../src/Devices.Simulator.Web/frontend/shared/localization.en.ts';
-import { createMutationAccess, responseDetail, syncMutationControls } from '../src/Devices.Simulator.Web/frontend/shared/mutation-access.ts';
+import { controllerStatusLabel, localizeMarkup, plural, t } from '../src/Devices.BuildingControl.Web/frontend/shared/localization.en.ts';
+import { createMutationAccess, responseDetail, syncMutationControls } from '../src/Devices.BuildingControl.Web/frontend/shared/mutation-access.ts';
 
 test('looks up English labels and interpolates dynamic values without changing their text', () => {
-  assert.equal(t('pageTitle'), 'Building Light Simulator');
+  assert.equal(t('pageTitle'), 'Building Control (Simulation)');
   assert.equal(t('floorRoomName', { floor: 3, room: 'Collaboration Space' }), 'Floor 3 — Collaboration Space');
   assert.equal(t('requestFailed', { status: 409, body: 'Room sensor has an active fault.' }),
     'Request failed (409): Room sensor has an active fault.');
@@ -18,14 +18,17 @@ test('uses English singular and plural forms', () => {
 });
 
 test('backs every static markup localization reference with a resource entry', async () => {
-  const markup = await readFile(new URL('../src/Devices.Simulator.Web/wwwroot/index.html', import.meta.url), 'utf8');
+  const markup = await readFile(new URL('../src/Devices.BuildingControl.Web/wwwroot/index.html', import.meta.url), 'utf8');
   const keys = [...markup.matchAll(/\bdata-i18n(?:-aria-label|-title)?="([^"]+)"/g)].map(([, key]) => key);
   assert.ok(keys.length > 0);
   for (const key of keys) assert.equal(typeof t(key), 'string', `missing markup resource: ${key}`);
 });
 
 test('startup and no-script fallbacks match the English resources', async () => {
-  const markup = await readFile(new URL('../src/Devices.Simulator.Web/wwwroot/index.html', import.meta.url), 'utf8');
+  const markup = await readFile(new URL('../src/Devices.BuildingControl.Web/wwwroot/index.html', import.meta.url), 'utf8');
+  const title = markup.match(/<title[^>]*data-i18n="pageTitle"[^>]*>([^<]+)<\/title>/);
+  assert.ok(title, 'missing page title fallback');
+  assert.equal(title[1], t('pageTitle'));
   for (const key of ['appInitializing', 'appJavaScriptRequired']) {
     const match = markup.match(new RegExp(`<p[^>]*data-i18n="${key}"[^>]*>([^<]+)</p>`));
     assert.ok(match, `missing ${key} fallback`);
@@ -36,10 +39,10 @@ test('startup and no-script fallbacks match the English resources', async () => 
 
 test('backs every statically referenced browser message with a resource entry', async () => {
   const sources = await Promise.all([
-    readFile(new URL('../src/Devices.Simulator.Web/frontend/SimulatorApp.tsx', import.meta.url), 'utf8'),
-    readFile(new URL('../src/Devices.Simulator.Web/frontend/scene/SceneCanvas.tsx', import.meta.url), 'utf8'),
-    readFile(new URL('../src/Devices.Simulator.Web/frontend/shared/simulator-model.ts', import.meta.url), 'utf8'),
-    readFile(new URL('../src/Devices.Simulator.Web/frontend/editor/BuildingEditor.tsx', import.meta.url), 'utf8')
+    readFile(new URL('../src/Devices.BuildingControl.Web/frontend/SimulatorApp.tsx', import.meta.url), 'utf8'),
+    readFile(new URL('../src/Devices.BuildingControl.Web/frontend/scene/SceneCanvas.tsx', import.meta.url), 'utf8'),
+    readFile(new URL('../src/Devices.BuildingControl.Web/frontend/shared/simulator-model.ts', import.meta.url), 'utf8'),
+    readFile(new URL('../src/Devices.BuildingControl.Web/frontend/editor/BuildingEditor.tsx', import.meta.url), 'utf8')
   ]);
   const keys = sources.flatMap(source => [...source.matchAll(/\bt\('([^']+)'/g)].map(([, key]) => key));
   const values = new Proxy({}, {
@@ -80,7 +83,7 @@ test('localizes markup text, accessible labels, and titles without dropping fall
     '[data-i18n-title]': [titleElement]
   };
   localizeMarkup({ querySelectorAll: selector => elements[selector] });
-  assert.equal(textElement.textContent, 'Building Light Simulator');
+  assert.equal(textElement.textContent, 'Building Control (Simulation)');
   assert.equal(ariaElement.attributes['aria-label'], 'Building floors');
   assert.equal(titleElement.attributes.title, 'Randomly occupy up to 2 rooms on each floor');
 });
@@ -214,7 +217,7 @@ test('request errors show problem details, not raw JSON, and tolerate empty or u
 });
 
 test('mutation HTML starts disabled and access status fallbacks match localized messages', async () => {
-  const markup = await readFile(new URL('../src/Devices.Simulator.Web/wwwroot/index.html', import.meta.url), 'utf8');
+  const markup = await readFile(new URL('../src/Devices.BuildingControl.Web/wwwroot/index.html', import.meta.url), 'utf8');
   for (const [, tag] of markup.matchAll(/<((?:button|select|input)\b[^>]*\bdata-mutation[^>]*)>/g))
     assert.match(tag, /\bdisabled\b/);
   for (const [, fallback] of markup.matchAll(/<p[^>]*data-i18n="mutationAccess_checking"[^>]*>([^<]+)<\/p>/g))

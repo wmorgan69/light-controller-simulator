@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 480" role="img" aria-labelledby="title description">
+  <title id="title">Proposed production delivery sequence</title>
+  <desc id="description">Source and tests flow through build, test and scan, image publication to ECR, controlled database migration, ECS deployment, and authenticated smoke tests and health checks. Failed checks lead to rollback of a compatible release.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0 0 L10 5 L0 10 Z" fill="#60A5FA"/></marker>
+    <style>
+      .bg { fill:#0F172A } .node { fill:#1E293B; stroke:#60A5FA; stroke-width:2 }
+      .line { fill:none; stroke:#60A5FA; stroke-width:2.5; marker-end:url(#arrow) }
+      text { fill:#F8FAFC; font-family:Arial,sans-serif } .heading { font-size:23px; font-weight:bold }
+      .label { font-size:19px; font-weight:bold } .small { font-size:15px } .note { fill:#CBD5E1; font-size:14px }
+    </style>
+  </defs>
+  <rect class="bg" width="1200" height="480" rx="14"/>
+  <text class="heading" x="35" y="40">PROPOSAL · production delivery</text>
+  <text class="note" x="35" y="65">Illustrative sequence · not the current CI/CD workflow</text>
+  <rect class="node" x="50" y="100" width="220" height="80" rx="14"/>
+  <text class="label" x="160" y="146" text-anchor="middle">Source and tests</text>
+  <rect class="node" x="350" y="100" width="220" height="80" rx="14"/>
+  <text class="label" x="460" y="136" text-anchor="middle">Build, test</text>
+  <text class="label" x="460" y="160" text-anchor="middle">and scan</text>
+  <rect class="node" x="650" y="100" width="220" height="80" rx="14"/>
+  <text class="label" x="760" y="136" text-anchor="middle">Publish immutable</text>
+  <text class="label" x="760" y="160" text-anchor="middle">images to ECR</text>
+  <path class="line" d="M270 140 H348"/>
+  <path class="line" d="M570 140 H648"/>
+  <rect class="node" x="650" y="245" width="220" height="80" rx="14"/>
+  <text class="label" x="760" y="281" text-anchor="middle">Controlled database</text>
+  <text class="label" x="760" y="305" text-anchor="middle">migration</text>
+  <path class="line" d="M760 180 V243"/>
+  <rect class="node" x="350" y="245" width="220" height="80" rx="14"/>
+  <text class="label" x="460" y="291" text-anchor="middle">Deploy ECS services</text>
+  <path class="line" d="M650 285 H572"/>
+  <rect class="node" x="50" y="245" width="220" height="80" rx="14"/>
+  <text class="label" x="160" y="276" text-anchor="middle">Authenticated smoke</text>
+  <text class="label" x="160" y="301" text-anchor="middle">and health checks</text>
+  <path class="line" d="M350 285 H272"/>
+  <rect class="node" x="50" y="380" width="220" height="70" rx="14"/>
+  <text class="label" x="160" y="409" text-anchor="middle">Rollback compatible</text>
+  <text class="label" x="160" y="433" text-anchor="middle">release</text>
+  <path class="line" d="M160 325 V378"/>
+  <text class="small" x="174" y="357">on failure</text>
+  <text class="note" x="350" y="420">Rollback must account for incompatible schema changes and cannot restore lost data.</text>
+</svg>

@@ -5,18 +5,18 @@ import {
   createDesignFloorSlabWithOpenings,
   createDesignStair,
   createDesignWalkway
-} from '../src/Devices.Simulator.Web/frontend/scene/building-placeable-access.ts';
+} from '../src/Devices.BuildingControl.Web/frontend/scene/building-placeable-access.ts';
 import {
   createDesignWalkways,
   createFloorWalkway,
   designWalkwayWidth
-} from '../src/Devices.Simulator.Web/frontend/scene/building-access.ts';
+} from '../src/Devices.BuildingControl.Web/frontend/scene/building-access.ts';
 import {
   createFloorStairLandings,
   createFloorStairs,
   positionDesignStairs
-} from '../src/Devices.Simulator.Web/frontend/scene/building-stairs.ts';
-import { materializeLegacyAccess } from '../src/Devices.Simulator.Web/frontend/shared/building-editor-access.ts';
+} from '../src/Devices.BuildingControl.Web/frontend/scene/building-stairs.ts';
+import { materializeLegacyAccess } from '../src/Devices.BuildingControl.Web/frontend/shared/building-editor-access.ts';
 
 const stair = {
   id: 'stair-1', x: 2, z: 3, width: 2, depth: 4, direction: 'east'

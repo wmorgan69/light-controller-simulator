@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="920" viewBox="0 0 1200 920" role="img" aria-labelledby="title desc">
+  <title id="title">Building Control dimensioned layouts</title>
+  <desc id="desc">Schematic desktop and mobile layouts with navigation, scene, inspector and status dimensions from the simulator stylesheet. Not to scale.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto-start-reverse"><path d="M0 0L8 4L0 8Z" fill="#355b8a"/></marker>
+  </defs>
+  <rect width="1200" height="920" fill="#f7f9fc"/>
+  <g font-family="Arial, sans-serif">
+    <text x="32" y="40" fill="#12223a" font-size="26" font-weight="bold">Simulator layout dimensions</text>
+    <text x="32" y="68" fill="#43556e" font-size="16">CSS dimensions · schematic, not to scale · 1rem depends on browser root size</text>
+    <text x="32" y="110" fill="#12223a" font-size="20" font-weight="bold">Desktop: viewport &gt; 760px</text>
+    <text x="800" y="110" fill="#12223a" font-size="20" font-weight="bold">Mobile: viewport ≤ 760px</text>
+
+    <rect x="32" y="132" width="718" height="65" rx="4" fill="#dbe6f5" stroke="#6882a5"/>
+    <text x="48" y="159" fill="#152a45" font-size="16" font-weight="bold">Header + transport</text>
+    <text x="48" y="183" fill="#344c69" font-size="14">padding: 1rem vertical / 1.25rem horizontal</text>
+    <rect x="32" y="222" width="180" height="402" fill="#e9eef6" stroke="#6882a5"/>
+    <rect x="212" y="222" width="538" height="402" fill="#e0eaf8" stroke="#6882a5"/>
+    <text x="48" y="251" fill="#152a45" font-size="16" font-weight="bold">Floor navigation</text>
+    <text x="48" y="275" fill="#344c69" font-size="14">padding: 1rem</text>
+    <text x="48" y="299" fill="#344c69" font-size="14">button gap: .4rem</text>
+    <text x="228" y="251" fill="#152a45" font-size="16" font-weight="bold">Flexible 3D scene</text>
+    <text x="228" y="277" fill="#344c69" font-size="14">height: min(76vh, 850px)</text>
+    <text x="228" y="299" fill="#344c69" font-size="14">minimum height: 560px</text>
+    <text x="228" y="321" fill="#344c69" font-size="14">overlay inset: 1rem</text>
+    <rect x="228" y="500" width="250" height="98" rx="8" fill="#fff" stroke="#6882a5"/>
+    <text x="242" y="529" fill="#152a45" font-size="15" font-weight="bold">Room inspector</text>
+    <text x="242" y="552" fill="#344c69" font-size="14">width: min(330px, 100%)</text>
+    <text x="242" y="574" fill="#344c69" font-size="14">2 equal control columns</text>
+    <path d="M40 210H204" stroke="#355b8a" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+    <text x="84" y="207" fill="#244b79" font-size="14" font-weight="bold">220px</text>
+    <rect x="32" y="637" width="718" height="100" fill="#e9eef6" stroke="#6882a5"/>
+    <text x="48" y="665" fill="#152a45" font-size="16" font-weight="bold">Live status + accessible controls</text>
+    <text x="48" y="690" fill="#344c69" font-size="14">padding: 1rem · table can scroll horizontally</text>
+    <text x="48" y="712" fill="#344c69" font-size="14">accessible fields: max-width 420px</text>
+    <text x="32" y="770" fill="#344c69" font-size="14">Main grid minimum height: 600px; scene may extend beyond it.</text>
+
+    <rect x="800" y="132" width="360" height="65" rx="4" fill="#dbe6f5" stroke="#6882a5"/>
+    <text x="816" y="159" fill="#152a45" font-size="16" font-weight="bold">Header + transport</text>
+    <text x="816" y="183" fill="#344c69" font-size="14">transport in normal flow</text>
+    <rect x="800" y="209" width="360" height="153" fill="#e9eef6" stroke="#6882a5"/>
+    <text x="816" y="233" fill="#152a45" font-size="15" font-weight="bold">Floor navigation: 3 equal columns</text>
+    <g fill="#fff" stroke="#8298b4"><rect x="816" y="245" width="100" height="34"/><rect x="927" y="245" width="100" height="34"/><rect x="1038" y="245" width="100" height="34"/><rect x="816" y="287" width="100" height="28"/><rect x="927" y="287" width="100" height="28"/></g>
+    <text x="816" y="341" fill="#344c69" font-size="14">padding: .75rem · grid gap: .4rem</text>
+    <rect x="800" y="362" width="360" height="63" fill="#e9eef6" stroke="#6882a5"/>
+    <text x="816" y="388" fill="#152a45" font-size="15" font-weight="bold">Scenarios: 2 equal columns</text>
+    <text x="816" y="410" fill="#344c69" font-size="14">inside navigation</text>
+    <rect x="800" y="437" width="360" height="270" fill="#e0eaf8" stroke="#6882a5"/>
+    <text x="816" y="465" fill="#152a45" font-size="16" font-weight="bold">3D scene</text>
+    <text x="816" y="490" fill="#344c69" font-size="14">height: 72vh · minimum: 620px</text>
+    <text x="816" y="513" fill="#344c69" font-size="14">overlay inset: .75rem</text>
+    <rect x="816" y="572" width="320" height="105" rx="8" fill="#fff" stroke="#6882a5"/>
+    <text x="830" y="601" fill="#152a45" font-size="15" font-weight="bold">Room inspector</text>
+    <text x="830" y="625" fill="#344c69" font-size="14">width: min(330px, 100%)</text>
+    <text x="830" y="648" fill="#344c69" font-size="14">2 equal control columns</text>
+    <rect x="800" y="719" width="360" height="92" fill="#e9eef6" stroke="#6882a5"/>
+    <text x="816" y="747" fill="#152a45" font-size="15" font-weight="bold">Status + accessible controls</text>
+    <text x="816" y="771" fill="#344c69" font-size="14">table cells: .4rem padding</text>
+    <text x="816" y="793" fill="#344c69" font-size="14">horizontal table scrolling as needed</text>
+    <text x="32" y="867" fill="#43556e" font-size="14">Vertical page content continues below the viewport; diagram boxes do not represent fixed pixel heights.</text>
+  </g>
+</svg>

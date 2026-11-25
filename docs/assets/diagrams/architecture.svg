@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 360" role="img" aria-labelledby="title description">
-  <title id="title">Building Light Simulator system architecture</title>
-  <desc id="description">Browser users access the simulator and instrumentation dashboard. Simulator state reaches the telemetry store through HTTP fallback or optional MQTT, and the store persists data in SQLite.</desc>
+  <title id="title">Building Control system architecture</title>
+  <desc id="description">Browser users access Building Control and the instrumentation dashboard. Building Control uses an in-process simulated device connector; simulated state reaches the telemetry store through HTTP polling or optional MQTT, and the store persists data in SQLite.</desc>
   <defs>
     <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
       <path d="M0,0 L8,4 L0,8 Z" fill="#60A5FA"/>
@@ -38,8 +38,8 @@
   <g class="label">
     <text x="95" y="185">Browser user</text>
     <text x="312" y="91">
-      <tspan x="312" dy="0">Building Light</tspan>
-      <tspan x="312" dy="20">Simulator</tspan>
+      <tspan x="312" dy="0">Building</tspan>
+      <tspan x="312" dy="20">Control</tspan>
     </text>
     <text x="312" y="284">
       <tspan x="312" dy="0">Lighting</tspan>
@@ -52,7 +52,7 @@
     </text>
     <text x="732" y="87">
       <tspan x="732" dy="0">Dashboard</tspan>
-      <tspan x="732" dy="18">HTTP fallback</tspan>
+      <tspan x="732" dy="18">HTTP poller</tspan>
     </text>
     <text x="722" y="216">
       <tspan x="722" dy="0">Optional MQTT</tspan>

@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import { resolve } from 'node:path';
 
 export default defineConfig(({ mode }) => {
-  const project = mode === 'simulator' ? 'Devices.Simulator.Web' : 'Devices.Instrumentation.Web';
+  const project = mode === 'simulator' ? 'Devices.BuildingControl.Web' : 'Devices.Instrumentation.Web';
   return {
     build: {
       outDir: resolve(`src/${project}/wwwroot/dist`),

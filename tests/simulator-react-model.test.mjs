@@ -5,7 +5,7 @@ import {
   accessibleFaultOptions, accessibleRoomOptions, applyMutationState, controllerForTarget,
   faultForRoom, findRoom, floorStatus, isBuildingView, isDesignStatus, isMutationState, readTransportStatus, roomSensorId,
   refreshDisposition, refreshFailureDisposition, selectionForPointerUp, selectedRoomForFloor
-} from '../src/Devices.Simulator.Web/frontend/shared/simulator-model.ts';
+} from '../src/Devices.BuildingControl.Web/frontend/shared/simulator-model.ts';
 
 const controller = {
   id: 'controller-floor-2',

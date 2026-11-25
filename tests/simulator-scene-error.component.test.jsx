@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 const scene = vi.hoisted(() => ({ mounts: 0 }));
-vi.mock('../src/Devices.Simulator.Web/frontend/scene/SceneCanvas', async () => {
+vi.mock('../src/Devices.BuildingControl.Web/frontend/scene/SceneCanvas', async () => {
   const { useEffect } = await import('react');
   return {
     SceneCanvas: ({ onRendererError, onRendererReady }) => {
@@ -16,7 +16,7 @@ vi.mock('../src/Devices.Simulator.Web/frontend/scene/SceneCanvas', async () => {
     }
   };
 });
-import { App } from '../src/Devices.Simulator.Web/frontend/SimulatorApp';
+import { App } from '../src/Devices.BuildingControl.Web/frontend/SimulatorApp';
 
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); scene.mounts = 0; });
 

@@ -14,7 +14,7 @@
 
 ## Scope and units
 
-This is a reference for the current instrumentation UI, not a new token system or a specification of the illustrative mobile drawing. The authoritative values are in [base.css](../../../src/Devices.Instrumentation.Web/frontend/base.css); telemetry and state semantics are described in the [instrumentation guide](../../technical/lighting-instrumentation.md#dashboard-information-hierarchy).
+This is a reference for the current instrumentation UI, not a new token system or a specification of the illustrative mobile drawing. The authoritative values are in [base.css](../../../src/Devices.Instrumentation.Web/frontend/base.css); telemetry and state semantics are described in the [instrumentation guide](../../technical/building-instrumentation.md#dashboard-information-hierarchy).
 
 Dimensions below are CSS values. `rem` depends on the browser's root font size; for example, `1rem` is 16px only when the root font size is 16px. Percentages depend on the containing element.
 

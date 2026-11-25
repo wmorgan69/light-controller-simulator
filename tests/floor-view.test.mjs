@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { FloorView, applyFloorMaterialEmphasis, fieldOfViewForAspect, overviewCameraScale, selectedFloorCamera, cameraPresetNeedsUpdate, isFloorVisible, floorNavigation } from '../src/Devices.Simulator.Web/frontend/scene/floor-view.ts';
-import { createFloorPillars } from '../src/Devices.Simulator.Web/frontend/scene/building-pillars.ts';
+import { FloorView, applyFloorMaterialEmphasis, fieldOfViewForAspect, overviewCameraScale, selectedFloorCamera, cameraPresetNeedsUpdate, isFloorVisible, floorNavigation } from '../src/Devices.BuildingControl.Web/frontend/scene/floor-view.ts';
+import { createFloorPillars } from '../src/Devices.BuildingControl.Web/frontend/scene/building-pillars.ts';
 import * as THREE from 'three';
-import { createFloorSlab, createFloorStairLandings, createFloorStairs, createIncomingFloorStairs } from '../src/Devices.Simulator.Web/frontend/scene/building-stairs.ts';
+import { createFloorSlab, createFloorStairLandings, createFloorStairs, createIncomingFloorStairs } from '../src/Devices.BuildingControl.Web/frontend/scene/building-stairs.ts';
 
 test('overview camera keeps the full building visible for tall and wide designs', () => {
   for (const [width, depth, floors] of [[10, 8, 10], [20, 20, 4]]) {

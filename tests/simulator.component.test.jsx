@@ -3,8 +3,8 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
 // jsdom cannot create the WebGL renderer; the rest of the app runs normally.
-vi.mock('../src/Devices.Simulator.Web/frontend/scene/SceneCanvas', () => ({ SceneCanvas: () => null }));
-import { App } from '../src/Devices.Simulator.Web/frontend/SimulatorApp';
+vi.mock('../src/Devices.BuildingControl.Web/frontend/scene/SceneCanvas', () => ({ SceneCanvas: () => null }));
+import { App } from '../src/Devices.BuildingControl.Web/frontend/SimulatorApp';
 
 afterEach(() => {
   cleanup();
@@ -102,7 +102,8 @@ it('opens and dismisses the portaled building menu and restores its trigger focu
   }));
   render(<App />);
   const trigger = screen.getByRole('button', { name: 'Open building menu' });
-  const heading = screen.getByRole('heading', { name: 'Building Light Simulator' });
+  const heading = screen.getByRole('heading', { name: 'Building Control' });
+  expect(within(heading.parentElement).getByText('Connection: Simulated')).toBeTruthy();
   expect(heading.compareDocumentPosition(trigger) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(trigger.textContent).toContain('Building menu');
   expect(trigger.querySelector('[data-testid="MoreVertIcon"]')).toBeTruthy();
