@@ -1,4 +1,4 @@
-# Building Light Controller Simulation — Project Plan
+# Building Control — Project Plan
 
 ## Goal
 
@@ -11,7 +11,8 @@ devices/
   Devices.slnx
   src/
     Devices.Contracts/
-    Devices.Simulator.Web/
+    Devices.Connectors.Simulation/
+    Devices.BuildingControl.Web/
     Devices.Instrumentation.Web/
   tests/
     Devices.Simulator.Tests/
@@ -22,8 +23,9 @@ devices/
       plan.md
       building-editor-spec.md
     technical/
-      building-light-simulator.md
-      lighting-instrumentation.md
+      building-control.md
+      building-instrumentation.md
+      simulated-device-connector.md
 ```
 
 ## Building model
@@ -37,6 +39,7 @@ devices/
 ## Architecture and communication
 
 - ASP.NET Core provides both web applications.
+- Building Control uses a separate in-process simulated device connector through shared connector contracts; physical-device connectors are not implemented.
 - `Devices.Contracts` supplies shared controller, room, sensor, light, fault, telemetry, command, and acknowledgement records.
 - The simulator publishes retained MQTT state and accepts MQTT commands.
 - The instrumentation application polls the simulator HTTP API and can also consume MQTT telemetry; both inputs feed the same telemetry store.
@@ -70,7 +73,7 @@ These phases record the original implementation sequence, not outstanding work. 
 
 ## Implementation decisions
 
-1. **Lights-off behavior:** sensor trigger turns on the room; reset clears presence, triggered state, and lights.
+1. **Lights-off behavior:** a working sensor trigger turns on the room's non-faulted lights; a faulted sensor cannot be triggered. Reset clears presence, triggered state, and lights.
 2. **Fault scope:** sensor, light-strip, and controller fault targets are supported.
 3. **MQTT:** an external broker is configurable; HTTP polling remains active and supports operation without a broker.
 4. **3D:** Three.js is bundled locally for the building visualization.
@@ -106,5 +109,5 @@ Repository instructions live in [AGENTS.md](../../AGENTS.md). Agent profiles liv
 ## Documentation
 
 - [Documentation home](../README.md)
-- [Building Light Simulator](../technical/building-light-simulator.md)
-- [Lighting Instrumentation](../technical/lighting-instrumentation.md)
+- [Building Control](../technical/building-control.md)
+- [Lighting Instrumentation](../technical/building-instrumentation.md)

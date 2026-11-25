@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { EditorSession, newFloor, newRoom, validateDesign } from '../src/Devices.Simulator.Web/frontend/editor/building-editor-state.ts';
-import { materializeLegacyAccess } from '../src/Devices.Simulator.Web/frontend/shared/building-editor-access.ts';
+import { EditorSession, newFloor, newRoom, validateDesign } from '../src/Devices.BuildingControl.Web/frontend/editor/building-editor-state.ts';
+import { materializeLegacyAccess } from '../src/Devices.BuildingControl.Web/frontend/shared/building-editor-access.ts';
 
 const clone = value => structuredClone(value);
 const makeDesign = () => {

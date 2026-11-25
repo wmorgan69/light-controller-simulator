@@ -13,9 +13,9 @@
 
 ## Purpose
 
-The building editor is part of the [Building Light Simulator](building-light-simulator.md). It edits a building's dimensions, floors, rooms, doors, sensors, light strips, controllers, walkways, stairs and logical connections. The plan and wiring are illustrative, not an electrical or compliance design.
+The building editor is part of the [Building Control](building-control.md). It edits a building's dimensions, floors, rooms, doors, sensors, light strips, controllers, walkways, stairs and logical connections. The plan and wiring are illustrative, not an electrical or compliance design.
 
-The [editor specification](../plans/building-editor-spec.md) describes the design contract, validation rules, state flow and remaining gaps. The [editor UX guide](../ux/simulator/editor/ux.md) describes the interface.
+The [editor specification](../plans/building-editor-spec.md) describes the design contract, validation rules, state flow and remaining gaps. The [editor UX guide](../ux/building-control/editor/ux.md) describes the interface.
 
 ## Running locally
 
@@ -23,7 +23,7 @@ From the repository root in PowerShell:
 
 ```powershell
 $env:ASPNETCORE_ENVIRONMENT = 'Development'
-dotnet run --no-launch-profile --project src\Devices.Simulator.Web\Devices.Simulator.Web.csproj --urls http://localhost:5080
+dotnet run --no-launch-profile --project src\Devices.BuildingControl.Web\Devices.BuildingControl.Web.csproj --urls http://localhost:5080
 ```
 
 Open `http://localhost:5080/`, then choose **Building menu** and **Edit building**. Use a direct loopback connection: the editor is available only in Development, with loopback client and server addresses and listeners, a matching loopback host, scheme and port, and no forwarding headers. Editor mutations require a same-origin `Origin`. The editor has no authentication; local users and processes share access. Compose disables simulator HTTP mutations and does not expose editor access.
@@ -41,6 +41,38 @@ The plan's icon toolbar selects select, move, room, door, light, walkway and sta
 Doors appear as wall-aligned rectangles and controllers as boxes on the plan. Zoom and pan controls provide a closer view; **Fit all** restores the full plan and its exterior margin. Room labels are clipped to their boundaries, with full names available in **Items and connections** and the selection label. To delete an item, select it on the plan or in **Items and connections**, then choose **Delete selected item** above the plan and confirm. Controllers and sensors cannot be deleted independently.
 
 **Save and activate** validates and persists the design, then attempts activation. The editor shows a brief status and highlights pending or failed controller cleanup; expandable details show saved and running revisions, activation status and cleanup counts. A successful save does not guarantee activation: if activation fails, the previous design remains running and the saved design can be retried. Undo after saving creates new unsaved changes.
+
+```mermaid
+---
+config:
+  theme: base
+  themeVariables:
+    darkMode: true
+    primaryColor: '#1E293B'
+    primaryTextColor: '#F8FAFC'
+    primaryBorderColor: '#60A5FA'
+    lineColor: '#60A5FA'
+    edgeLabelBackground: '#1E293B'
+    textColor: '#F8FAFC'
+---
+flowchart TB
+    Access("Check editor access") -->|allowed| Load("Load saved design")
+    Access -->|unavailable| View("Show access status; viewing remains available")
+    Load -->|failure| LoadError("Show error; retry or return")
+    LoadError -->|retry| Load
+    Load -->|loaded| Edit("Edit in browser memory")
+    Edit -->|save| Validate("Validate local design")
+    Validate -->|invalid| Edit
+    Validate -->|valid| Save("Save with expected revision")
+    Save -->|conflict| Recovery("Export local edits if needed")
+    Recovery --> Reload("Discard edits and load saved design")
+    Reload --> Edit
+    Save -->|saved| Activate("Attempt activation")
+    Activate -->|success| Active("Running design updated")
+    Activate -->|failure| Failed("Previous design remains running")
+    Failed -->|retry or restart| Activate
+    classDef default fill:#1E293B,stroke:#60A5FA,color:#F8FAFC;
+```
 
 ## Design and validation
 
@@ -62,13 +94,13 @@ The simulator exposes these editor endpoints using camelCase JSON:
 
 Use the returned `editRevision` as the next save's `expectedRevision`. A stale revision returns `409`, invalid designs return `400`, and disallowed editor requests return `403`. On conflict, the browser keeps local changes for export and requires explicit reconciliation before saving.
 
-`GET /api/building-design-status` is not editor-restricted; it reports saved and running revisions, activation status and cleanup counts. `GET /api/building-view` returns the active design and current controllers. The [HTTP examples](../../src/Devices.Simulator.Web/Editor/BuildingEditor.http) include save and retry requests. **The save example replaces the building**; use an isolated database.
+`GET /api/building-design-status` is not editor-restricted; it reports saved and running revisions, activation status and cleanup counts. `GET /api/building-view` returns the active design and current controllers. The [HTTP examples](../../src/Devices.BuildingControl.Web/Editor/BuildingEditor.http) include save and retry requests. **The save example replaces the building**; use an isolated database.
 
 ## Persistence and activation
 
-`BuildingDesign:SqlitePath` defaults to `building-design.db` relative to the simulator content root. The database stores saved and active designs, edit revision, retired IDs and cleanup work. Schema version 4 migrates versions 1–3, retaining saved and active designs and revision; migration from versions 1–2 discards stored drafts. Unknown schema versions and nonempty unversioned databases are rejected. For backup instructions, see [simulator persistence and backup](building-light-simulator.md#persistence-and-backup).
+`BuildingDesign:SqlitePath` defaults to `building-design.db` relative to the simulator content root. The database stores saved and active designs, edit revision, retired IDs and cleanup work. Schema version 4 migrates versions 1–3, retaining saved and active designs and revision; migration from versions 1–2 discards stored drafts. Unknown schema versions and nonempty unversioned databases are rejected. For backup instructions, see [simulator persistence and backup](building-control.md#persistence-and-backup).
 
-[BuildingDesignStore.cs](../../src/Devices.Simulator.Web/Building/BuildingDesignStore.cs) initializes a fresh database with this version 4 schema:
+[BuildingDesignStore.cs](../../src/Devices.BuildingControl.Web/Building/BuildingDesignStore.cs) initializes a fresh database with this version 4 schema:
 
 ```sql
 CREATE TABLE building_design (
@@ -85,9 +117,41 @@ CREATE TABLE controller_cleanup (
 PRAGMA user_version = 4;
 ```
 
-`building_design` is a single-row table whose `saved` and `active` columns hold the camelCase design JSON; each design carries its own `revision`, and `edit_revision` is the optimistic-concurrency revision compared on save. `retired_design_id` lists stable IDs that can never be reused. `controller_cleanup` tracks removed-controller MQTT cleanup, fenced by `active_revision`; `status` values are `0` pending, `1` completed, `2` cancelled and `3` failed. The separate instrumentation telemetry schema is in the [instrumentation guide](lighting-instrumentation.md#persistence).
+`building_design` is a single-row table whose `saved` and `active` columns hold the camelCase design JSON; each design carries its own `revision`, and `edit_revision` is the optimistic-concurrency revision compared on save. `retired_design_id` lists stable IDs that can never be reused. `controller_cleanup` tracks removed-controller MQTT cleanup, fenced by `active_revision`; `status` values are `0` pending, `1` completed, `2` cancelled and `3` failed. The separate instrumentation telemetry schema is in the [instrumentation guide](building-instrumentation.md#persistence).
 
 Save and activation are separate. Activation preserves compatible live state for retained device IDs and queues removed-controller MQTT cleanup only after activation succeeds. On startup, the last active design is restored and a different saved revision is retried. Cleanup is durable and asynchronous; its status represents broker publication, not acknowledgement by every subscriber. See the [runtime and persistence flow](../plans/building-editor-spec.md#persistence-and-runtime-integration).
+
+```mermaid
+---
+config:
+  theme: base
+  themeVariables:
+    darkMode: true
+    primaryColor: '#1E293B'
+    primaryTextColor: '#F8FAFC'
+    primaryBorderColor: '#60A5FA'
+    lineColor: '#60A5FA'
+    edgeLabelBackground: '#1E293B'
+    textColor: '#F8FAFC'
+---
+flowchart TB
+    Editor("Browser editor") -->|save| API("Building Control editor API")
+    API -->|store saved design| DB("Design SQLite")
+    API -->|attempt activation| Connector("Simulated device connector")
+    DB -->|startup: read designs| Restore("Connector restores active design")
+    Restore --> Compare("Compare saved and active revisions")
+    Compare -->|different: retry saved| Connector
+    Compare -->|same| Ready("Continue with active design")
+    Connector -->|saved design activation callback| Commit("Editor service commits active design")
+    Commit -->|success: enqueue removed controllers| DB
+    Connector -->|saved activation fails| Previous("Previous design remains running")
+    Connector -->|current controller state| Snapshot("Building Control snapshot API")
+    Snapshot -->|HTTP polling| Instrumentation("Lighting Instrumentation")
+    DB -->|pending or failed cleanup| Publisher("MQTT publisher")
+    Publisher -->|clear retained controller state| Broker("MQTT broker")
+    Broker -->|optional telemetry| Instrumentation
+    classDef default fill:#1E293B,stroke:#60A5FA,color:#F8FAFC;
+```
 
 ## Failure and recovery
 
@@ -99,7 +163,7 @@ Save and activation are separate. Activation preserves compatible live state for
 
 ## Implementation and tests
 
-The editor interface is the React component [BuildingEditor.tsx](../../src/Devices.Simulator.Web/frontend/editor/BuildingEditor.tsx), with editor-specific types in [BuildingEditor.types.ts](../../src/Devices.Simulator.Web/frontend/editor/BuildingEditor.types.ts). Its TypeScript helpers [building-editor.ts](../../src/Devices.Simulator.Web/frontend/editor/building-editor.ts) and [building-editor-state.ts](../../src/Devices.Simulator.Web/frontend/editor/building-editor-state.ts) handle validation and session state. The server uses [BuildingEditorService.cs](../../src/Devices.Simulator.Web/Editor/BuildingEditorService.cs), [BuildingDesignStore.cs](../../src/Devices.Simulator.Web/Building/BuildingDesignStore.cs), and [BuildingDesign.cs](../../src/Devices.Simulator.Web/Building/BuildingDesign.cs). Access policy is enforced by [EditorAccessPolicy.cs](../../src/Devices.Simulator.Web/Editor/EditorAccessPolicy.cs).
+The editor interface is the React component [BuildingEditor.tsx](../../src/Devices.BuildingControl.Web/frontend/editor/BuildingEditor.tsx), with editor-specific types in [BuildingEditor.types.ts](../../src/Devices.BuildingControl.Web/frontend/editor/BuildingEditor.types.ts). Its TypeScript helpers [building-editor.ts](../../src/Devices.BuildingControl.Web/frontend/editor/building-editor.ts) and [building-editor-state.ts](../../src/Devices.BuildingControl.Web/frontend/editor/building-editor-state.ts) handle validation and session state. The server uses [BuildingEditorService.cs](../../src/Devices.BuildingControl.Web/Editor/BuildingEditorService.cs), [BuildingDesignStore.cs](../../src/Devices.BuildingControl.Web/Building/BuildingDesignStore.cs), and [BuildingDesign.cs](../../src/Devices.Contracts/BuildingDesign.cs). Access policy is enforced by [EditorAccessPolicy.cs](../../src/Devices.BuildingControl.Web/Editor/EditorAccessPolicy.cs).
 
 From the repository root:
 
@@ -109,4 +173,4 @@ node --import tsx --test tests\building-editor.test.mjs tests\building-editor-ui
 npm run test:components
 ```
 
-These focused tests supplement the solution build and test commands in the [simulator guide](building-light-simulator.md#running-and-testing).
+These focused tests supplement the solution build and test commands in the [simulator guide](building-control.md#running-and-testing).

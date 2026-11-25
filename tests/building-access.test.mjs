@@ -1,10 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { createDesignFloorSlab, createFloorSlab, createFloorStairLandings, createFloorStairs, createIncomingFloorStairs, positionDesignStairs } from '../src/Devices.Simulator.Web/frontend/scene/building-stairs.ts';
-import { createDesignDoors, createDesignWalkways, createFloorWalkway, createOpenDoor, designWalkwayWidth, roomWallSegments } from '../src/Devices.Simulator.Web/frontend/scene/building-access.ts';
-import { createDesignFloorPillars } from '../src/Devices.Simulator.Web/frontend/scene/building-pillars.ts';
-import { floorRoomLayout } from '../src/Devices.Simulator.Web/frontend/scene/room-fixtures.ts';
+import { createDesignFloorSlab, createFloorSlab, createFloorStairLandings, createFloorStairs, createIncomingFloorStairs, positionDesignStairs } from '../src/Devices.BuildingControl.Web/frontend/scene/building-stairs.ts';
+import { createDesignDoors, createDesignWalkways, createFloorWalkway, createOpenDoor, designWalkwayWidth, roomWallSegments } from '../src/Devices.BuildingControl.Web/frontend/scene/building-access.ts';
+import { createDesignFloorPillars } from '../src/Devices.BuildingControl.Web/frontend/scene/building-pillars.ts';
+import { floorRoomLayout } from '../src/Devices.BuildingControl.Web/frontend/scene/room-fixtures.ts';
 
 const layouts = [
   [1, ['main', 'office-a', 'office-b']],

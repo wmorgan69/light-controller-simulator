@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 310" role="img" aria-labelledby="title description">
+  <title id="title">In-process simulated device connector boundary</title>
+  <desc id="description">Building Control uses the building device connector contract for reads and activation, and the simulated device connector contract for simulated controls. Both resolve to one in-process simulated device connector instance.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0 0 L10 5 L0 10 Z" fill="#60A5FA"/></marker>
+    <style>
+      .bg { fill:#0F172A } .node { fill:#1E293B; stroke:#60A5FA; stroke-width:2 }
+      .line { fill:none; stroke:#60A5FA; stroke-width:2.5; marker-end:url(#arrow) }
+      text { fill:#F8FAFC; font-family:Arial,sans-serif } .label { font-size:19px; font-weight:bold }
+      .small { font-size:15px } .note { fill:#CBD5E1; font-size:14px }
+    </style>
+  </defs>
+  <rect class="bg" width="1160" height="310" rx="14"/>
+  <rect class="node" x="30" y="106" width="260" height="88" rx="14"/>
+  <text class="label" x="160" y="142" text-anchor="middle">Building Control</text>
+  <text class="small" x="160" y="166" text-anchor="middle">HTTP, editor and MQTT</text>
+  <rect class="node" x="375" y="35" width="350" height="85" rx="14"/>
+  <text class="label" x="550" y="71" text-anchor="middle">Building device connector contract</text>
+  <text class="small" x="550" y="95" text-anchor="middle">Read state · activate design</text>
+  <rect class="node" x="375" y="190" width="350" height="85" rx="14"/>
+  <text class="label" x="550" y="226" text-anchor="middle">Simulated device connector contract</text>
+  <text class="small" x="550" y="250" text-anchor="middle">Simulated controls · commands</text>
+  <rect class="node" x="840" y="106" width="275" height="88" rx="14"/>
+  <text class="label" x="977" y="142" text-anchor="middle">Simulated device connector</text>
+  <text class="small" x="977" y="166" text-anchor="middle">One in-process instance</text>
+  <path class="line" d="M290 128 H330 V77 H373"/>
+  <path class="line" d="M290 172 H330 V232 H373"/>
+  <path class="line" d="M725 77 H785 V128 H838"/>
+  <path class="line" d="M725 232 H785 V172 H838"/>
+  <text class="note" x="30" y="292">Physical-device connectors and cloud IoT integration are not implemented.</text>
+</svg>

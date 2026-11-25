@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Walkthroughs of the building lighting simulator, dashboard and building editor.">
+  <meta name="description" content="Walkthroughs of Building Control with a simulated connection, the dashboard and building editor.">
   <title>Building Lighting Demo</title>
   <style>
     :root {
@@ -45,36 +45,36 @@
 <body>
   <main>
     <h1>Building Lighting Demo</h1>
-    <p>Explore the simulator and dashboard, then see a three-floor building created from a blank design.</p>
+    <p>Explore Building Control with a simulated connection and the dashboard, then see a three-floor building created from a blank design. The address strip is included for the recordings. Both videos use VP8 WebM for preview compatibility.</p>
     <h2>Building lighting and instrumentation</h2>
-    <p>Orbit, pan and zoom through the default building, then follow presence, a sensor fault and the occupancy demo in the instrumentation dashboard.</p>
-    <video controls preload="metadata" playsinline aria-label="Building Light Simulator walkthrough">
-      <source src="assets/videos/building-lighting-demo.webm" type="video/webm">
+    <p>Orbit, pan and zoom through the default building, then follow presence, a sensor fault and the occupancy demo in the instrumentation dashboard. Each control is shown for 1.5 seconds before selection, with three-second holds on presence and fault results and a six-second occupancy hold before leaving the building view. The final dashboard view was recorded separately with matching room occupancy and lighting counts.</p>
+    <video controls preload="metadata" playsinline aria-label="Building Control simulation walkthrough">
+      <source src="assets/videos/building-lighting-demo.webm" type='video/webm; codecs="vp8"'>
     </video>
     <p>If the video doesn't play, <a href="assets/videos/building-lighting-demo.webm">download the lighting walkthrough</a>.</p>
     <details>
       <summary>Text summary of the walkthrough</summary>
       <ol>
-        <li>Orbit, pan and zoom the building, explore all four floor views, and repeat the camera controls on Floor 3.</li>
+        <li>Orbit, pan and zoom the building, explore all four floor views, and orbit Floor 3.</li>
         <li>Turn on presence in Floor 3's Collaboration Space; six lights turn on and the dashboard reports one occupied room.</li>
         <li>Enable its sensor fault and see the dashboard report one active fault. The faulted sensor no longer reports occupancy; the six lights remain on.</li>
         <li>Run the occupancy demo and see lights and occupancy update across the building and dashboard; faults are cleared.</li>
       </ol>
     </details>
     <h2>Building editor</h2>
-    <p>Start blank, create rooms and place lights, then save and activate the design.</p>
+    <p>Start blank, create rooms with doors, centered sensors and evenly spaced lights, add interior walkways and stairs, then save and activate the design. Short recording chapters are joined without speeding up the actions: tool selections pause before and after clicking, and each plan placement has a one-second result hold. Full building rotations take about four seconds in both walkthroughs.</p>
     <video controls preload="metadata" playsinline aria-label="Building editor walkthrough">
-      <source src="assets/videos/building-editor-demo.webm" type="video/webm">
+      <source src="assets/videos/building-editor-demo.webm" type='video/webm; codecs="vp8"'>
     </video>
     <p>If the video doesn't play, <a href="assets/videos/building-editor-demo.webm">download the editor walkthrough</a>.</p>
     <details>
       <summary>Text summary of the editor walkthrough</summary>
       <ol>
         <li>Start a blank building and set it to three floors.</li>
-        <li>On Floor 1, create two offices with two lights each.</li>
-        <li>On Floor 2, create a large office with six lights and a small office with two lights.</li>
-        <li>On Floor 3, create a meeting room with eight lights.</li>
-        <li>Save and activate the design, then view the three-floor building.</li>
+        <li>On Floor 1, create two offices with two lights each, interior walkways and a stair flight.</li>
+        <li>On Floor 2, create a large office with six lights, a small office with two lights, walkways and a return stair flight.</li>
+        <li>On Floor 3, create a meeting room with eight lights and walkways. Each room has a door to the corridor and a centered sensor.</li>
+        <li>Save and activate the design, then orbit the three-floor building.</li>
       </ol>
     </details>
     <p><a href="https://github.com/wmorgan69/light-controller-simulator">View the project on GitHub</a></p>

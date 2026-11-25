@@ -7,6 +7,7 @@
 - [Project plan](plans/plan.md)
 - [Building editor specification](plans/building-editor-spec.md)
 - [Building editor technical guide](technical/building-editor.md)
+- [Simulated device connector](technical/simulated-device-connector.md)
 - [Changelog](CHANGELOG.md)
 - [Applications](#applications)
 - [Directory structure](#directory-structure)
@@ -20,7 +21,7 @@
 
 ## Architecture overview
 
-The solution has two web applications connected by shared contracts and optional MQTT telemetry.
+The solution has two web applications connected by shared contracts and optional MQTT telemetry. The Building Control uses a separate in-process simulator connector; it does not yet connect to physical devices.
 
 ![System architecture: browser users access the simulator and dashboard; HTTP polling and optional MQTT telemetry feed the telemetry store, which persists data in SQLite.](assets/diagrams/architecture.svg)
 
@@ -57,9 +58,10 @@ flowchart TD
 
 ## Applications
 
-- [Building Light Simulator](technical/building-light-simulator.md) - Interactive 3D building model, local building editor, HTTP device state, simulator scenarios, and MQTT publication.
+- [Building Control](technical/building-control.md) - Interactive 3D building model, local building editor, simulated device state, scenarios, and MQTT publication.
+- [Simulated device connector](technical/simulated-device-connector.md) - In-process simulator boundary, state, activation, and limitations.
 - [Building editor](technical/building-editor.md) - Local editing, validation, API, persistence and recovery.
-- [Lighting Instrumentation](technical/lighting-instrumentation.md) - Live controller health, room/lighting state, events, SQLite persistence, and MQTT/HTTP transport status.
+- [Lighting Instrumentation](technical/building-instrumentation.md) - Live controller health, room/lighting state, events, SQLite persistence, and MQTT/HTTP transport status.
 
 ## Directory structure
 
@@ -72,7 +74,8 @@ flowchart TD
 |-- vite.config.js
 |-- src/
 |   |-- Devices.Contracts/
-|   |-- Devices.Simulator.Web/
+|   |-- Devices.Connectors.Simulation/
+|   |-- Devices.BuildingControl.Web/
 |   |   |-- frontend/          React, TypeScript, and simulator styles
 |   |   |-- Properties/
 |   |   `-- wwwroot/
@@ -97,7 +100,7 @@ flowchart TD
     |-- plans/
     |-- technical/
     `-- ux/
-        |-- simulator/
+        |-- building-control/
         |   |-- main/
         |   `-- editor/
         `-- instrumentation/
@@ -108,7 +111,7 @@ Generated `bin/`, `obj/`, and SQLite files are runtime/build artifacts and are n
 ## Running the system
 
 ```powershell
-dotnet run --project src/Devices.Simulator.Web/Devices.Simulator.Web.csproj --urls http://localhost:5080
+dotnet run --project src/Devices.BuildingControl.Web/Devices.BuildingControl.Web.csproj --urls http://localhost:5080
 dotnet run --project src/Devices.Instrumentation.Web/Devices.Instrumentation.Web.csproj --urls http://localhost:5081
 ```
 
@@ -207,7 +210,7 @@ node --import tsx --test tests\building-access.test.mjs tests\wiring-routes.test
 node --import tsx --test tests\instrumentation-localization.test.mjs tests\instrumentation-react-telemetry.test.mjs
 ```
 
-See the [simulator guide](technical/building-light-simulator.md#running-and-testing) and [instrumentation guide](technical/lighting-instrumentation.md#running-and-testing) for application-specific commands.
+See the [simulator guide](technical/building-control.md#running-and-testing) and [instrumentation guide](technical/building-instrumentation.md#running-and-testing) for application-specific commands.
 
 ## Testing
 
@@ -222,10 +225,11 @@ The CI workflow also runs the Node.js tests, builds both container images (inclu
 
 | Document | Covers |
 |---|---|
-| [Building Light Simulator](technical/building-light-simulator.md) | 3D model, controls, state model, APIs, MQTT commands, scenarios, source map |
+| [Building Control](technical/building-control.md) | 3D model, controls, state model, APIs, MQTT commands, scenarios, source map |
+| [Simulated device connector](technical/simulated-device-connector.md) | Connector contracts, in-process state, activation and limitations |
 | [Building editor](technical/building-editor.md) | Editing, validation, editor API, persistence and recovery |
-| [Lighting Instrumentation](technical/lighting-instrumentation.md) | Dashboard design, telemetry flow, persistence, stale/offline behavior, source map |
-| [Production IoT architecture proposal](infrastructure/production-iot-architecture.md) | Proposed AWS and Azure deployments, IoT integration, scaling prerequisites and security |
+| [Building Instrumentation](technical/building-instrumentation.md) | Lighting dashboard design, telemetry flow, persistence, stale/offline behavior, source map |
+| [Production IoT architecture proposal](infrastructure/production-iot-architecture.md) | Proposed AWS and Azure deployments, user accounts and sign-in, IoT integration, phased scaling approach and security |
 | [UX design references](ux/README.md) | Shared design baseline, app-specific design guides, and desktop and mobile references |
 | [Project plan](plans/plan.md) | Goals, delivery phases, implementation decisions, acceptance criteria |
 | [Building editor specification](plans/building-editor-spec.md) | Current editor workflow, validation, storage, access limits, and remaining gaps |

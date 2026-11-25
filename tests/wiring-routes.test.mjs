@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { wiringRoute, isWiringVisible } from '../src/Devices.Simulator.Web/frontend/scene/wiring-routes.ts';
-import { FloorView } from '../src/Devices.Simulator.Web/frontend/scene/floor-view.ts';
-import { floorRoomLayout, roomFixturePositions, sensorRadius } from '../src/Devices.Simulator.Web/frontend/scene/room-fixtures.ts';
+import { wiringRoute, isWiringVisible } from '../src/Devices.BuildingControl.Web/frontend/scene/wiring-routes.ts';
+import { FloorView } from '../src/Devices.BuildingControl.Web/frontend/scene/floor-view.ts';
+import { floorRoomLayout, roomFixturePositions, sensorRadius } from '../src/Devices.BuildingControl.Web/frontend/scene/room-fixtures.ts';
 
 test('lays out floor 2 with a larger main room and one office, and floor 4 as one large room', () => {
   const standardRooms = ['main', 'office-a', 'office-b'];

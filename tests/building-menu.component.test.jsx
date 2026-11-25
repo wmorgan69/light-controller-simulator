@@ -1,7 +1,7 @@
 import React from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import BuildingEditor from '../src/Devices.Simulator.Web/frontend/editor/BuildingEditor';
+import BuildingEditor from '../src/Devices.BuildingControl.Web/frontend/editor/BuildingEditor';
 
 const access = (allowed, message, request = vi.fn()) => ({
   editorAllowed: allowed, editorMessage: message, request, subscribe: () => () => {}

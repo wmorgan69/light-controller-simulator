@@ -1,6 +1,6 @@
-# Building Light Simulator
+# Building Control
 
-A .NET IoT demonstration combining an interactive 3D building lighting simulator and editor with a separate telemetry and instrumentation dashboard. A fresh installation starts with a four-floor office building; the editor can create other layouts.
+A .NET building control application with an interactive 3D lighting simulation and editor, plus a separate telemetry and instrumentation dashboard. A fresh installation starts with a four-floor office building; the editor can create other layouts. The current connector simulates devices; physical IoT integration is not implemented.
 
 ## Agentic workflow
 
@@ -48,30 +48,32 @@ The project demonstrates:
 
 The instrumentation service polls simulator state over HTTP and can also ingest MQTT telemetry; both inputs feed the telemetry store, which persists data in SQLite.
 
+For a proposed production deployment connected to physical IoT devices, see the [production infrastructure proposal](docs/infrastructure/production-iot-architecture.md). It is not implemented. For end users, production also requires [user accounts, account management and login](docs/infrastructure/production-iot-architecture.md#user-accounts-and-sign-in), which the current applications do not have.
+
 The applications currently use English localization resources. There is no language selector or automatic language switching.
 
 ## Applications
 
 | Application | URL | Purpose |
 |---|---|---|
-| Building Light Simulator | `http://localhost:5080/` | 3D building view, room controls, faults, scenarios, and device state |
+| Building Control | `http://localhost:5080/` | 3D building view, room controls, faults, scenarios, and simulated device state |
 | Lighting Instrumentation | `http://localhost:5081/` | Controller health, occupancy, lighting activity, faults, and events |
 
 ## Screenshots and demo
 
-The [demo page](docs/demo.html) contains two walkthroughs: building navigation and live instrumentation, and creating a three-floor building from a blank design. The screenshots are separate examples captured at different times.
+The demo page contains two walkthroughs: building navigation and live instrumentation, and creating a three-floor building from a blank design. The screenshots are separate examples captured at different times.
 
-### Building Light Simulator
+### Building Control
 
-![Building Light Simulator showing the All floors overview with all four floors visible](docs/assets/screenshots/building-light-simulator.png)
+![Building Control showing the All floors overview with all four floors visible](docs/assets/screenshots/building-control.png)
 
-![Building Light Simulator showing Floor 3 Collaboration Space selected with a sensor fault](docs/assets/screenshots/building-light-simulator-selected-floor.png)
+![Building Control showing Floor 3 Collaboration Space selected with a sensor fault](docs/assets/screenshots/building-control-selected-floor.png)
 
-[View the selected-floor screenshot at full size](docs/assets/screenshots/building-light-simulator-selected-floor.png)
+[View the selected-floor screenshot at full size](docs/assets/screenshots/building-control-selected-floor.png)
 
 ### Building editor
 
-![Building editor showing a large office with six lights and a small office with two lights on Floor 2](docs/assets/screenshots/building-editor.png)
+![Building editor showing the Floor 1 plan with Open Workspace, Reception Office and Support Office](docs/assets/screenshots/building-editor.png)
 
 ### Lighting Instrumentation
 
@@ -80,6 +82,8 @@ The [demo page](docs/demo.html) contains two walkthroughs: building navigation a
 [Watch both demos on GitHub Pages](https://wmorgan69.github.io/light-controller-simulator/demo.html) or download the [lighting walkthrough](docs/assets/videos/building-lighting-demo.webm) and [editor walkthrough](docs/assets/videos/building-editor-demo.webm).
 
 ## Quick start
+
+Install the .NET 11 SDK and Node.js with npm. CI uses Node.js 22.
 
 Build both browser frontends once before running the .NET applications directly. This installs the locked Node dependencies, runs the strict TypeScript check, and creates the local bundles used by each web app:
 
@@ -91,7 +95,7 @@ npm run build
 Run the simulator:
 
 ```powershell
-dotnet run --project src/Devices.Simulator.Web/Devices.Simulator.Web.csproj --urls http://localhost:5080
+dotnet run --project src/Devices.BuildingControl.Web/Devices.BuildingControl.Web.csproj --urls http://localhost:5080
 ```
 
 Run the instrumentation dashboard:
@@ -117,9 +121,13 @@ Remote or forwarded deployments are outside this local-only configuration.
 ## Documentation
 
 - [Documentation home](docs/README.md)
-- [Project plan](docs/plans/plan.md)
-- [Building Light Simulator](docs/technical/building-light-simulator.md)
-- [Lighting Instrumentation](docs/technical/lighting-instrumentation.md)
+- Plans
+  - [Project plan](docs/plans/plan.md)
+  - [Building editor specification](docs/plans/building-editor-spec.md)
+- [Building Control](docs/technical/building-control.md)
+- [Simulated device connector](docs/technical/simulated-device-connector.md)
+- [Building Instrumentation guide](docs/technical/building-instrumentation.md)
+- [Production infrastructure proposal](docs/infrastructure/production-iot-architecture.md) - proposed AWS and Azure deployments, IoT integration and scaling
 
 ## Source layout
 
@@ -133,7 +141,10 @@ tsconfig.json                    Strict TypeScript compiler settings
 vite.config.js                   Two-app static asset bundler
 src/
   Devices.Contracts/             Shared device and telemetry contracts
-  Devices.Simulator.Web/
+  Devices.Connectors.Simulation/
+    BuildingSimulator.cs         Simulated state and mutations
+    BuildingSimulator.Design.cs  Design activation and reconciliation
+  Devices.BuildingControl.Web/
     frontend/                    React, TypeScript, simulator and editor UI
     wwwroot/                     Static entry point and assets
   Devices.Instrumentation.Web/

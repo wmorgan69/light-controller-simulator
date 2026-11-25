@@ -35,8 +35,8 @@ vi.mock('three/addons/controls/OrbitControls.js', async () => {
     }
   };
 });
-import { SceneCanvas } from '../src/Devices.Simulator.Web/frontend/scene/SceneCanvas';
-import { materializeLegacyAccess } from '../src/Devices.Simulator.Web/frontend/shared/building-editor-access';
+import { SceneCanvas } from '../src/Devices.BuildingControl.Web/frontend/scene/SceneCanvas';
+import { materializeLegacyAccess } from '../src/Devices.BuildingControl.Web/frontend/shared/building-editor-access';
 
 const controller = {
   id: 'controller-floor-1', floor: 1, status: 'Healthy', faults: [], revision: 1,
@@ -67,6 +67,33 @@ beforeEach(() => {
   });
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+
+it('widens light rays downward from the fixture rather than converging toward the floor', () => {
+  render(<SceneCanvas {...props()} />);
+  const scene = mocks.renderers[0].render.mock.calls[0][0];
+  scene.updateMatrixWorld(true);
+  const lights = [];
+  scene.traverse(object => {
+    if (object.userData.selection?.type === 'light') lights.push(object);
+  });
+  expect(lights).toHaveLength(1);
+  const light = lights[0];
+  const rays = light.children.find(child => child.geometry instanceof THREE.ConeGeometry);
+  expect(rays).toBeDefined();
+  const origin = light.getWorldPosition(new THREE.Vector3());
+  const positions = rays.geometry.getAttribute('position');
+  const vertices = Array.from({ length: positions.count }, (_, index) =>
+    new THREE.Vector3().fromBufferAttribute(positions, index).applyMatrix4(rays.matrixWorld));
+  const top = Math.max(...vertices.map(vertex => vertex.y));
+  const bottom = Math.min(...vertices.map(vertex => vertex.y));
+  expect(top).toBeCloseTo(origin.y - 0.01);
+  expect(bottom).toBeCloseTo(origin.y - 1.09);
+  for (const vertex of vertices) {
+    const radius = Math.hypot(vertex.x - origin.x, vertex.z - origin.z);
+    if (Math.abs(vertex.y - top) < 1e-6) expect(radius).toBeLessThan(1e-6);
+    if (Math.abs(vertex.y - bottom) < 1e-6) expect(radius).toBeCloseTo(0.7);
+  }
+});
 
 it.each([[10, 8], [20, 20]])('renders revision-one design geometry at %s by %s without mutating it', (width, depth) => {
   const callbacks = props();

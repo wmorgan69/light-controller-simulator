@@ -2,7 +2,7 @@
 **/bin/
 **/obj/
 node_modules/
-src/Devices.Simulator.Web/wwwroot/dist/
+src/Devices.BuildingControl.Web/wwwroot/dist/
 src/Devices.Instrumentation.Web/wwwroot/dist/
 
 # Test and coverage output

@@ -48,7 +48,7 @@ Usage figures cover the session in progress at the time of this snapshot, not th
 - Added screenshots and walkthrough video assets under `docs`, organized diagrams, screenshots, and videos into separate folders, and updated the recording helper and documentation.
 - Reworked diagrams that did not reliably render in Markdown previews, using matching blue SVGs where needed. Refined the documentation directory tree and added a selected-floor screenshot.
 
-These features formed the initial Git baseline; the model and interface were further changed after that baseline. See the [simulator guide](technical/building-light-simulator.md) and [instrumentation guide](technical/lighting-instrumentation.md) for current behavior.
+These features formed the initial Git baseline; the model and interface were further changed after that baseline. See the [simulator guide](technical/building-control.md) and [instrumentation guide](technical/building-instrumentation.md) for current behavior.
 
 ## Recorded commits — 22 November 2026
 

@@ -1,10 +1,10 @@
 import { expect, it } from 'vitest';
 import * as THREE from 'three';
-import { createDesignDoors, createDesignWalkways, createFloorWalkway, createOpenDoor } from '../src/Devices.Simulator.Web/frontend/scene/building-access.ts';
-import { createDesignFloorPillars, createFloorPillars } from '../src/Devices.Simulator.Web/frontend/scene/building-pillars.ts';
-import { createDesignFloorSlab, createFloorSlab, createFloorStairLandings, createFloorStairs, createIncomingFloorStairs } from '../src/Devices.Simulator.Web/frontend/scene/building-stairs.ts';
-import { disposeGroup } from '../src/Devices.Simulator.Web/frontend/scene/SceneCanvas';
-import { createDesignStair } from '../src/Devices.Simulator.Web/frontend/scene/building-placeable-access.ts';
+import { createDesignDoors, createDesignWalkways, createFloorWalkway, createOpenDoor } from '../src/Devices.BuildingControl.Web/frontend/scene/building-access.ts';
+import { createDesignFloorPillars, createFloorPillars } from '../src/Devices.BuildingControl.Web/frontend/scene/building-pillars.ts';
+import { createDesignFloorSlab, createFloorSlab, createFloorStairLandings, createFloorStairs, createIncomingFloorStairs } from '../src/Devices.BuildingControl.Web/frontend/scene/building-stairs.ts';
+import { disposeGroup } from '../src/Devices.BuildingControl.Web/frontend/scene/SceneCanvas';
+import { createDesignStair } from '../src/Devices.BuildingControl.Web/frontend/scene/building-placeable-access.ts';
 
 it('preserves sectional stair transparency through floor emphasis without marking full flights', () => {
   const stair = { id: 'stair-1', x: 2, z: 3, width: 2.4, depth: 0.8, direction: 'east' };

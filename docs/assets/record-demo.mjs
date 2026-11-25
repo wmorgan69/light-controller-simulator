@@ -1,4 +1,4 @@
-export async function rotateFullTurn(page, box) {
+export async function rotateFullTurn(page, box, clock = globalThis.performance ?? Date) {
   const distance = box.height;
   if (distance + 20 > box.width) {
     throw new Error('The building canvas is too narrow for a full rotation.');
@@ -7,12 +7,39 @@ export async function rotateFullTurn(page, box) {
   const y = box.y + box.height * 0.52;
   await page.mouse.move(x, y);
   await page.mouse.down({ button: 'left' });
-  for (let step = 1; step <= 6; step++) {
-    await page.mouse.move(x + distance * step / 6, y);
-    await page.waitForTimeout(60);
+  const start = clock.now();
+  let progress = 0;
+  while (progress < 1) {
+    progress = Math.min((clock.now() - start) / 4000, 1);
+    await page.mouse.move(x + distance * progress, y);
+    const remaining = 4000 - (clock.now() - start);
+    if (progress < 1 && remaining > 0) await page.waitForTimeout(Math.min(100, remaining));
   }
   await page.mouse.up({ button: 'left' });
   await page.waitForTimeout(100);
+}
+
+export async function showSiteAddress(page) {
+  await page.evaluate(() => {
+    let frame = document.getElementById('recording-site-address');
+    if (!frame) {
+      frame = document.createElement('div');
+      frame.id = 'recording-site-address';
+      frame.style.cssText = 'position:sticky;top:0;z-index:10000;box-sizing:border-box;'
+        + 'height:46px;padding:7px 14px;background:#d6deea;display:flex;'
+        + 'align-items:center;gap:12px;font:14px system-ui,sans-serif;';
+      const label = document.createElement('span');
+      label.textContent = 'Demo';
+      label.style.cssText = 'color:#40516a;font-weight:700;';
+      const address = document.createElement('div');
+      address.setAttribute('aria-label', 'Site address');
+      address.style.cssText = 'flex:1;min-width:0;padding:6px 12px;border-radius:6px;'
+        + 'background:#fff;color:#17243a;overflow:hidden;white-space:nowrap;';
+      frame.append(label, address);
+      document.body.prepend(frame);
+    }
+    frame.querySelector('[aria-label="Site address"]').textContent = window.location.href;
+  });
 }
 
 export async function showFloorLayouts(page) {
@@ -22,7 +49,7 @@ export async function showFloorLayouts(page) {
     if (await button.getAttribute('aria-pressed') !== 'true') {
       throw new Error(`Floor ${floor} selection failed.`);
     }
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(2000);
   }
 }
 
@@ -34,8 +61,12 @@ export async function showDashboardUpdate(page, waitForDashboardCounts, expected
 export async function showOccupancyScenario(page, postAndWait, waitForState) {
   await page.getByRole('button', { name: 'All floors' }).click();
   await page.screencast.showChapter('Occupancy demo');
+  const button = page.getByRole('button', { name: 'Occupancy demo' });
+  await button.scrollIntoViewIfNeeded();
+  await button.hover();
+  await page.waitForTimeout(1500);
   await postAndWait(
-    page.getByRole('button', { name: 'Occupancy demo' }),
+    button,
     '/api/scenarios/occupancy',
     'Running the occupancy demo'
   );
@@ -44,14 +75,14 @@ export async function showOccupancyScenario(page, postAndWait, waitForState) {
     '4 to 7 occupied rooms and no faults',
     'Running the occupancy demo'
   );
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(6000);
   return counts;
 }
 
 export async function recordingCamera(viewportWidth, canvasWidth, canvasHeight) {
   const { tsImport } = await import('tsx/esm/api');
   const { fieldOfViewForAspect, selectedFloorCamera } =
-    await tsImport('../../src/Devices.Simulator.Web/frontend/scene/floor-view.ts', import.meta.url);
+    await tsImport('../../src/Devices.BuildingControl.Web/frontend/scene/floor-view.ts', import.meta.url);
   return {
     fieldOfView: fieldOfViewForAspect(canvasWidth / canvasHeight),
     preset: selectedFloorCamera(2, viewportWidth)
@@ -70,9 +101,13 @@ export async function selectBaselineRoom(page) {
 export async function activateRoomControl(page, name, waitForCounts, expected, label) {
   const checkbox = page.getByRole('region', { name: 'Room controls' })
     .getByRole('checkbox', { name, exact: true });
+  await checkbox.scrollIntoViewIfNeeded();
+  await checkbox.hover();
+  await page.waitForTimeout(1500);
   await checkbox.click();
   await waitForCounts(expected, label);
   await checkbox.and(page.locator(':checked')).waitFor({ state: 'attached' });
+  await page.waitForTimeout(3000);
 }
 
 export async function selectFloor2OfficeA(page) {
@@ -110,7 +145,7 @@ export async function captureBuildingLightingDemo(page, outputDirectory, {
   simulatorUrl = 'http://127.0.0.1:5080/',
   instrumentationUrl = 'http://127.0.0.1:5081/'
 } = {}) {
-  if (!page || !page.screencast || ['start', 'stop', 'showActions', 'showChapter']
+  if (!page || !page.screencast || ['start', 'stop', 'showChapter']
     .some(method => typeof page.screencast[method] !== 'function')) {
     throw new Error('A Playwright page with screencast support is required.');
   }
@@ -200,22 +235,6 @@ export async function captureBuildingLightingDemo(page, outputDirectory, {
     } while (Date.now() < deadline);
     throw new Error(`${label}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}.`);
   };
-  const showSiteAddress = () => page.evaluate(() => {
-    const frame = document.createElement('div');
-    frame.style.cssText = 'position:sticky;top:0;z-index:10000;box-sizing:border-box;'
-      + 'height:46px;padding:7px 14px;background:#d6deea;display:flex;'
-      + 'align-items:center;gap:12px;font:14px system-ui,sans-serif;';
-    const label = document.createElement('span');
-    label.textContent = 'Demo';
-    label.style.cssText = 'color:#40516a;font-weight:700;';
-    const address = document.createElement('div');
-    address.textContent = window.location.href;
-    address.setAttribute('aria-label', 'Site address');
-    address.style.cssText = 'flex:1;min-width:0;padding:6px 12px;border-radius:6px;'
-      + 'background:#fff;color:#17243a;overflow:hidden;white-space:nowrap;';
-    frame.append(label, address);
-    document.body.prepend(frame);
-  });
   const restoreBaseline = async () => {
     await page.goto(simulatorUrl, { waitUntil: 'domcontentloaded' });
     await postAndWait(
@@ -259,7 +278,7 @@ export async function captureBuildingLightingDemo(page, outputDirectory, {
     await page.getByRole('button', { name: 'All floors' }).click();
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.screenshot({
-      path: outputPath('screenshots/building-light-simulator.png'),
+      path: outputPath('screenshots/building-control.png'),
       animations: 'disabled'
     });
     await page.goto(instrumentationUrl, { waitUntil: 'domcontentloaded' });
@@ -273,7 +292,7 @@ export async function captureBuildingLightingDemo(page, outputDirectory, {
     });
 
     await page.goto(simulatorUrl, { waitUntil: 'domcontentloaded' });
-    await showSiteAddress();
+    await showSiteAddress(page);
     await page.getByRole('button', { name: 'All floors' }).waitFor({ state: 'visible' });
     await page.getByRole('button', { name: 'All floors' }).click();
     const viewport = await page.evaluate(() => ({ width: innerWidth, height: innerHeight }));
@@ -285,7 +304,6 @@ export async function captureBuildingLightingDemo(page, outputDirectory, {
     });
     recordingStarted = true;
     try {
-      await page.screencast.showActions();
       const canvas = page.locator('canvas.simulator-canvas');
       await canvas.scrollIntoViewIfNeeded();
       const box = await canvas.boundingBox();
@@ -334,34 +352,32 @@ export async function captureBuildingLightingDemo(page, outputDirectory, {
       await page.screencast.showChapter('Presence updates instrumentation');
       await activateRoomControl(page, 'Presence', waitForCounts,
         { occupied: 2, faults: 0, lights: 7 }, 'Activating presence');
-      await page.waitForTimeout(1300);
       await page.goto(instrumentationUrl, { waitUntil: 'domcontentloaded' });
-      await showSiteAddress();
+      await showSiteAddress(page);
       await page.getByRole('heading', { name: 'Lighting overview' }).waitFor();
       await showDashboardUpdate(page, waitForDashboardCounts,
         { occupied: 2, faults: 0, lights: 7 }, 'Showing the presence update');
 
       await page.goto(simulatorUrl, { waitUntil: 'domcontentloaded' });
-      await showSiteAddress();
+      await showSiteAddress(page);
       await page.getByRole('button', { name: 'All floors' }).waitFor({ state: 'visible' });
       await selectFloor2OfficeA(page);
       await page.locator('.room-inspector').scrollIntoViewIfNeeded();
       await page.screencast.showChapter('Sensor fault updates instrumentation');
       await activateRoomControl(page, 'Sensor fault', waitForCounts,
         { occupied: 1, faults: 1 }, 'Activating the sensor fault');
-      await page.waitForTimeout(1300);
       await page.goto(instrumentationUrl, { waitUntil: 'domcontentloaded' });
-      await showSiteAddress();
+      await showSiteAddress(page);
       await page.getByRole('heading', { name: 'Lighting overview' }).waitFor();
       await showDashboardUpdate(page, waitForDashboardCounts,
         { occupied: 1, faults: 1, lights: 7 }, 'Showing the fault update');
 
       await page.goto(simulatorUrl, { waitUntil: 'domcontentloaded' });
-      await showSiteAddress();
+      await showSiteAddress(page);
       await page.getByRole('button', { name: 'Occupancy demo' }).waitFor({ state: 'visible' });
       const occupancyCounts = await showOccupancyScenario(page, postAndWait, waitForState);
       await page.goto(instrumentationUrl, { waitUntil: 'domcontentloaded' });
-      await showSiteAddress();
+      await showSiteAddress(page);
       await page.getByRole('heading', { name: 'Lighting overview' }).waitFor();
       await showDashboardUpdate(page, waitForDashboardCounts,
         { occupied: occupancyCounts.occupied, faults: 0 },

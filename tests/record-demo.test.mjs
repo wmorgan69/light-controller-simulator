@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { activateRoomControl, captureBuildingLightingDemo, recordingCamera, rotateFullTurn, selectBaselineRoom, selectFloor2OfficeA, showDashboardUpdate, showFloorLayouts, showOccupancyScenario } from '../docs/assets/record-demo.mjs';
-import { fieldOfViewForAspect, selectedFloorCamera } from '../src/Devices.Simulator.Web/frontend/scene/floor-view.ts';
+import { JSDOM } from 'jsdom';
+import { activateRoomControl, captureBuildingLightingDemo, recordingCamera, rotateFullTurn, selectBaselineRoom, selectFloor2OfficeA, showDashboardUpdate, showFloorLayouts, showOccupancyScenario, showSiteAddress } from '../docs/assets/record-demo.mjs';
+import { fieldOfViewForAspect, selectedFloorCamera } from '../src/Devices.BuildingControl.Web/frontend/scene/floor-view.ts';
 
 test('recording camera uses the simulator floor preset at desktop and mobile widths', async () => {
   for (const width of [320, 1280]) {
@@ -71,7 +72,7 @@ test('room controls use labeled checkboxes and verify the resulting state', asyn
     const steps = [];
     let checked = true;
     const checkedLocator = {};
-    const page = { locator: selector => {
+    const page = { waitForTimeout: async duration => steps.push(['hold', duration]), locator: selector => {
       assert.equal(selector, ':checked');
       return checkedLocator;
     }, getByRole: (role, options) => {
@@ -81,6 +82,8 @@ test('room controls use labeled checkboxes and verify the resulting state', asyn
         assert.equal(controlRole, 'checkbox');
         assert.deepEqual(controlOptions, { name, exact: true });
         return {
+          scrollIntoViewIfNeeded: async () => steps.push('visible'),
+          hover: async () => steps.push('hover'),
           click: async () => steps.push('click'),
           and: locator => {
             assert.equal(locator, checkedLocator);
@@ -100,7 +103,7 @@ test('room controls use labeled checkboxes and verify the resulting state', asyn
       steps.push('verify');
     };
     await activateRoomControl(page, name, verify, expected, 'activation');
-    assert.deepEqual(steps, ['click', 'verify', 'checked']);
+    assert.deepEqual(steps, ['visible', 'hover', ['hold', 1500], 'click', 'verify', 'checked', ['hold', 3000]]);
     checked = false;
     await assert.rejects(activateRoomControl(page, name, verify, expected, 'activation'),
       /checkbox not checked/);
@@ -108,16 +111,16 @@ test('room controls use labeled checkboxes and verify the resulting state', asyn
 });
 
 test('shows every floor layout and returns to Floor 3', async () => {
-  const floors = [];
+  const steps = [];
   const page = {
     getByRole: (role, { name }) => ({
-      click: async () => floors.push(Number(name.source.match(/\d+/)[0])),
+      click: async () => steps.push(Number(name.source.match(/\d+/)[0])),
       getAttribute: async () => 'true'
     }),
-    waitForTimeout: async () => {}
+    waitForTimeout: async duration => steps.push(duration)
   };
   await showFloorLayouts(page);
-  assert.deepEqual(floors, [1, 2, 3, 4, 3]);
+  assert.deepEqual(steps, [1, 2000, 2, 2000, 3, 2000, 4, 2000, 3, 2000]);
 });
 
 test('reports a floor selection failure during the walkthrough', async () => {
@@ -142,7 +145,10 @@ test('holds the verified dashboard update for five seconds', async () => {
 
 test('shows the occupancy scenario and holds the resulting lights before the dashboard', async () => {
   const steps = [];
-  const button = {};
+  const button = {
+    scrollIntoViewIfNeeded: async () => steps.push('visible'),
+    hover: async () => steps.push('hover')
+  };
   const counts = { occupied: 5, faults: 0 };
   const page = {
     getByRole: (role, { name }) => name === 'All floors'
@@ -166,11 +172,12 @@ test('shows the occupancy scenario and holds the resulting lights before the das
     }
   );
   assert.equal(result, counts);
-  assert.deepEqual(steps, ['all floors', 'Occupancy demo', '/api/scenarios/occupancy', 'verified', 2000]);
+  assert.deepEqual(steps, ['all floors', 'Occupancy demo', 'visible', 'hover', 1500,
+    '/api/scenarios/occupancy', 'verified', 6000]);
 });
 
 test('rejects incomplete screencast support before changing simulator state', async () => {
-  const methods = ['start', 'stop', 'showActions', 'showChapter'];
+  const methods = ['start', 'stop', 'showChapter'];
   for (const missing of methods) {
     const screencast = Object.fromEntries(methods.map(method => [method, () => {}]));
     delete screencast[missing];
@@ -183,19 +190,37 @@ test('rejects incomplete screencast support before changing simulator state', as
 
 test('a full rotation drags horizontally by the canvas height', async () => {
   const moves = [];
+  let time = 0;
+  let dragStart;
+  let dragEnd;
   let pressed = false;
   const page = {
     mouse: {
-      move: async (x, y) => moves.push({ x, y, pressed }),
-      down: async () => { pressed = true; },
-      up: async () => { pressed = false; }
+      move: async (x, y) => { moves.push({ x, y, pressed }); time += 80; },
+      down: async () => { pressed = true; dragStart = time; },
+      up: async () => { dragEnd = time; pressed = false; }
     },
-    waitForTimeout: async () => {}
+    waitForTimeout: async duration => { time += duration; }
   };
-  await rotateFullTurn(page, { x: 100, y: 50, width: 900, height: 560 });
+  await rotateFullTurn(page, { x: 100, y: 50, width: 900, height: 560 }, { now: () => time });
   assert.equal(moves.at(-1).x - moves[0].x, 560);
   assert.ok(moves.slice(1).every(move => move.y === moves[0].y && move.pressed));
+  assert.ok(moves.length >= 20 && dragEnd - dragStart >= 4000 && dragEnd - dragStart <= 4200,
+    'rotation should remain smooth and take about four seconds even when mouse movement is slow');
   assert.equal(pressed, false);
+});
+
+test('recording address strip shows the current URL without duplicating it', async () => {
+  const dom = new JSDOM('<!doctype html><body></body>', {
+    url: 'http://localhost:5080/', runScripts: 'outside-only'
+  });
+  const page = { evaluate: async action => dom.window.eval(`(${action})()`) };
+  await showSiteAddress(page);
+  dom.reconfigure({ url: 'http://localhost:5081/' });
+  await showSiteAddress(page);
+  assert.equal(dom.window.document.querySelectorAll('#recording-site-address').length, 1);
+  assert.equal(dom.window.document.querySelector('[aria-label="Site address"]').textContent, 'http://localhost:5081/');
+  dom.window.close();
 });
 
 test('a full rotation rejects a canvas too narrow for the drag', async () => {
@@ -255,6 +280,7 @@ test('captures the overview and waits for current dashboard light counts', async
   };
   await assert.rejects(captureBuildingLightingDemo(page, 'output'), /stop after screenshots/);
   assert.equal(screenshotViews[0].selectedFloor, 'All floors');
+  assert.match(screenshotViews[0].path, /(?:^|[\\/])building-control\.png$/);
   assert.ok(screenshotViews[1].lightReads >= 2);
 });
 

@@ -2,7 +2,8 @@
   <Folder Name="/src/">
     <Project Path="src/Devices.Contracts/Devices.Contracts.csproj" />
     <Project Path="src/Devices.Instrumentation.Web/Devices.Instrumentation.Web.csproj" />
-    <Project Path="src/Devices.Simulator.Web/Devices.Simulator.Web.csproj" />
+    <Project Path="src/Devices.Connectors.Simulation/Devices.Connectors.Simulation.csproj" />
+    <Project Path="src/Devices.BuildingControl.Web/Devices.BuildingControl.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Devices.Instrumentation.Tests/Devices.Instrumentation.Tests.csproj" />

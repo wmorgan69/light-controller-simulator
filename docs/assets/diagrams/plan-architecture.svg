@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 450" role="img" aria-labelledby="title description">
   <title id="title">Architecture and communication</title>
-  <desc id="description">A browser user accesses the simulator, which maintains authoritative device state. State flows through the HTTP API and fallback poller or through the MQTT publisher, optional broker and telemetry subscriber. Both feed the telemetry store, which serves the instrumentation dashboard.</desc>
+  <desc id="description">A browser user accesses Building Control, whose in-process simulated device connector maintains authoritative simulated state. State flows through the HTTP API and poller as well as through the MQTT publisher, optional broker and telemetry subscriber. Both feed the telemetry store, which serves the instrumentation dashboard.</desc>
   <defs>
     <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
       <path d="M0,0 L8,4 L0,8 Z" fill="#60A5FA"/>
@@ -15,7 +15,7 @@
     <path d="M155 225 L190 225"/>
     <path d="M345 225 L380 225"/>
     <path d="M540 210 L575 110"/>
-    <path d="M540 240 L575 340"/>
+    <path d="M700 140 L700 310"/>
     <path d="M730 110 L770 110"/>
     <path d="M730 340 L770 340"/>
     <path d="M910 110 L935 110 L935 180"/>
@@ -36,11 +36,11 @@
   </g>
   <g class="label">
     <text x="87" y="231">Browser user</text>
-    <text x="267" y="221"><tspan x="267">Simulator</tspan><tspan x="267" dy="20">web app</tspan></text>
+    <text x="267" y="221"><tspan x="267">Building Control</tspan><tspan x="267" dy="20">web app</tspan></text>
     <text x="460" y="221"><tspan x="460">Authoritative</tspan><tspan x="460" dy="20">device state</tspan></text>
     <text x="652" y="116">HTTP API</text>
     <text x="652" y="346">MQTT publisher</text>
-    <text x="840" y="106"><tspan x="840">HTTP fallback</tspan><tspan x="840" dy="20">poller</tspan></text>
+    <text x="840" y="106"><tspan x="840">Dashboard</tspan><tspan x="840" dy="20">HTTP poller</tspan></text>
     <text x="840" y="336"><tspan x="840">Optional MQTT</tspan><tspan x="840" dy="20">broker</tspan></text>
     <text x="937" y="226"><tspan x="937">Telemetry</tspan><tspan x="937" dy="20">store</tspan></text>
     <text x="1112" y="225"><tspan x="1112">Instrumentation</tspan><tspan x="1112" dy="20">dashboard</tspan></text>
