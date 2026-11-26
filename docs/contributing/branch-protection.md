@@ -24,9 +24,10 @@ Enable the following checkboxes:
 
 **Required status checks:**
 - `Build and test` (job name from the `.NET validation` workflow in `ci.yml`)
-  - This includes build, test, the 50% coverage gate, Node.js view-logic tests, and Docker Compose smoke tests
+  - This includes frontend lint and type checking, .NET formatting, build, test, the 50% coverage gate, Node.js view-logic tests, and Docker Compose smoke tests
+- `Workflow lint` checks GitHub Actions workflows with actionlint
 
-  Branch protection status names should be confirmed from an actual pull-request check run. The workflow is named `.NET validation`; its current job is named `Build and test`.
+  Branch protection status names should be confirmed from an actual pull-request check run. Both jobs belong to the `.NET validation` workflow.
 
 The security workflow adds `npm dependency audit`, `NuGet dependency audit`, `Dependency review`, and `CodeQL` language-specific jobs. Confirm their actual check names and GitHub feature availability before requiring them in branch protection. Dependency review only runs on pull requests.
 

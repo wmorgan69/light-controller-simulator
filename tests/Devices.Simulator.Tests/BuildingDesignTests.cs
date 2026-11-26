@@ -484,7 +484,8 @@ public class BuildingDesignTests : IDisposable
             Width = 0.25m,
             Sensor = room.Sensor with { ControllerId = "unknown-controller" },
             Doors = [new DoorDesign("draft-door", 2, 2)]
-        }) with { Width = 1 };
+        }) with
+        { Width = 1 };
         Assert.Empty(BuildingDesignValidator.ValidateStructure(invalid));
         Assert.Equal(BuildingDesignStoreStatus.InvalidDesign, store.Save(initial.EditRevision, invalid).Status);
         var restarted = new BuildingDesignStore(path).Read();

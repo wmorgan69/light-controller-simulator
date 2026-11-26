@@ -8,6 +8,26 @@ permissions:
   contents: read
 
 jobs:
+  workflow-lint:
+    name: Workflow lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Check GitHub Actions workflows
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/actionlint.tar.gz"
+          curl --fail --silent --show-error --location \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz \
+            --output "$archive"
+          echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  $archive" | sha256sum --check
+          tar -xzf "$archive" -C "$RUNNER_TEMP" actionlint
+          "$RUNNER_TEMP/actionlint" -shellcheck= -pyflakes=
+
   build-test:
     name: Build and test
     runs-on: ubuntu-latest
@@ -32,14 +52,28 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Lint frontends
+        run: npm run lint
+
+      - name: Test lint configuration
+        run: npm run test:lint
+
+      - name: Type-check frontends
+        run: npm run typecheck
+
       - name: Build frontends
-        run: npm run build
+        run: |
+          npm run build:simulator
+          npm run build:instrumentation
 
       - name: Test frontend components
         run: npm run test:components
 
       - name: Restore
         run: dotnet restore Devices.slnx
+
+      - name: Check .NET formatting
+        run: dotnet format Devices.slnx --verify-no-changes --no-restore
 
       - name: Build
         run: dotnet build Devices.slnx --no-restore

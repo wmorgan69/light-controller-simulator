@@ -17,6 +17,7 @@ Focus on:
 - Clean-code regressions such as duplicate logic, unclear responsibilities, avoidable complexity, unrelated changes, or failure to follow existing patterns.
 - Contract, serialization, async, error-handling, security, or configuration risks.
 - Test quality: tests must be deterministic, isolated, behavior-focused, and cover meaningful normal, boundary, invalid-input, and failure cases.
+- Validation evidence: check that applicable lint, TypeScript type-check, formatting, build, and test commands ran and report any unavailable or failing checks as limitations.
 - Documentation accuracy: changed behavior, APIs, configuration, source locations, run/test commands, source-tree maps, and Mermaid diagrams must match the implementation. `docs/README.md` must link the relevant guides and preserve its table of contents.
 
 ## Code Coverage Verification

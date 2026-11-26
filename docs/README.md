@@ -187,15 +187,19 @@ See [Branch Protection Configuration](contributing/branch-protection.md) and [Qu
 
 ## Frontend build and tests
 
-Use Node.js 22.12 or later and npm from the Node installation. From the repository root, install the locked dependencies and build both applications:
+Use Node.js 22.18 or later in the 22.x line, or Node.js 24.11 or later, and npm from the Node installation. CI uses Node.js 22. From the repository root, install the locked dependencies and build both applications:
 
 ```powershell
 npm ci
+npm run lint
+npm run test:lint
 npm run typecheck
 npm run build
 ```
 
 `npm run build` also runs `npm run typecheck` before bundling the simulator and instrumentation. TypeScript uses `strict: true` and emits no JavaScript; Vite writes `app.js` and `app.css` under each application's `wwwroot/dist`.
+
+ESLint checks frontend JavaScript and TypeScript for selected correctness, React Hooks, and JSX accessibility issues. It uses Babel's TypeScript parser rather than type-aware ESLint rules; `npm run typecheck` remains the type checker. The lint configuration tests exercise representative rules and the pinned minimatch override used to address GHSA-g3hv-75wg-m249 in the accessibility plugin. Revisit the override when the plugin supports a patched version directly.
 
 Run React component tests in jsdom, optionally collecting V8 coverage for frontend source (excluding entry points and type-only files):
 
@@ -217,10 +221,11 @@ See the [simulator guide](technical/building-control.md#running-and-testing) and
 
 ```powershell
 dotnet build Devices.slnx
+dotnet format Devices.slnx --verify-no-changes --no-restore
 dotnet test Devices.slnx --no-build --no-restore
 ```
 
-The CI workflow also runs the Node.js tests, builds both container images (including the npm frontend build), and smoke-tests HTTP telemetry and SQLite persistence with Docker Compose.
+The CI workflow also checks GitHub Actions files with a checksum-verified, pinned actionlint release, runs frontend lint and tests, builds both container images (including the npm frontend build), and smoke-tests HTTP telemetry and SQLite persistence with Docker Compose. Actionlint's optional shellcheck and pyflakes integrations are not enabled.
 
 ## Documentation map
 

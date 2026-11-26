@@ -22,7 +22,7 @@ The repository currently provides these quality and security mechanisms:
 
 | File | Changes |
 |---|---|
-| `.github/workflows/ci.yml` | Collects coverage, enforces the current ≥50% Phase 1 threshold, and attempts a Codecov upload |
+| `.github/workflows/ci.yml` | Checks lint, formatting and types; collects coverage, enforces the ≥50% threshold, and attempts a Codecov upload |
 | `.github/workflows/security.yml` | Audits dependencies, reviews dependency changes, and runs CodeQL |
 | `.github/PULL_REQUEST_TEMPLATE.md` | Added security review, coverage, and Dependabot checklists |
 | `AGENTS.md` | Updated workflow to include security-reviewer agent for security-sensitive changes |

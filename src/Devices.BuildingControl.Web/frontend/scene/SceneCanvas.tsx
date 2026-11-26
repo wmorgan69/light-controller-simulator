@@ -594,6 +594,8 @@ export function SceneCanvas({
       renderer.dispose();
       contextRef.current = null;
     };
+    // The scene is initialized once; later effects synchronize the selected floor.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -650,6 +652,8 @@ export function SceneCanvas({
       context.controls.target.set(target.x, target.y, target.z);
     }
     context.controls.update();
+    // Avoid resetting the camera for telemetry updates that leave the layout unchanged.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cameraResetVersion, controllers.length, design?.revision, floor]);
 
   return <canvas ref={canvasRef} className="simulator-canvas" role="img"

@@ -159,7 +159,8 @@ public sealed class ControllerSnapshotTests : IDisposable
         using var http = new HttpClient(new Handler(request =>
             legacy && request.RequestUri!.AbsolutePath == "/api/controller-snapshot"
                 ? Response(HttpStatusCode.NotFound, "")
-                : Response(HttpStatusCode.OK, json))) { BaseAddress = new Uri("http://simulator") };
+                : Response(HttpStatusCode.OK, json)))
+        { BaseAddress = new Uri("http://simulator") };
         var subscriber = new TelemetrySubscriber(NullLogger<TelemetrySubscriber>.Instance,
             new ConfigurationBuilder().Build(), store);
 
@@ -190,7 +191,8 @@ public sealed class ControllerSnapshotTests : IDisposable
         using var http = new HttpClient(new Handler(request =>
             legacy && request.RequestUri!.AbsolutePath == "/api/controller-snapshot"
                 ? Response(HttpStatusCode.NotFound, "")
-                : Response(HttpStatusCode.OK, json))) { BaseAddress = new Uri("http://simulator") };
+                : Response(HttpStatusCode.OK, json)))
+        { BaseAddress = new Uri("http://simulator") };
         var subscriber = new TelemetrySubscriber(NullLogger<TelemetrySubscriber>.Instance,
             new ConfigurationBuilder().Build(), store);
 
@@ -292,7 +294,8 @@ public sealed class ControllerSnapshotTests : IDisposable
                 (4, "/api/controllers") => Response(HttpStatusCode.ServiceUnavailable, ""),
                 _ => throw new InvalidOperationException()
             };
-        })) { BaseAddress = new Uri("http://simulator") };
+        }))
+        { BaseAddress = new Uri("http://simulator") };
         var subscriber = new TelemetrySubscriber(NullLogger<TelemetrySubscriber>.Instance,
             new ConfigurationBuilder().Build(), store);
         await subscriber.PollOnceAsync(http, CancellationToken.None);
