@@ -1,0 +1,92 @@
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: devices
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run the development setup first}
+      CONTROL_DB_PASSWORD: ${CONTROL_DB_PASSWORD:?Run the development setup first}
+      TELEMETRY_DB_PASSWORD: ${TELEMETRY_DB_PASSWORD:?Run the development setup first}
+    volumes:
+      - postgres-data:/var/lib/postgresql
+      - ./deploy/docker/dev/postgres-init.sql:/docker-entrypoint-initdb.d/10-dev.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "PGPASSWORD=\"$$CONTROL_DB_PASSWORD\" psql -h 127.0.0.1 -U control_app -d devices -tAc \"SELECT to_regnamespace('control') IS NOT NULL AND to_regnamespace('telemetry') IS NOT NULL\" | grep -qx t"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  mqtt:
+    image: eclipse-mosquitto:2
+    environment:
+      MQTT_CONTROL_PASSWORD: ${MQTT_CONTROL_PASSWORD:?Run the development setup first}
+      MQTT_TELEMETRY_PASSWORD: ${MQTT_TELEMETRY_PASSWORD:?Run the development setup first}
+    entrypoint: ["/bin/sh", "/opt/dev/mosquitto-start.sh"]
+    volumes:
+      - ./deploy/docker/dev/mosquitto-start.sh:/opt/dev/mosquitto-start.sh:ro
+      - mqtt-data:/mosquitto/data
+
+  simulator:
+    build:
+      context: .
+      target: simulator
+    command: ["--urls", "http://0.0.0.0:8080"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Control: Host=postgres;Database=devices;Username=control_app;Password=${CONTROL_DB_PASSWORD:?Run the development setup first}
+      Simulator__AllowHttpMutations: "true"
+      Simulator__ProxyDevelopment__Enabled: "true"
+      Simulator__ProxyDevelopment__Secret: ${DEV_PROXY_SECRET:?Run the development setup first}
+      Simulator__ProxyDevelopment__PublicPort: ${DEV_CONTROL_PORT:-5080}
+      Mqtt__Host: mqtt
+      Mqtt__Username: control
+      Mqtt__Password: ${MQTT_CONTROL_PASSWORD:?Run the development setup first}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mqtt:
+        condition: service_started
+
+  instrumentation:
+    build:
+      context: .
+      target: instrumentation
+    command: ["--urls", "http://0.0.0.0:8080"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Telemetry: Host=postgres;Database=devices;Username=telemetry_app;Password=${TELEMETRY_DB_PASSWORD:?Run the development setup first}
+      Telemetry__SimulatorBaseUrl: http://simulator:8080
+      Mqtt__Host: mqtt
+      Mqtt__Username: telemetry
+      Mqtt__Password: ${MQTT_TELEMETRY_PASSWORD:?Run the development setup first}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mqtt:
+        condition: service_started
+      simulator:
+        condition: service_started
+
+  nginx:
+    build:
+      context: .
+      target: proxy
+    environment:
+      DEV_PROXY_SECRET: ${DEV_PROXY_SECRET:?Run the development setup first}
+      DEV_CONTROL_PORT: ${DEV_CONTROL_PORT:-5080}
+      DEV_INSTRUMENTATION_PORT: ${DEV_INSTRUMENTATION_PORT:-5081}
+      NGINX_ENVSUBST_FILTER: ^DEV_(PROXY_SECRET|CONTROL_PORT|INSTRUMENTATION_PORT)$
+    ports:
+      - "127.0.0.1:${DEV_CONTROL_PORT:-5080}:5080"
+      - "127.0.0.1:${DEV_INSTRUMENTATION_PORT:-5081}:5081"
+    volumes:
+      - ./deploy/docker/dev/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+    depends_on:
+      simulator:
+        condition: service_started
+      instrumentation:
+        condition: service_started
+
+volumes:
+  postgres-data:
+  mqtt-data:

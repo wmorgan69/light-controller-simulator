@@ -18,6 +18,7 @@ public sealed class TelemetrySubscriber : IHostedService
     private readonly ILogger<TelemetrySubscriber> logger;
     private readonly IConfiguration configuration;
     private readonly TelemetryStore store;
+    private readonly MqttCredentials? credentials;
     private IMqttClient? client;
     private CancellationTokenSource? pollingCts;
     private Task? pollingTask;
@@ -33,6 +34,7 @@ public sealed class TelemetrySubscriber : IHostedService
         this.logger = logger;
         this.configuration = configuration;
         this.store = store;
+        credentials = MqttCredentials.FromConfiguration(configuration["Mqtt:Username"], configuration["Mqtt:Password"]);
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -202,7 +204,9 @@ public sealed class TelemetrySubscriber : IHostedService
 
             var host = configuration["Mqtt:Host"] ?? "localhost";
             var port = configuration.GetValue("Mqtt:Port", 1883);
-            var options = new MqttClientOptionsBuilder().WithTcpServer(host, port).Build();
+            var builder = new MqttClientOptionsBuilder().WithTcpServer(host, port);
+            if (credentials is not null) builder.WithCredentials(credentials.Username, credentials.Password);
+            var options = builder.Build();
             await client.ConnectAsync(options, cancellationToken);
             await client.SubscribeAsync("building/controllers/+/telemetry");
             lock (statusGate)

@@ -6,11 +6,24 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="11.0.0" />
+    <PackageReference Include="Npgsql" Version="10.0.0" />
     <PackageReference Include="MQTTnet" Version="5.2.0.1603" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\database\control\*.sql">
+      <Link>database\control\%(Filename)%(Extension)</Link>
+      <LogicalName>Devices.BuildingControl.Web.database.control.%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+    <Content Include="..\..\database\control\*.sql">
+      <Link>database\control\%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
   <PropertyGroup>
+    <DefaultItemExcludes Condition="'$(DEV_VITE_WATCH)' == '1'">$(DefaultItemExcludes);wwwroot/dist/**</DefaultItemExcludes>
     <TargetFramework>net11.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>

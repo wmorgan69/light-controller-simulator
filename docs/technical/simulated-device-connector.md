@@ -19,7 +19,7 @@ The [Building Control](building-control.md) application uses `Devices.Connectors
 
 [BuildingSimulator.cs](../../src/Devices.Connectors.Simulation/BuildingSimulator.cs) owns the in-memory controller state and simulation operations: triggering and resetting sensors, injecting and clearing faults, and running reset and occupancy scenarios. Its lock protects state transitions and snapshots. Runtime presence, faults and lights are lost on restart; these values are not physical-device observations.
 
-[BuildingSimulator.Design.cs](../../src/Devices.Connectors.Simulation/BuildingSimulator.Design.cs) reconciles activated designs and retained device state. The shared [design records and validation](../../src/Devices.Contracts/BuildingDesign.cs) describe the building; Building Control's SQLite store persists designs separately from the simulator's runtime state.
+[BuildingSimulator.Design.cs](../../src/Devices.Connectors.Simulation/BuildingSimulator.Design.cs) reconciles activated designs and retained device state. The shared [design records and validation](../../src/Devices.Contracts/BuildingDesign.cs) describe the building; Building Control's PostgreSQL store persists designs separately from the simulator's runtime state.
 
 ## Activation and telemetry
 

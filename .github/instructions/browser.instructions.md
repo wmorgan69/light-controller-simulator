@@ -1,5 +1,5 @@
 ---
-applyTo: "src/Devices.BuildingControl.Web/frontend/**,src/Devices.Instrumentation.Web/frontend/**,src/**/wwwroot/*.html,tests/*.test.mjs,tests/*.component.test.*,docs/assets/*.mjs,package.json,vite.config.js,vitest.config.js,tsconfig.json,eslint.config.js"
+applyTo: "src/Devices.BuildingControl.Web/frontend/**,src/Devices.Instrumentation.Web/frontend/**,src/**/wwwroot/*.html,tests/**/*.test.mjs,tests/**/*.component.test.*,docs/assets/*.mjs,package.json,vite.config.js,vitest.config.js,tsconfig.json,eslint.config.js"
 ---
 
 # Browser and localization rules

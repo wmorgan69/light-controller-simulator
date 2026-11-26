@@ -5,11 +5,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="11.0.0" />
     <PackageReference Include="MQTTnet" Version="5.2.0.1603" />
+    <PackageReference Include="Npgsql" Version="10.0.0" />
+    <EmbeddedResource Include="..\..\database\telemetry\*.sql"
+                      Link="Persistence\Migrations\%(Filename)%(Extension)"
+                      LogicalName="Devices.Instrumentation.Web.Migrations.%(Filename)%(Extension)" />
   </ItemGroup>
 
   <PropertyGroup>
+    <DefaultItemExcludes Condition="'$(DEV_VITE_WATCH)' == '1'">$(DefaultItemExcludes);wwwroot/dist/**</DefaultItemExcludes>
     <TargetFramework>net11.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>

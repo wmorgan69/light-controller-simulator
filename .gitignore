@@ -25,6 +25,10 @@ src/Devices.Instrumentation.Web/wwwroot/dist/
 *.temp
 *.bak
 *.tar
+.env
+.env.*
+!.env.example
+.secrets/
 
 # OS metadata
 .DS_Store

@@ -32,7 +32,7 @@ Run this workflow:
 3. **Validate**
    - Run the smallest relevant tests while iterating.
    - For executable changes, run one final `dotnet build Devices.slnx` and then `dotnet test Devices.slnx --no-build --no-restore`, plus affected frontend checks.
-   - For simulator browser view-logic and recording-helper changes, run `node --import tsx --test tests/building-access.test.mjs tests/wiring-routes.test.mjs tests/floor-view.test.mjs tests/room-state.test.mjs tests/record-demo.test.mjs`.
+   - For simulator browser view-logic and recording-helper changes, run `node --import tsx --test tests/building-control/building-access.test.mjs tests/building-control/wiring-routes.test.mjs tests/building-control/floor-view.test.mjs tests/building-control/room-state.test.mjs tests/shared/record-demo.test.mjs`.
    - For documentation/instruction-only changes, check links, configuration, and diagrams; do not collect application coverage or rebuild applications. Full PR CI remains unchanged.
 
 4. **Independent code review**

@@ -12,6 +12,7 @@ public sealed class MqttTelemetryPublisher : IHostedService
     private readonly IConfiguration configuration;
     private readonly ISimulatedDeviceConnector simulator;
     private readonly BuildingDesignStore designStore;
+    private readonly MqttCredentials? credentials;
     private IMqttClient? client;
     private Channel<ControllerState>? outbound;
     private CancellationTokenSource? publisherCts;
@@ -28,6 +29,7 @@ public sealed class MqttTelemetryPublisher : IHostedService
         this.configuration = configuration;
         this.simulator = simulator;
         this.designStore = designStore;
+        credentials = MqttCredentials.FromConfiguration(configuration["Mqtt:Username"], configuration["Mqtt:Password"]);
     }
 
     public DeviceTransportStatus Status
@@ -142,12 +144,13 @@ public sealed class MqttTelemetryPublisher : IHostedService
             client ??= new MqttClientFactory().CreateMqttClient();
             var host = configuration["Mqtt:Host"] ?? "localhost";
             var port = configuration.GetValue("Mqtt:Port", 1883);
-            var options = new MqttClientOptionsBuilder()
+            var builder = new MqttClientOptionsBuilder()
                 .WithTcpServer(host, port)
                 .WithWillTopic("building/controllers/lwt")
                 .WithWillPayload("offline")
-                .WithWillRetain(true)
-                .Build();
+                .WithWillRetain(true);
+            if (credentials is not null) builder.WithCredentials(credentials.Username, credentials.Password);
+            var options = builder.Build();
             await client.ConnectAsync(options, cancellationToken);
             await client.SubscribeAsync("building/controllers/+/commands");
             lock (statusGate)

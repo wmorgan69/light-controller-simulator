@@ -1,21 +1,19 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Devices.Contracts;
-using Microsoft.Data.Sqlite;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 
-public sealed class TelemetryMessageTests : IDisposable
+[Collection(TelemetryDatabaseCollection.Name)]
+public sealed class TelemetryMessageTests
 {
-    private readonly string path = Path.GetFullPath($"mqtt-test-{Guid.NewGuid():N}.db");
     private readonly TelemetryStore store;
     private readonly TelemetrySubscriber subscriber;
     private readonly ControllerState controller = DeviceIds.CreateBuilding().First();
 
     public TelemetryMessageTests()
     {
-        var configuration = new ConfigurationBuilder().AddInMemoryCollection(
-            new Dictionary<string, string?> { ["Telemetry:SqlitePath"] = path }).Build();
+        TelemetryTestDatabase.Reset();
+        var configuration = TelemetryTestDatabase.Configuration();
         store = new TelemetryStore(configuration);
         subscriber = new TelemetrySubscriber(NullLogger<TelemetrySubscriber>.Instance, configuration, store);
     }
@@ -27,8 +25,8 @@ public sealed class TelemetryMessageTests : IDisposable
     [InlineData("file:///private", null)]
     public void StatusReportsOnlySafeHttpSourceOrigin(string baseUrl, string? expected)
     {
-        var configuration = new ConfigurationBuilder().AddInMemoryCollection(
-            new Dictionary<string, string?> { ["Telemetry:SimulatorBaseUrl"] = baseUrl }).Build();
+        var configuration = TelemetryTestDatabase.Configuration(
+            new Dictionary<string, string?> { ["Telemetry:SimulatorBaseUrl"] = baseUrl });
         var instance = new TelemetrySubscriber(NullLogger<TelemetrySubscriber>.Instance, configuration, store);
         Assert.Equal(expected, instance.Status.SimulatorHttpSource);
     }
@@ -91,8 +89,8 @@ public sealed class TelemetryMessageTests : IDisposable
 
         Assert.Empty(store.GetSnapshot());
         Assert.Empty(store.GetEvents());
-        Assert.Empty(new TelemetryStore(new ConfigurationBuilder().AddInMemoryCollection(
-            new Dictionary<string, string?> { ["Telemetry:SqlitePath"] = path }).Build()).GetSnapshot());
+        var restarted = new TelemetryStore(TelemetryTestDatabase.Configuration());
+        Assert.Empty(restarted.GetSnapshot());
     }
 
     [Theory]
@@ -173,8 +171,7 @@ public sealed class TelemetryMessageTests : IDisposable
 
         Assert.Equal(state.Revision, store.GetController(controller.Id)!.Revision);
         Assert.Single(store.GetEvents());
-        var restarted = new TelemetryStore(new ConfigurationBuilder().AddInMemoryCollection(
-            new Dictionary<string, string?> { ["Telemetry:SqlitePath"] = path }).Build());
+        var restarted = new TelemetryStore(TelemetryTestDatabase.Configuration());
         Assert.Equal(state.Revision, restarted.GetController(controller.Id)!.Revision);
         Assert.Single(restarted.GetEvents());
     }
@@ -206,9 +203,4 @@ public sealed class TelemetryMessageTests : IDisposable
     private static string Payload(string? controllerId, ControllerState? state) =>
         JsonSerializer.Serialize(new DeviceTelemetry("event", controllerId!, "state.changed", DateTimeOffset.UtcNow, state!));
 
-    public void Dispose()
-    {
-        SqliteConnection.ClearAllPools();
-        File.Delete(path);
-    }
 }

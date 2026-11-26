@@ -1,0 +1,63 @@
+%% Instrumentation telemetry schema version 1.
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#1E293B','primaryTextColor':'#F8FAFC','primaryBorderColor':'#60A5FA','lineColor':'#60A5FA','secondaryColor':'#1E293B','tertiaryColor':'#1E293B','textColor':'#F8FAFC','attributeBackgroundColorOdd':'#1E293B','attributeBackgroundColorEven':'#27364D'},'themeCSS':'.row-rect-odd path[stroke=none] { fill: #1E293B !important; } .row-rect-even path[stroke=none] { fill: #27364D !important; }'}}%%
+erDiagram
+    CONTROLLER_LATEST ||--o| CONTROLLER_OBSERVED : "has last observation"
+    CONTROLLER_LATEST ||--o| CONTROLLER_AUTHORITATIVE : "is in snapshot membership"
+
+    SCHEMA_VERSION {
+        uuid id PK "uuidv7"
+        boolean singleton UK
+        integer version
+        timestamptz applied_at
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    TELEMETRY_EVENTS {
+        uuid id PK "uuidv7"
+        text event_id UK "stable event identity"
+        text controller_id "stable controller identity; history is retained"
+        text event_type
+        timestamptz timestamp
+        text payload "serialized telemetry"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    CONTROLLER_LATEST {
+        uuid id PK "uuidv7"
+        text controller_id UK "stable controller identity"
+        text payload "serialized controller state"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    CONTROLLER_OBSERVED {
+        uuid id PK "uuidv7"
+        text controller_id FK,UK
+        timestamptz observed_at
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    CONTROLLER_DESIGN_REVISION {
+        uuid id PK "uuidv7"
+        boolean singleton UK
+        bigint revision
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    CONTROLLER_AUTHORITATIVE {
+        uuid id PK "uuidv7"
+        text controller_id FK,UK
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    CONTROLLER_TOMBSTONES {
+        uuid id PK "uuidv7"
+        text controller_id UK "retired stable controller identity"
+        timestamptz created_at
+        timestamptz updated_at
+    }

@@ -1,0 +1,56 @@
+map "$http_forwarded|$http_x_forwarded_for|$http_x_forwarded_host|$http_x_forwarded_port|$http_x_forwarded_proto|$http_x_real_ip|$http_x_original_host" $untrusted_forwarding {
+    default 1;
+    "||||||" 0;
+}
+
+server {
+    listen 5080 default_server;
+    server_name localhost;
+    resolver 127.0.0.11 valid=5s ipv6=off;
+
+    if ($http_host != "localhost:${DEV_CONTROL_PORT}") { return 400; }
+    if ($untrusted_forwarding) { return 400; }
+    add_header Content-Security-Policy "frame-ancestors 'none'" always;
+    add_header X-Frame-Options "DENY" always;
+
+    location / {
+        set $simulator_upstream simulator;
+        proxy_pass http://$simulator_upstream:8080;
+        proxy_set_header Host $http_host;
+        proxy_set_header Authorization "";
+        proxy_set_header X-Development-Proxy-Secret "${DEV_PROXY_SECRET}";
+        proxy_set_header Forwarded "";
+        proxy_set_header X-Forwarded-For "";
+        proxy_set_header X-Forwarded-Host "";
+        proxy_set_header X-Forwarded-Port "";
+        proxy_set_header X-Forwarded-Proto "";
+        proxy_set_header X-Real-IP "";
+        proxy_set_header X-Original-Host "";
+    }
+}
+
+server {
+    listen 5081 default_server;
+    server_name localhost;
+    resolver 127.0.0.11 valid=5s ipv6=off;
+
+    if ($http_host != "localhost:${DEV_INSTRUMENTATION_PORT}") { return 400; }
+    if ($untrusted_forwarding) { return 400; }
+    add_header Content-Security-Policy "frame-ancestors 'none'" always;
+    add_header X-Frame-Options "DENY" always;
+
+    location / {
+        set $instrumentation_upstream instrumentation;
+        proxy_pass http://$instrumentation_upstream:8080;
+        proxy_set_header Host $http_host;
+        proxy_set_header Authorization "";
+        proxy_set_header X-Development-Proxy-Secret "${DEV_PROXY_SECRET}";
+        proxy_set_header Forwarded "";
+        proxy_set_header X-Forwarded-For "";
+        proxy_set_header X-Forwarded-Host "";
+        proxy_set_header X-Forwarded-Port "";
+        proxy_set_header X-Forwarded-Proto "";
+        proxy_set_header X-Real-IP "";
+        proxy_set_header X-Original-Host "";
+    }
+}

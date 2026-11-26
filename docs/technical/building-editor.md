@@ -26,9 +26,9 @@ $env:ASPNETCORE_ENVIRONMENT = 'Development'
 dotnet run --no-launch-profile --project src\Devices.BuildingControl.Web\Devices.BuildingControl.Web.csproj --urls http://localhost:5080
 ```
 
-Open `http://localhost:5080/`, then choose **Building menu** and **Edit building**. Use a direct loopback connection: the editor is available only in Development, with loopback client and server addresses and listeners, a matching loopback host, scheme and port, and no forwarding headers. Editor mutations require a same-origin `Origin`. The editor has no authentication; local users and processes share access. Compose disables simulator HTTP mutations and does not expose editor access.
+The direct-host command requires a configured `ConnectionStrings:Control` PostgreSQL connection. For this direct-host run, open `http://localhost:5080/` and choose **Building menu** then **Edit building**. The editor requires a Development environment, loopback client/listener, loopback remote TCP peer and local socket addresses, matching host/scheme/port, no forwarding headers and same-origin mutation requests. This process is not behind NGINX and has no application user accounts. To use the Compose environment instead, open `http://localhost:5080/`, then open the editor without a login. NGINX forwards editor requests with a private local proxy credential. See the [development environment guide](development-environment.md#local-access-and-limitations).
 
-The browser checks `GET /api/capabilities`; `editorAllowed` must be `true`. Otherwise the menu's edit item is disabled and its access status explains the restriction. Do not expose the simulator through a proxy or a non-loopback listener.
+The browser checks `GET /api/capabilities`; `editorAllowed` must be `true`. Otherwise the menu's edit item is disabled and its access status explains the restriction. In Compose, NGINX adds `Content-Security-Policy: frame-ancestors 'none'` and `X-Frame-Options: DENY` to both websites; these headers prevent framing but do not replace authentication. Do not expose the simulator through a non-loopback listener or another proxy.
 
 ## Editing and saving
 
@@ -98,26 +98,11 @@ Use the returned `editRevision` as the next save's `expectedRevision`. A stale r
 
 ## Persistence and activation
 
-`BuildingDesign:SqlitePath` defaults to `building-design.db` relative to the simulator content root. The database stores saved and active designs, edit revision, retired IDs and cleanup work. Schema version 4 migrates versions 1–3, retaining saved and active designs and revision; migration from versions 1–2 discards stored drafts. Unknown schema versions and nonempty unversioned databases are rejected. For backup instructions, see [simulator persistence and backup](building-control.md#persistence-and-backup).
+`BuildingDesignStore.cs` persists saved and active designs, edit revision, retired IDs and cleanup work in PostgreSQL's `control` schema. The application connects to the shared `devices` database as `control_app`; Instrumentation uses the separate `telemetry` schema and `telemetry_app`. PostgreSQL 18 or later supplies UUIDv7 primary-key defaults. Stable editor entity and controller IDs remain separate from database keys.
 
-[BuildingDesignStore.cs](../../src/Devices.BuildingControl.Web/Building/BuildingDesignStore.cs) initializes a fresh database with this version 4 schema:
+The control schema uses version 1, initialized from [`database/control/001_initial.sql`](../../database/control/001_initial.sql). Fresh control data is seeded once. Existing SQLite databases are neither imported nor deleted; this PostgreSQL-only setup does not migrate from SQLite. See the [telemetry schema](../../database/telemetry/erd.mmd), [persistence guide](building-control.md#persistence-and-backup), and the [development environment guide](development-environment.md#postgresql-and-fresh-data) for backup and restore limitations.
 
-```sql
-CREATE TABLE building_design (
-    id INTEGER PRIMARY KEY CHECK (id = 1),
-    saved TEXT NOT NULL, active TEXT NOT NULL,
-    edit_revision INTEGER NOT NULL
-);
-CREATE TABLE retired_design_id (id TEXT PRIMARY KEY);
-CREATE TABLE controller_cleanup (
-    controller_id TEXT PRIMARY KEY,
-    active_revision INTEGER NOT NULL,
-    status INTEGER NOT NULL
-);
-PRAGMA user_version = 4;
-```
-
-`building_design` is a single-row table whose `saved` and `active` columns hold the camelCase design JSON; each design carries its own `revision`, and `edit_revision` is the optimistic-concurrency revision compared on save. `retired_design_id` lists stable IDs that can never be reused. `controller_cleanup` tracks removed-controller MQTT cleanup, fenced by `active_revision`; `status` values are `0` pending, `1` completed, `2` cancelled and `3` failed. The separate instrumentation telemetry schema is in the [instrumentation guide](building-instrumentation.md#persistence).
+The [version 1 control schema](../plans/building-editor-spec.md#control-schema-version-1) uses immutable design version rows and same-building saved and active pointers; see its [ERD](../../database/control/erd.mmd). It remains single-building and changes no UI or API. Incompatible earlier development schemas are rejected without changing their data.
 
 Save and activation are separate. Activation preserves compatible live state for retained device IDs and queues removed-controller MQTT cleanup only after activation succeeds. On startup, the last active design is restored and a different saved revision is retried. Cleanup is durable and asynchronous; its status represents broker publication, not acknowledgement by every subscriber. See the [runtime and persistence flow](../plans/building-editor-spec.md#persistence-and-runtime-integration).
 
@@ -136,7 +121,7 @@ config:
 ---
 flowchart TB
     Editor("Browser editor") -->|save| API("Building Control editor API")
-    API -->|store saved design| DB("Design SQLite")
+    API -->|store saved design| DB("PostgreSQL control schema")
     API -->|attempt activation| Connector("Simulated device connector")
     DB -->|startup: read designs| Restore("Connector restores active design")
     Restore --> Compare("Compare saved and active revisions")
@@ -169,7 +154,7 @@ From the repository root:
 
 ```powershell
 dotnet test tests\Devices.Simulator.Tests\Devices.Simulator.Tests.csproj --filter "FullyQualifiedName~BuildingDesignTests|FullyQualifiedName~BuildingEditorServiceTests|FullyQualifiedName~EditorAccessPolicyTests"
-node --import tsx --test tests\building-editor.test.mjs tests\building-editor-ui.test.mjs tests\localization-en.test.mjs
+node --import tsx --test tests\building-control\building-editor.test.mjs tests\building-control\building-editor-ui.test.mjs tests\building-control\localization-en.test.mjs
 npm run test:components
 ```
 

@@ -1,5 +1,5 @@
 ---
-applyTo: "src/**/*.cs,src/**/*.csproj,src/**/*.resx,src/**/appsettings*.json,tests/**/*.cs,tests/**/*.csproj,Devices.slnx,Dockerfile,compose.yaml"
+applyTo: "src/**/*.cs,src/**/*.csproj,src/**/*.resx,src/**/appsettings*.json,tests/**/*.cs,tests/**/*.csproj,Devices.slnx,Dockerfile,deploy/docker/**"
 ---
 
 # .NET, contracts, and runtime rules

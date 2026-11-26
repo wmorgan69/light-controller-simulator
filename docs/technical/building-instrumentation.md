@@ -22,7 +22,28 @@ The instrumentation application presents the latest building state and recent de
 
 ## Design
 
-![Design: MQTT and HTTP fallback feed the telemetry store, which provides dashboard summaries, lighting activity, floor cards, recent events, and SQLite persistence. Controller states and device events also feed their respective dashboard views.](../assets/diagrams/lighting-instrumentation-design.svg)
+```mermaid
+---
+config:
+  theme: base
+  themeVariables:
+    darkMode: true
+    primaryColor: '#1E293B'
+    primaryTextColor: '#F8FAFC'
+    primaryBorderColor: '#60A5FA'
+    lineColor: '#60A5FA'
+    edgeLabelBackground: '#1E293B'
+    textColor: '#F8FAFC'
+---
+flowchart LR
+  Poller("HTTP snapshot poller") --> Store("Telemetry store")
+  Broker("MQTT broker") -->|authenticated telemetry| Store
+  Store -->|latest controller state| Summary("Dashboard summaries")
+  Store -->|latest controller state| Floors("Floor cards")
+  Store -->|device events| Events("Recent events")
+  Store --> Database[("PostgreSQL<br/>devices · telemetry schema")]
+  classDef default fill:#1E293B,stroke:#60A5FA,color:#F8FAFC;
+```
 
 The UI prioritizes building-wide health and lighting activity, then floor details, then recent events.
 
@@ -77,7 +98,7 @@ Controller cards use the floor as their heading and show the complete controller
 
 Room fixture summaries expose faulted fixture counts in visible text and accessible names, and list the faulted strip IDs from telemetry. These do not depend on controller fault records or pointer-only marker titles. Lighting legend labels use `1rem` text with `#536176` on white. The page has no fixed minimum width, so a vertical scrollbar at a 320px viewport does not force page-level horizontal scrolling.
 
-The instrumentation APIs and simulator mutation APIs are unauthenticated. Compose publishes both application ports on host loopback and disables simulator HTTP mutations, including from Compose-network peers; do not expose the services through proxies or non-loopback bindings. For direct local development, simulator mutation requests also have Host, Origin and fetch-metadata checks described in the [simulator guide](building-control.md#building-editor), but these do not authenticate callers or protect instrumentation. Local users and processes share access; MQTT brokers need separate access controls.
+The applications have no application user accounts or browser login. In Compose, the NGINX ports bind to host loopback; the proxy enables simulator mutations only with its private development credential. PostgreSQL and MQTT are not host-published. Direct-host access bypasses the proxy; simulator mutations require loopback TCP peer and local addresses, while editor access additionally requires Development. Local users and processes share access, and development credentials are not production secret storage. See the [development environment guide](development-environment.md#local-access-and-limitations).
 
 Browser interface text is in [localization.en.ts](../../src/Devices.Instrumentation.Web/frontend/localization.en.ts). Static markup retains matching English fallback text and labels; update both when changing them. Only English is provided; there is no language selector or automatic culture negotiation. Room names arrive in telemetry from the simulator.
 
@@ -139,7 +160,7 @@ config:
 sequenceDiagram
     participant Poller as Instrumentation poller
     participant Simulator
-    participant Store as Telemetry store and SQLite
+    participant Store as Telemetry store and PostgreSQL
     rect rgb(30, 41, 59)
     Poller->>Simulator: GET /api/controller-snapshot
     alt Valid authoritative snapshot
@@ -161,43 +182,24 @@ The simulator publishes an authoritative snapshot for the active design and main
 
 ## Persistence
 
-SQLite stores:
+The Instrumentation application owns the `telemetry` schema in the shared PostgreSQL `devices` database. It connects with its separate `telemetry_app` role; the simulator's `control` schema is not its storage. PostgreSQL 18 or later provides the UUIDv7 defaults used for application-owned primary keys. Stable controller and event IDs remain text protocol identities. The current schema is version 1 and is applied from the embedded [`001_initial.sql`](../../database/telemetry/001_initial.sql) migration. There is no SQLite fallback or SQLite-to-PostgreSQL data import.
 
-- `telemetry_events` - persisted event history
-- `controller_latest` - last controller state
+The schema stores:
+
+- `telemetry_events` - persisted event history with a UUIDv7 primary key and unique stable `event_id`
+- `controller_latest` - last controller state, keyed by stable controller ID
 - `controller_observed` - last successful observation timestamp
-- `controller_design_revision` and `controller_authoritative` - last accepted design revision and membership
+- `controller_design_revision` and `controller_authoritative` - last accepted snapshot revision and membership
 - `controller_tombstones` - retired controller IDs
+- `schema_version` - applied schema version
 
-[TelemetryStore.cs](../../src/Devices.Instrumentation.Web/Persistence/TelemetryStore.cs) creates the tables on startup with this schema:
+`controller_observed` and `controller_authoritative` reference the current controller row and are removed with it. Event rows have no controller foreign key, so history remains after a controller is removed. Design revision and tombstones retain reconciliation state independently of current membership.
 
-```sql
-CREATE TABLE IF NOT EXISTS telemetry_events (
-    event_id TEXT PRIMARY KEY,
-    controller_id TEXT NOT NULL,
-    event_type TEXT NOT NULL,
-    timestamp TEXT NOT NULL,
-    payload TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS controller_latest (
-    controller_id TEXT PRIMARY KEY,
-    payload TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS controller_observed (
-    controller_id TEXT PRIMARY KEY,
-    timestamp TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS controller_design_revision (
-    singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
-    revision INTEGER NOT NULL
-);
-CREATE TABLE IF NOT EXISTS controller_authoritative (controller_id TEXT PRIMARY KEY);
-CREATE TABLE IF NOT EXISTS controller_tombstones (controller_id TEXT PRIMARY KEY);
-```
+See the [telemetry ERD](../../database/telemetry/erd.mmd) and [initial migration](../../database/telemetry/001_initial.sql) for the PostgreSQL schema. Every telemetry table has `created_at` and `updated_at` timestamps, defaulting to `clock_timestamp()`; a trigger updates `updated_at` on each row update. Payloads are camelCase `DeviceTelemetry` or `ControllerState` JSON from the shared [Devices.Contracts](../../src/Devices.Contracts/) models. The separate Building Control schema is documented in its [initial SQL](../../database/control/001_initial.sql) and [version 1 schema](../plans/building-editor-spec.md#control-schema-version-1).
 
-`timestamp` columns store ISO 8601 round-trip (`"O"`) values. `telemetry_events.payload` is the camelCase `DeviceTelemetry` JSON and `controller_latest.payload` is the camelCase `ControllerState` JSON, with enum values serialized as strings, both from the shared [Devices.Contracts](../../src/Devices.Contracts/) models. `controller_design_revision` is a single-row table holding the last accepted snapshot revision. The telemetry database has no schema version pragma; missing tables are created idempotently. The separate simulator design database schema is in the [building editor guide](building-editor.md#persistence-and-activation).
+Existing telemetry schemas using the former `schema_migrations` table, or missing the required timestamp definitions or enabled update triggers, are not migrated automatically. Instrumentation refuses to start against them without changing their data; an explicit reset is required to initialize the current schema.
 
-An accepted snapshot removes absent known controllers' latest states and observation timestamps from memory and SQLite, while preserving their historical events. Revision, membership, removals, tombstones, and snapshot state updates are committed together; they are restored on restart. Late MQTT messages for tombstoned IDs are rejected, as are messages for IDs outside established authoritative membership. The in-memory store exposes at most 500 recent events; removal does not delete historical event rows.
+An accepted snapshot removes absent known controllers' latest states and observation timestamps from memory and PostgreSQL, while preserving their historical events. Revision, membership, removals, tombstones, and snapshot state updates are committed together; they are restored on restart. Late MQTT messages for tombstoned IDs are rejected, as are messages for IDs outside established authoritative membership. The in-memory store exposes at most 500 recent events; removal does not delete historical event rows.
 
 On startup, malformed persisted states or events are logged and excluded from the in-memory view without deleting the stored rows. A subsequent valid simulator poll can restore an excluded controller's current state.
 
@@ -217,7 +219,7 @@ src/Devices.Instrumentation.Web/
   Devices.Instrumentation.Web.csproj
   Program.cs                 application setup and HTTP endpoints
   Persistence/
-    TelemetryStore.cs        telemetry state and SQLite persistence
+    TelemetryStore.cs        telemetry state and PostgreSQL persistence
   Telemetry/
     TelemetrySubscriber.cs   MQTT subscription and HTTP polling
   appsettings.json
@@ -239,22 +241,7 @@ Shared contracts are in [Devices.Contracts](../../src/Devices.Contracts/).
 
 ## Configuration
 
-```json
-{
-  "Mqtt": {
-    "Host": "localhost",
-    "Port": 1883
-  },
-  "Telemetry": {
-    "SqlitePath": "telemetry.db",
-    "SimulatorBaseUrl": "http://localhost:5080",
-    "StaleAfterSeconds": 30
-  },
-  "Urls": "http://localhost:5081"
-}
-```
-
-Relative `Telemetry:SqlitePath` values are resolved against the instrumentation web project's content root. The default database is therefore `src/Devices.Instrumentation.Web/telemetry.db`, regardless of the process working directory.
+The required database setting is `ConnectionStrings:Telemetry`. Compose supplies it from the `telemetry_app` password in `.env`, and also configures the `Telemetry:SimulatorBaseUrl` internal service address plus MQTT host, user and password. Never commit credentials. A direct host process needs its own PostgreSQL connection string and any desired MQTT credentials; see the [development environment guide](development-environment.md#direct-host-limitations).
 
 ## Running and testing
 
@@ -270,5 +257,7 @@ npm run build
 ```powershell
 dotnet run --project src/Devices.Instrumentation.Web/Devices.Instrumentation.Web.csproj --urls http://localhost:5081
 dotnet test tests/Devices.Instrumentation.Tests/Devices.Instrumentation.Tests.csproj
-node --import tsx --test tests\instrumentation-localization.test.mjs tests\instrumentation-react-telemetry.test.mjs
+node --import tsx --test tests\instrumentation\instrumentation-localization.test.mjs tests\instrumentation\instrumentation-react-telemetry.test.mjs
 ```
+
+The direct `dotnet run` command requires `ConnectionStrings:Telemetry` to be configured first; checked-in settings intentionally contain no database credentials. For the full local stack, use the [Compose development environment](development-environment.md).

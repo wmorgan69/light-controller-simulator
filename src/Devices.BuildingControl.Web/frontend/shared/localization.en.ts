@@ -14,7 +14,7 @@ const messages: Readonly<Record<string, string | PluralForms>> = Object.freeze({
   mutationAccess_enabled: 'Local controls are available.',
   mutationAccess_viewOnly: 'View-only simulator. Changes are disabled for this deployment; viewing and navigation remain available.',
   mutationAccess_unavailable: 'Control access is unavailable. Changes are disabled until access can be confirmed; viewing and navigation remain available.',
-  editorUnavailableHost: 'Building editing is unavailable on this host. Use a direct loopback development host to edit.',
+  editorUnavailableHost: 'Building editing is unavailable on this host. Use an authorized local development connection to edit.',
   requestNoDetail: 'No additional error detail is available.',
   buildingFloors: 'Building floors',
   openNavigation: 'Open building navigation',
