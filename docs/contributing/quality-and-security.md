@@ -80,18 +80,20 @@ This is an alternative proposal, not the current CI behavior. CI currently enfor
 ### How It Works
 
 **When to request security review:**
-- Adding new API endpoints or external inputs
-- Changing authentication/authorization logic
-- Handling sensitive data (tokens, passwords, PII)
-- Adding CORS, CSRF, or input validation
-- Any change touching `Devices.*.Web/Controllers/` or authentication
+- Changes to existing or new external inputs and API endpoints
+- Changes to authentication/authorization logic
+- Changes to sensitive data handling (tokens, passwords, PII)
+- Changes to security controls, including CORS, CSRF, headers, and input validation
+- Changes to dependencies or security workflows
+
+For changes outside these categories, record security review as not applicable with a reason. Use [diff-first handoffs and incremental re-review](contributor-guide.md#diff-first-handoffs-and-incremental-re-review); reuse applicable scan/validation evidence rather than repeating discovery or scans for each agent.
 
 **How to request:**
 1. After implementation and code review
 2. Select the `security-reviewer` agent in an environment that supports repository custom agents
 3. Record its findings in the PR; a GitHub comment alone does not guarantee that the agent runs
 4. Address any reported vulnerabilities
-5. Request re-review
+5. Request re-review of the incremental fixes and affected trust boundaries, with updated evidence
 
 **Coverage areas:**
 - **API Security**: Input validation, auth/authz, SQL injection, XSS, CSRF, rate limiting
@@ -103,12 +105,13 @@ This is an alternative proposal, not the current CI behavior. CI currently enfor
 ```markdown
 ## Security & Dependencies
 
-- [ ] Security review completed (OWASP Top 10 UI & API); findings fixed or explicitly documented.
 - [ ] Dependabot alerts addressed (if any).
 - [ ] No secrets, credentials, or sensitive data committed.
 - [ ] New external inputs are validated and sanitized.
 - [ ] Authentication/authorization checks are present where required.
 ```
+
+The template records security review once under **Independent reviews**, either with findings/outcome or a not-applicable reason. Local documentation/instruction-only changes do not require application coverage collection; the full PR CI coverage gate is unchanged.
 
 ## Dependency Updates and Security Scanning
 

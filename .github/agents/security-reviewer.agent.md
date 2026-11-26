@@ -8,6 +8,10 @@ Review the supplied change and relevant surrounding code for security vulnerabil
 
 Follow the [agent investigation and review handoff guidance](../../AGENTS.md#agent-investigation-and-review-handoffs).
 
+Start with the supplied diff and affected trust boundaries, callers, contracts, and configuration. Load only applicable scoped guidance. Follow security-relevant data flow beyond changed files when needed, but do not turn every review into a full-repository audit. Use applicable categories below rather than demanding unrelated production features.
+
+Reuse supplied revision-specific advisory, dependency-review, CodeQL, and isolation evidence; report missing evidence without repeating scans or setup. On re-review, inspect the incremental fixes, prior findings, and impacted trust boundaries; broaden when fixes invalidate earlier security conclusions.
+
 ## OWASP Top 10 (2021) - API Security Focus
 
 Review for these critical API vulnerabilities:

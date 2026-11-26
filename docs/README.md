@@ -16,6 +16,7 @@
 - [UX design references](ux/README.md)
 - [Frontend build and tests](#frontend-build-and-tests)
 - [Quality and security](#quality-and-security)
+- [Cost-aware agent workflow](contributing/contributor-guide.md#bounded-agent-workflow)
 - [Testing](#testing)
 - [Documentation map](#documentation-map)
 
@@ -178,12 +179,14 @@ flowchart LR
 The project combines automated checks with guidance for manual reviews:
 
 - **Code coverage**: CI checks that the first collected coverage report meets the current 50% threshold. A 90% threshold is a future goal, not the current enforced threshold; this check does not calculate combined solution coverage.
-- **Security review (OWASP Top 10)**: Repository instructions call for a `security-reviewer` agent review for changes to external inputs, API endpoints, or authentication logic; the CI workflow does not enforce that review.
+- **Security review (OWASP Top 10)**: Repository instructions call for a `security-reviewer` agent review for changes to existing or new external inputs, API endpoints, authentication/authorization, sensitive data handling, security controls, dependencies, or security workflows; otherwise record not applicable with a reason. The CI workflow does not enforce that agent review.
 - **Dependency updates**: Dependabot is configured for NuGet, npm, and GitHub Actions; it requires supported manifests and the relevant GitHub features to operate.
 - **Automated security checks**: CI audits npm and NuGet dependencies, reviews dependency changes on pull requests, and runs CodeQL; GitHub security feature availability and branch protection must be configured separately.
 - **Branch protection**: Required status checks and approvals depend on repository rules configured in GitHub; agent instructions alone do not enforce them.
 
 See [Branch Protection Configuration](contributing/branch-protection.md) and [Quality & Security Implementation Guide](contributing/quality-and-security.md) for setup instructions, recommended approaches for reaching 90% coverage, and troubleshooting.
+
+The [bounded agent workflow](contributing/contributor-guide.md#bounded-agent-workflow) documents scoped instructions, diff-first handoffs, shared validation/browser evidence, conditional specialist review, and incremental re-review. Local task scoping does not bypass full required PR CI.
 
 ## Frontend build and tests
 
@@ -240,6 +243,6 @@ The CI workflow also checks GitHub Actions files with a checksum-verified, pinne
 | [Project plan](plans/plan.md) | Goals, delivery phases, implementation decisions, acceptance criteria |
 | [Building editor specification](plans/building-editor-spec.md) | Current editor workflow, validation, storage, access limits, and remaining gaps |
 | [Changelog](CHANGELOG.md) | Project history, recorded commits, and upcoming changes |
-| [Contributor Guide](contributing/contributor-guide.md) | Code coverage workflow, testing tips, security review process, common questions |
+| [Contributor Guide](contributing/contributor-guide.md) | Cost-aware scoped agent workflow, diff-first review, shared evidence, code coverage, testing, and security review |
 | [Branch Protection Configuration](contributing/branch-protection.md) | CI/CD enforcement, GitHub status checks, Codecov setup |
 | [Quality & Security Implementation](contributing/quality-and-security.md) | Coverage threshold strategy, reaching 90%, security review workflow, Dependabot setup |

@@ -4,36 +4,32 @@ description: Independently review implemented code for correctness, regressions,
 tools: ['read', 'search']
 ---
 
-Review the supplied change and relevant surrounding code. Do not edit files or run commands.
+Review the supplied diff and affected callers, contracts, tests, and documentation. Do not edit files or run commands.
 
 Follow the [agent investigation and review handoff guidance](../../AGENTS.md#agent-investigation-and-review-handoffs).
+
+Start with the supplied comparison base/reviewed revision and changed paths, including task-related worktree changes. Load only applicable scoped guidance. Expand for concrete regression/dependency evidence, not a repository-wide audit. On re-review, inspect the incremental fix diff, prior findings, and impacted dependencies; retain valid earlier results and broaden when fixes invalidate them.
 
 Focus on:
 
 - Incorrect behavior, edge cases, and error handling.
 - Regressions or inconsistencies with related call sites and existing patterns.
 - Missing focused tests for changed behavior.
-- **Code coverage impact**: Verify that tests added cover new code paths and that overall coverage is not regressing below the current phase threshold (currently ≥50%; will increase to 60%, 75%, 90%). Reference Codecov PR comments if available, or ask developer to share coverage report.
+- **Code coverage impact for executable changes**: Check focused tests and applicable supplied reports. CI's >=50% gate reads the first .NET report, not aggregate coverage or every regression; higher thresholds are proposals. Report missing aggregate/non-regression evidence as a limitation, not a verified pass.
 - Clean-code regressions such as duplicate logic, unclear responsibilities, avoidable complexity, unrelated changes, or failure to follow existing patterns.
 - Contract, serialization, async, error-handling, security, or configuration risks.
 - Test quality: tests must be deterministic, isolated, behavior-focused, and cover meaningful normal, boundary, invalid-input, and failure cases.
-- Validation evidence: check that applicable lint, TypeScript type-check, formatting, build, and test commands ran and report any unavailable or failing checks as limitations.
-- Documentation accuracy: changed behavior, APIs, configuration, source locations, run/test commands, source-tree maps, and Mermaid diagrams must match the implementation. `docs/README.md` must link the relevant guides and preserve its table of contents.
+- Validation evidence: reuse supplied results covering the current revision/scope for applicable lint, type-check, formatting, build, and tests. Report missing/failing checks; request reruns only when evidence is absent or invalidated.
+- Documentation accuracy: verify directly affected behavior, APIs, configuration, source locations, commands, maps, links, and diagrams. Check relevant `docs/README.md` entries; do not reread unrelated guides.
 
 ## Code Coverage Verification
 
-For every change, verify:
+For executable changes, check that focused tests protect new behavior and meaningful edge/failure cases. Reuse applicable CI, Codecov, or local reports; request only missing affected-runtime evidence.
 
-1. **New code has focused tests**: Every new code path should have corresponding unit or integration tests
-2. **Coverage not regressing**: Overall coverage should not drop below current phase threshold
-3. **Coverage visibility**: 
-   - **If Codecov is configured**: Review the Codecov PR comment showing coverage impact (e.g., "coverage remains at 51.2%" or "coverage decreased from 51.2% to 50.8%")
-   - **If Codecov not configured**: Request developer run `dotnet test Devices.slnx --collect:"XPlat Code Coverage"` and share the coverage percentage from CI logs
-   - **What to look for**: 
-     - New files should show high coverage (≥80% for testable code)
-     - Modified files should not show coverage decrease
-     - Untestable code (UI rendering, complex 3D logic) may be marked with `[ExcludeFromCodeCoverage]` attribute
-4. **Phase compliance**: Current phase is 1 (≥50% threshold). Ensure coverage meets this minimum.
+- .NET coverage and frontend V8 coverage are separate. Do not request .NET coverage for frontend-only changes.
+- C# exclusions need justification and Coverlet-compatible configuration; JavaScript/3D rendering is not measured by .NET coverage.
+- Documentation/instruction-only changes: coverage is not applicable; verify configuration, links, diagrams, and intended workflow instead.
+- Distinguish the enforced first-report threshold from measured aggregate coverage and baseline comparison. Do not infer an overall non-regression from a passing CI gate.
 
 ## Reporting Coverage Issues
 
