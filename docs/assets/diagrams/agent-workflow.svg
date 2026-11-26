@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="680" viewBox="0 0 1040 680" role="img" aria-labelledby="title description">
+  <title id="title">Bounded agent implementation and review workflow</title>
+  <desc id="description">Inspect the task diff and affected dependencies, implement with focused tests, and share applicable validation evidence. Independent code review and applicable UX and security reviews either identify fixes or proceed to a final report and required full PR CI. Fixes receive affected checks and incremental re-review; broaden validation when earlier evidence is invalidated.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 Z" fill="#60A5FA"/>
+    </marker>
+    <style>
+      .node { fill: #1E293B; stroke: #60A5FA; stroke-width: 2; }
+      .label { fill: #F8FAFC; font-family: Arial, sans-serif; font-size: 17px; text-anchor: middle; }
+      .small { font-size: 14px; }
+      .edge { fill: none; stroke: #60A5FA; stroke-width: 2; marker-end: url(#arrow); }
+      .label-bg { fill: #1E293B; }
+    </style>
+  </defs>
+  <rect width="1040" height="680" rx="16" fill="#0F172A"/>
+  <g>
+    <rect class="node" x="40" y="50" width="240" height="90" rx="16"/>
+    <text class="label" x="160" y="87">Inspect task diff</text>
+    <text class="label small" x="160" y="113">Affected dependencies and guides</text>
+    <rect class="node" x="360" y="50" width="240" height="90" rx="16"/>
+    <text class="label" x="480" y="87">Implement change</text>
+    <text class="label small" x="480" y="113">Focused behavior tests</text>
+    <rect class="node" x="680" y="50" width="240" height="90" rx="16"/>
+    <text class="label" x="800" y="87">Share validation evidence</text>
+    <text class="label small" x="800" y="113">One applicable final check set</text>
+    <rect class="node" x="680" y="240" width="240" height="100" rx="16"/>
+    <text class="label" x="800" y="277">Independent review</text>
+    <text class="label small" x="800" y="303">Code + applicable UX/security</text>
+    <rect class="node" x="360" y="240" width="240" height="100" rx="16"/>
+    <text class="label" x="480" y="277">Fix actionable findings</text>
+    <text class="label small" x="480" y="303">Preserve still-valid evidence</text>
+    <rect class="node" x="360" y="430" width="240" height="100" rx="16"/>
+    <text class="label" x="480" y="466">Run affected checks</text>
+    <text class="label small" x="480" y="491">Broaden if evidence invalidated</text>
+    <rect class="node" x="680" y="430" width="240" height="100" rx="16"/>
+    <text class="label" x="800" y="466">Incremental re-review</text>
+    <text class="label small" x="800" y="491">Fix diff + impacted dependencies</text>
+    <rect class="node" x="680" y="590" width="240" height="65" rx="16"/>
+    <text class="label" x="800" y="616">Report outcomes / limitations</text>
+    <text class="label small" x="800" y="640">Required full PR CI + approvals</text>
+  </g>
+  <path class="edge" d="M 280 95 H 360"/>
+  <path class="edge" d="M 600 95 H 680"/>
+  <path class="edge" d="M 800 140 V 240"/>
+  <path class="edge" d="M 680 290 H 600"/>
+  <rect class="label-bg" x="600" y="259" width="80" height="22" rx="5"/>
+  <text class="label small" x="640" y="275">Findings</text>
+  <path class="edge" d="M 480 340 V 430"/>
+  <path class="edge" d="M 600 480 H 680"/>
+  <path class="edge" d="M 800 430 V 340"/>
+  <path class="edge" d="M 920 290 H 990 V 622 H 920"/>
+  <rect class="label-bg" x="940" y="365" width="90" height="56" rx="8"/>
+  <text class="label small" x="985" y="387">No remaining</text>
+  <text class="label small" x="985" y="408">findings</text>
+</svg>

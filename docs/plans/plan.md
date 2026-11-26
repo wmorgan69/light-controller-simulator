@@ -100,11 +100,13 @@ Feature work follows:
 2. Implement and add focused tests.
 3. Build and test.
 4. Run independent code review.
-5. Run UX review for user-visible UI changes.
-6. Fix findings and repeat affected validation/review.
-7. Confirm documentation and run/test evidence.
+5. Run UX review for user-visible UI changes or documentation describing changed UI behavior.
+6. Run security review for security-sensitive changes; otherwise record not applicable with a reason.
+7. Fix findings and repeat affected validation/review on the incremental fix diff and impacted dependencies.
+8. Confirm documentation and run/test evidence.
 
 Repository instructions live in [AGENTS.md](../../AGENTS.md). Agent profiles live under [.github/agents](../../.github/agents/).
+Follow the [bounded agent workflow](../contributing/contributor-guide.md#bounded-agent-workflow) for scoped instruction loading, diff-first handoffs, shared evidence, and local validation exceptions for documentation/instruction-only changes. Full required PR CI remains unchanged.
 
 ## Documentation
 

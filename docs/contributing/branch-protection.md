@@ -24,12 +24,15 @@ Enable the following checkboxes:
 
 **Required status checks:**
 - `Build and test` (job name from the `.NET validation` workflow in `ci.yml`)
-  - This includes build, test, the 50% coverage gate, Node.js view-logic tests, and Docker Compose smoke tests
+  - This includes frontend lint and type checking, .NET formatting, build, test, the 50% coverage gate, Node.js view-logic tests, and Docker Compose smoke tests
+- `Workflow lint` checks GitHub Actions workflows with actionlint
 
-  Branch protection status names should be confirmed from an actual pull-request check run. The workflow is named `.NET validation`; its current job is named `Build and test`.
+  Branch protection status names should be confirmed from an actual pull-request check run. Both jobs belong to the `.NET validation` workflow.
+
+The security workflow adds `npm dependency audit`, `NuGet dependency audit`, `Dependency review`, and `CodeQL` language-specific jobs. Confirm their actual check names and GitHub feature availability before requiring them in branch protection. Dependency review only runs on pull requests.
 
 **Future additions (once configured):**
-- Security vulnerability scanning (Dependabot alerts; configure separately from Dependabot version updates)
+- Dependabot alerts (configure separately from Dependabot version updates)
 - Code coverage badge or status check (Codecov; optional and not currently required by CI)
 
 ### 3. Restrict Who Can Push
@@ -55,7 +58,7 @@ The CI workflow (`ci.yml`) will:
 1. Run all tests with code coverage collection: `dotnet test Devices.slnx --collect:"XPlat Code Coverage"`
 2. Extract coverage percentage from `coverage.cobertura.xml`
 3. Fail the build if the first discovered coverage report is below 50%
-4. Attempt a non-blocking Codecov upload; the configured path needs correction as described below
+4. Save the reports for a separate, non-blocking Codecov upload job
 
 **Status check name:** `Build and test` (includes coverage enforcement)
 
@@ -64,10 +67,14 @@ The 50% gate is a local threshold in CI. It checks the first `coverage.cobertura
 ### Security Scanning
 
 #### Dependabot (GitHub Native)
-- Configures NuGet update PRs for `/` and npm update PRs for `/tests`
-- The npm entry requires an npm manifest such as `package.json`; the repository currently has no npm manifest
+- Configures NuGet, npm, and GitHub Actions update PRs for the repository root
 - Security alerts are a separate GitHub security feature and are not enabled by `.github/dependabot.yml`
 - Configured via `.github/dependabot.yml`
+
+#### CI Security Checks
+- The security workflow audits npm and NuGet direct and transitive dependencies and fails on moderate or higher findings.
+- Dependency review runs for pull requests; CodeQL scans C# and JavaScript/TypeScript without building.
+- GitHub feature availability and settings must be verified; see [Quality & Security Implementation](quality-and-security.md#ci-security-checks).
 
 #### Manual Security Reviews
 - For PRs that add external inputs, API endpoints, or authentication logic, request the `security-reviewer` agent
@@ -93,7 +100,7 @@ Once you set up Codecov:
    - GitHub Settings → Branches → Branch protection rule
    - Add `codecov/patch` and/or `codecov/project` as required status checks
 
-Before relying on Codecov uploads, update the CI action's `files` setting to cover the generated reports at `tests/**/TestResults/*/coverage.cobertura.xml`. The current `./coverage.cobertura.xml` path does not match the repository's dotnet-test output location; upload failures are non-blocking because `fail_ci_if_error` is false.
+After a successful build, the upload job downloads the coverage artifact and searches it for reports. Pull-request uploads are tokenless; only manual runs on `main` receive the configured token. Upload failures are non-blocking because `fail_ci_if_error` is false; verify the result in GitHub and Codecov before relying on it.
 
 ## Merge Checklist
 

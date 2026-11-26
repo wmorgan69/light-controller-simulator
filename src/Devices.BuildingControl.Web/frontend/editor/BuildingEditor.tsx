@@ -283,6 +283,7 @@ export default function BuildingEditor({ mutationAccess, onActivated = () => {},
   const notify = () => { if (mounted.current) setVersion(value => value + 1); };
   const session = sessionRef.current;
   const design = session?.design;
+  const hasDesign = Boolean(design);
   const allowed = Boolean(mutationAccess?.editorAllowed);
   const blocked = busy || !allowed || Boolean(session?.conflict);
   const pending = pendingForms(forms, baseline);
@@ -359,10 +360,10 @@ export default function BuildingEditor({ mutationAccess, onActivated = () => {},
     setFocusField(null);
   }, [focusField, floorIndex, selection]);
   useEffect(() => {
-    if (!open || !design) return undefined;
+    if (!open || !hasDesign) return undefined;
     const timer = setInterval(() => sessionRef.current?.refreshStatus(), 20000);
     return () => clearInterval(timer);
-  }, [open, Boolean(design)]);
+  }, [open, hasDesign]);
   useEffect(() => {
     const beforeUnload = (event: BeforeUnloadEvent) => {
       if (sessionRef.current?.dirty || pendingRef.current) {

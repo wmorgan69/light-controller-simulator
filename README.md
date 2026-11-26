@@ -4,13 +4,13 @@ A .NET building control application with an interactive 3D lighting simulation a
 
 ## Agentic workflow
 
-This repository uses an agentic build-review-rebuild workflow with staged changes and pull request review:
+This repository uses an agentic build-review-rebuild workflow with independent reviews and pull request checks:
 
 ![Agentic workflow showing implementation, validation, independent reviews, pull request, and feedback loops for fixes before merge](docs/assets/diagrams/agentic-workflow.svg)
 
 **Workflow process:**
-1. Agent plans, implements, builds, and validates changes
-2. Changes are staged (not auto-committed) and grouped by scope
+1. Agent plans, implements, and runs applicable validation, including lint, type-checking, formatting, builds, and tests where relevant
+2. Changes remain available for review; staging and grouping by scope are optional
 3. Required reviewers (code, security if applicable, UX if applicable) independently evaluate the changes
 4. Pull request is created or updated with implementation, build validation, test results, and review evidence
 5. Actionable findings return to implementation; repeat validation and affected reviews after fixes
@@ -22,11 +22,12 @@ Agent customization:
 
 - [AGENTS.md](AGENTS.md) defines repository-wide clean-code, testing, documentation, review, and merge requirements.
 - [Build/review/rebuild agent](.github/agents/build-review-rebuild.agent.md) coordinates implementation and validation.
-- [Code reviewer](.github/agents/code-reviewer.agent.md) independently checks correctness, clean code, tests, documentation accuracy, and **code coverage impact** (new code is tested; overall coverage is not regressing below phase threshold).
-- [Security reviewer](.github/agents/security-reviewer.agent.md) independently checks for OWASP Top 10 UI and API vulnerabilities (required for PRs that add external inputs, API endpoints, or authentication/authorization logic).
+- [Code reviewer](.github/agents/code-reviewer.agent.md) independently checks correctness, clean code, tests, documentation accuracy, and applicable coverage evidence. The CI threshold alone does not establish overall coverage or non-regression.
+- [Security reviewer](.github/agents/security-reviewer.agent.md) independently checks applicable OWASP and supply-chain risks. Review is required for changes to external inputs, APIs, authentication or authorization, sensitive data handling, security controls, dependencies, or security workflows.
 - [UX reviewer](.github/agents/ux-reviewer.agent.md) independently checks UI clarity, accessibility, responsive behavior, and state rendering.
 - [Pull-request template](.github/PULL_REQUEST_TEMPLATE.md) records validation and reviewer evidence.
-- [CI workflow](.github/workflows/ci.yml) builds and tests pull requests, checks the first collected coverage report against a 50% threshold, and runs Node.js and Docker Compose checks.
+- [CI workflow](.github/workflows/ci.yml) checks frontend lint and types, .NET formatting, GitHub Actions workflows, builds and tests, Node.js logic, and Docker Compose. Its 50% coverage gate checks the first collected .NET report, not combined coverage.
+- [Security workflow](.github/workflows/security.yml) runs dependency audits, pull-request dependency review, and CodeQL scans. Whether these checks are required for merge depends on repository rules and feature availability.
 
 **Branch protection:** The intended workflow uses pull requests, CI, and human review. Enforcement depends on the repository's branch protection or rulesets; the workflow and agent instructions alone do not enforce approvals or prevent direct pushes.
 
@@ -83,7 +84,7 @@ The demo page contains two walkthroughs: building navigation and live instrument
 
 ## Quick start
 
-Install the .NET 11 SDK and Node.js with npm. CI uses Node.js 22.
+Install the .NET 11 SDK and Node.js with npm. Use Node.js 22.18 or later in the 22.x line, or Node.js 24.11 or later; CI uses Node.js 22.
 
 Build both browser frontends once before running the .NET applications directly. This installs the locked Node dependencies, runs the strict TypeScript check, and creates the local bundles used by each web app:
 

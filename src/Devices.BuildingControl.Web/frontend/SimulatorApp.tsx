@@ -101,6 +101,8 @@ export function App(): React.JSX.Element {
   const mutationAccess: SimulatorMutationAccess = useMemo(() => createMutationAccess(), []);
   const [accessRevision, setAccessRevision] = useState(0);
   const access = useMemo<Pick<SimulatorMutationAccess, 'allowed'>>(() => ({ allowed: mutationAccess.allowed }),
+    // The mutable access object notifies changes through this revision.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [mutationAccess, accessRevision]);
   const [controllers, setControllers] = useState<ControllerDto[]>([]);
   const [design, setDesign] = useState<BuildingDesignDto | null>(null);
