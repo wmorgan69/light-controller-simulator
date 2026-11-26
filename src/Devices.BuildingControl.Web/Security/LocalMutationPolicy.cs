@@ -6,7 +6,12 @@ public static class LocalMutationPolicy
 {
     public static bool IsAllowed(HttpRequest request, bool allowMutations)
     {
-        if (!allowMutations) return false;
+        if (!allowMutations ||
+            request.HttpContext.Connection.RemoteIpAddress is not { } remoteAddress ||
+            request.HttpContext.Connection.LocalIpAddress is not { } localAddress ||
+            !IPAddress.IsLoopback(remoteAddress) ||
+            !IPAddress.IsLoopback(localAddress))
+            return false;
         if (request.Headers.Keys.Any(header =>
             header.Equals("Forwarded", StringComparison.OrdinalIgnoreCase) ||
             header.StartsWith("X-Forwarded-", StringComparison.OrdinalIgnoreCase) ||

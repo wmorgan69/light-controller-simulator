@@ -58,6 +58,15 @@ jobs:
       - name: Test lint configuration
         run: npm run test:lint
 
+      - name: Test Linux credential setup
+        run: bash tests/deployment/setup-dev.test.sh
+
+      - name: Test Docker development start
+        run: bash tests/deployment/docker-dev-start.test.sh
+
+      - name: Test Compose layout
+        run: bash tests/deployment/compose-layout.test.sh
+
       - name: Type-check frontends
         run: npm run typecheck
 
@@ -68,6 +77,39 @@ jobs:
 
       - name: Test frontend components
         run: npm run test:components
+
+      - name: Provision isolated PostgreSQL tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          password=$(openssl rand -hex 32)
+          echo "::add-mask::$password"
+          docker run -d --rm --name devices-ci-test-postgres \
+            -p 127.0.0.1::5432 \
+            -e POSTGRES_DB=devices -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD="$password" \
+            -e CONTROL_DB_PASSWORD="$password" -e TELEMETRY_DB_PASSWORD="$password" \
+            -v "$GITHUB_WORKSPACE/deploy/docker/dev/postgres-init.sql:/docker-entrypoint-initdb.d/10-dev.sql:ro" \
+            postgres:18 > /dev/null
+          ready=false
+          for attempt in {1..60}; do
+            if [ "$(docker exec devices-ci-test-postgres psql -U postgres -d devices -tAc \
+              "SELECT to_regnamespace('control') IS NOT NULL AND to_regnamespace('telemetry') IS NOT NULL" 2>/dev/null || true)" = "t" ]; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          test "$ready" = true
+          for db in devices_control_test_ci devices_instrumentation_test_ci; do
+            docker exec devices-ci-test-postgres psql -U postgres -d postgres -v ON_ERROR_STOP=1 \
+              -c "CREATE DATABASE $db"
+            docker exec devices-ci-test-postgres psql -U postgres -d "$db" -v ON_ERROR_STOP=1 \
+              -c 'CREATE SCHEMA control AUTHORIZATION control_app; CREATE SCHEMA telemetry AUTHORIZATION telemetry_app;'
+          done
+          port=$(docker port devices-ci-test-postgres 5432/tcp | cut -d: -f2)
+          echo "DEVICES_TEST_CONTROL_CONNECTION=Host=127.0.0.1;Port=$port;Database=devices_control_test_ci;Username=control_app;Password=$password" >> "$GITHUB_ENV"
+          echo "DEVICES_TEST_TELEMETRY_CONNECTION=Host=127.0.0.1;Port=$port;Database=devices_control_test_ci;Username=telemetry_app;Password=$password" >> "$GITHUB_ENV"
+          echo "INSTRUMENTATION_TEST_CONNECTION_STRING=Host=127.0.0.1;Port=$port;Database=devices_instrumentation_test_ci;Username=telemetry_app;Password=$password" >> "$GITHUB_ENV"
 
       - name: Restore
         run: dotnet restore Devices.slnx
@@ -115,42 +157,117 @@ jobs:
           if-no-files-found: warn
 
       - name: Test browser logic and localization
-        run: node --import tsx --test tests/building-access.test.mjs tests/wiring-routes.test.mjs tests/floor-view.test.mjs tests/room-state.test.mjs tests/record-demo.test.mjs tests/localization-en.test.mjs tests/building-design-view.test.mjs tests/building-editor.test.mjs tests/building-editor-ui.test.mjs tests/simulator-react-model.test.mjs tests/instrumentation-localization.test.mjs tests/instrumentation-react-telemetry.test.mjs
+        run: node --import tsx --test tests/building-control/building-access.test.mjs tests/building-control/placeable-access.test.mjs tests/building-control/wiring-routes.test.mjs tests/building-control/floor-view.test.mjs tests/building-control/room-state.test.mjs tests/shared/record-demo.test.mjs tests/building-control/localization-en.test.mjs tests/building-control/building-design-view.test.mjs tests/building-control/building-editor.test.mjs tests/building-control/building-editor-ui.test.mjs tests/building-control/simulator-react-model.test.mjs tests/instrumentation/instrumentation-localization.test.mjs tests/instrumentation/instrumentation-react-telemetry.test.mjs
 
       - name: Smoke test Docker Compose
         shell: bash
         run: |
           set -euo pipefail
+          for key in POSTGRES_PASSWORD CONTROL_DB_PASSWORD TELEMETRY_DB_PASSWORD MQTT_CONTROL_PASSWORD MQTT_TELEMETRY_PASSWORD DEV_PROXY_SECRET; do
+            value=$(openssl rand -hex 32)
+            echo "::add-mask::$value"
+            export "$key=$value"
+          done
+          compose=(docker compose --project-directory "$GITHUB_WORKSPACE" -p devices-ci-smoke -f deploy/docker/compose.yaml)
           response_file=$(mktemp)
           cleanup() {
             rm -f "$response_file"
-            docker compose logs
-            docker compose down --volumes
+            "${compose[@]}" logs
+            "${compose[@]}" down --volumes
           }
           trap cleanup EXIT
-          docker compose up --build -d
+          "${compose[@]}" up --build -d
           curl --fail --silent --show-error --retry 30 --retry-delay 1 --retry-max-time 30 --max-time 5 --retry-all-errors --output "$response_file" http://localhost:5080/api/controllers
           jq -e 'length == 4' "$response_file"
           curl --fail --silent --show-error --retry 30 --retry-delay 1 --retry-max-time 30 --max-time 5 --retry-all-errors --output /dev/null http://localhost:5081/api/status
-          mutation_status=$(curl --silent --show-error --max-time 5 --output "$response_file" --write-out '%{http_code}' -X POST http://localhost:5080/api/rooms/floor-1-main/sensor/trigger)
-          if [ "$mutation_status" != 403 ]; then
-            echo "Expected HTTP 403 for disabled simulator mutation, got $mutation_status"
+          curl --fail --silent --show-error --max-time 5 http://localhost:5080/api/capabilities | jq -e '.mutationsAllowed == true and .editorAllowed == true'
+          curl --fail --silent --show-error --max-time 5 --output /dev/null http://localhost:5080/api/building-editor
+          bad_host_status=$(curl --silent --show-error --max-time 5 --header 'Host: attacker.example' --output /dev/null --write-out '%{http_code}' http://localhost:5080/api/building-editor)
+          test "$bad_host_status" = 400
+          forwarded_status=$(curl --silent --show-error --max-time 5 --header 'X-Forwarded-For: 127.0.0.1' --output /dev/null --write-out '%{http_code}' http://localhost:5080/api/building-editor)
+          test "$forwarded_status" = 400
+          originless_status=$(curl --silent --show-error --max-time 5 --header 'Content-Length: 0' --output /dev/null --write-out '%{http_code}' -X POST http://localhost:5080/api/rooms/floor-1-main/sensor/reset)
+          test "$originless_status" = 403
+          if "${compose[@]}" exec -T mqtt sh -c 'mosquitto_pub -V mqttv5 -q 1 -h localhost -t building/controllers/ci-probe/telemetry -m denied' > /dev/null 2>&1; then
+            echo "Anonymous MQTT publish unexpectedly succeeded"
             exit 1
           fi
+          if "${compose[@]}" exec -T mqtt sh -c 'mosquitto_pub -V mqttv5 -q 1 -h localhost -u control -P invalid -t building/controllers/lwt -m denied' > /dev/null 2>&1; then
+            echo "MQTT accepted invalid credentials"
+            exit 1
+          fi
+          allowed_publish=$("${compose[@]}" exec -T mqtt sh -c 'mosquitto_pub -V mqttv5 -d -q 1 -h localhost -u control -P "$MQTT_CONTROL_PASSWORD" -t building/controllers/ci-probe/telemetry -m ci-probe -r' 2>&1) || { echo "Allowed MQTT publication failed"; exit 1; }
+          [[ "$allowed_publish" == *"RC:0"* || "$allowed_publish" == *"RC:16"* ]]
+          "${compose[@]}" exec -T mqtt sh -c 'mosquitto_sub -V mqttv5 -C 1 -W 5 -h localhost -u telemetry -P "$MQTT_TELEMETRY_PASSWORD" -t building/controllers/ci-probe/telemetry' | grep -Fx 'ci-probe'
+          denied_publish=$("${compose[@]}" exec -T mqtt sh -c 'mosquitto_pub -V mqttv5 -d -q 1 -h localhost -u telemetry -P "$MQTT_TELEMETRY_PASSWORD" -t building/controllers/ci-probe/telemetry -m denied' 2>&1) || true
+          [[ "$denied_publish" == *"RC:135"* ]]
+          denied_command=$("${compose[@]}" exec -T mqtt sh -c 'mosquitto_pub -V mqttv5 -d -q 1 -h localhost -u control -P "$MQTT_CONTROL_PASSWORD" -t building/controllers/ci-probe/commands -m denied' 2>&1) || true
+          [[ "$denied_command" == *"RC:135"* ]]
+          control_read=$("${compose[@]}" exec -T mqtt sh -c 'mosquitto_sub -V mqttv5 -d -W 2 -h localhost -u control -P "$MQTT_CONTROL_PASSWORD" -t building/controllers/ci-probe/telemetry' 2>&1 || true)
+          [[ "$control_read" == *"Subscribed"* && "$control_read" != *"received PUBLISH"* ]]
+          "${compose[@]}" exec -T mqtt sh -c 'mosquitto_pub -V mqttv5 -q 1 -h localhost -u control -P "$MQTT_CONTROL_PASSWORD" -t building/controllers/ci-probe/telemetry -n -r'
+          # A disposable sender exercises command delivery without granting commands to either application role.
+          "${compose[@]}" exec -T mqtt sh -c 'mosquitto_passwd -b /tmp/mosquitto/passwords ci_sender "$MQTT_CONTROL_PASSWORD" && printf "\nuser ci_sender\ntopic write building/controllers/ci-probe/commands\n" >> /tmp/mosquitto/acl && kill -HUP 1'
+          command_published=false
+          for attempt in {1..10}; do
+            sender_result=$("${compose[@]}" exec -T mqtt sh -c 'mosquitto_pub -V mqttv5 -d -q 1 -h localhost -u ci_sender -P "$MQTT_CONTROL_PASSWORD" -t building/controllers/ci-probe/commands -m ci-command -r' 2>&1) || true
+            if [[ "$sender_result" == *"RC:0"* || "$sender_result" == *"RC:16"* ]]; then
+              command_published=true
+              break
+            fi
+            sleep 1
+          done
+          test "$command_published" = true
+          "${compose[@]}" exec -T mqtt sh -c 'mosquitto_sub -V mqttv5 -C 1 -W 5 -h localhost -u control -P "$MQTT_CONTROL_PASSWORD" -t building/controllers/ci-probe/commands' | grep -Fx 'ci-command'
+          ack_result=$("${compose[@]}" exec -T mqtt sh -c 'mosquitto_pub -V mqttv5 -d -q 1 -h localhost -u control -P "$MQTT_CONTROL_PASSWORD" -t building/controllers/ci-probe/commands/ci-command/ack -m ack' 2>&1) || { echo "MQTT acknowledgement publication failed"; exit 1; }
+          [[ "$ack_result" == *"RC:0"* || "$ack_result" == *"RC:16"* ]]
+          "${compose[@]}" exec -T mqtt sh -c 'mosquitto_pub -V mqttv5 -q 1 -h localhost -u ci_sender -P "$MQTT_CONTROL_PASSWORD" -t building/controllers/ci-probe/commands -n -r'
+          mutation_status=$(curl --silent --show-error --max-time 5 --header 'Origin: http://localhost:5080' --header 'Content-Length: 0' --output "$response_file" --write-out '%{http_code}' -X POST http://localhost:5080/api/rooms/floor-1-main/sensor/trigger)
+          if [ "$mutation_status" != 200 ]; then
+            echo "Expected HTTP 200 for authorized simulator mutation, got $mutation_status"
+            exit 1
+          fi
+          denied_status=$(curl --silent --show-error --max-time 5 --header 'Origin: http://attacker.example' --header 'Content-Length: 0' --output /dev/null --write-out '%{http_code}' -X POST http://localhost:5080/api/rooms/floor-1-main/sensor/reset)
+          test "$denied_status" = 403
           observed=false
           for attempt in {1..30}; do
-            if curl --fail --silent --max-time 5 http://localhost:5081/api/status | jq -e '.httpAvailable == true and .mqttConnected == false and .simulatorHttpSource == "http://simulator:8080"' > /dev/null &&
-              curl --fail --silent --max-time 5 http://localhost:5081/api/telemetry/controller-floor-1 | jq -e '.id == "controller-floor-1" and any(.rooms[]; .id == "floor-1-main" and .presence == false)' > /dev/null; then
+            if curl --fail --silent --max-time 5 http://localhost:5081/api/status | jq -e '.httpAvailable == true and .mqttConnected == true and .simulatorHttpSource == "http://simulator:8080"' > /dev/null &&
+              curl --fail --silent --max-time 5 http://localhost:5081/api/telemetry/controller-floor-1 | jq -e '.id == "controller-floor-1" and any(.rooms[]; .id == "floor-1-main" and .presence == true)' > /dev/null; then
               observed=true
               break
             fi
             sleep 1
           done
           test "$observed" = true
-          docker compose stop instrumentation simulator
-          docker compose up -d --no-deps --force-recreate instrumentation
+          "${compose[@]}" stop mqtt
+          observed=false
+          for attempt in {1..30}; do
+            if curl --fail --silent --max-time 5 http://localhost:5081/api/status | jq -e '.httpAvailable == true and .mqttConnected == false' > /dev/null; then
+              observed=true
+              break
+            fi
+            sleep 1
+          done
+          test "$observed" = true
+          "${compose[@]}" start mqtt
+          observed=false
+          for attempt in {1..30}; do
+            if curl --fail --silent --max-time 5 http://localhost:5081/api/status | jq -e '.mqttConnected == true' > /dev/null &&
+              curl --fail --silent --max-time 5 http://localhost:5080/api/status | jq -e '.mqttConnected == true' > /dev/null; then
+              observed=true
+              break
+            fi
+            sleep 1
+          done
+          test "$observed" = true
+          "${compose[@]}" stop instrumentation simulator
+          "${compose[@]}" up -d --no-deps --force-recreate instrumentation
           curl --fail --silent --show-error --retry 30 --retry-delay 1 --retry-max-time 30 --max-time 5 --retry-all-errors --output "$response_file" http://localhost:5081/api/telemetry/controller-floor-1
-          jq -e '.id == "controller-floor-1" and any(.rooms[]; .id == "floor-1-main" and .presence == false)' "$response_file"
+          jq -e '.id == "controller-floor-1" and any(.rooms[]; .id == "floor-1-main" and .presence == true)' "$response_file"
+
+      - name: Stop isolated PostgreSQL tests
+        if: ${{ always() }}
+        run: docker stop devices-ci-test-postgres || true
 
   coverage-upload:
     name: Upload coverage

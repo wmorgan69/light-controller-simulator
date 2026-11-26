@@ -1,8 +1,10 @@
 using Microsoft.Extensions.Logging.Abstractions;
 
-public sealed class ControllerCleanupProcessorTests : IDisposable
+public sealed class ControllerCleanupProcessorTests
 {
-    private readonly string path = Path.GetFullPath($"cleanup-{Guid.NewGuid():N}.db");
+    private readonly string path = ControlTestDatabase.ConnectionString;
+
+    public ControllerCleanupProcessorTests() => ControlTestDatabase.Reset();
 
     [Fact]
     public async Task FailedCleanupRemainsDurableAndRetriesUntilConfirmed()
@@ -80,12 +82,5 @@ public sealed class ControllerCleanupProcessorTests : IDisposable
         await ControllerCleanupProcessor.ProcessAsync(store, simulator, (_, _) => Task.CompletedTask,
             NullLogger.Instance, CancellationToken.None);
         Assert.Equal(BuildingDesignCleanupStatus.Completed, Assert.Single(store.ReadCleanup()).Status);
-    }
-
-    public void Dispose()
-    {
-        File.Delete(path);
-        File.Delete(path + "-wal");
-        File.Delete(path + "-shm");
     }
 }

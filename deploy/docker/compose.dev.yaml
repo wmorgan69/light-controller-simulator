@@ -1,0 +1,84 @@
+services:
+  simulator:
+    build:
+      target: development
+    working_dir: /workspace
+    command: ["dotnet", "watch", "--project", "src/Devices.BuildingControl.Web", "run", "--no-launch-profile", "--urls", "http://0.0.0.0:8080"]
+    environment:
+      DOTNET_USE_POLLING_FILE_WATCHER: "1"
+      DOTNET_WATCH_RESTART_ON_RUDE_EDIT: "1"
+      DEV_VITE_WATCH: "1"
+    volumes:
+      - ./src:/workspace/src
+      - ./database:/workspace/database:ro
+      - simulator-dist:/workspace/src/Devices.BuildingControl.Web/wwwroot/dist
+      - simulator-contracts-bin:/workspace/src/Devices.Contracts/bin
+      - simulator-contracts-obj:/workspace/src/Devices.Contracts/obj
+      - simulator-connector-bin:/workspace/src/Devices.Connectors.Simulation/bin
+      - simulator-connector-obj:/workspace/src/Devices.Connectors.Simulation/obj
+      - simulator-app-bin:/workspace/src/Devices.BuildingControl.Web/bin
+      - simulator-app-obj:/workspace/src/Devices.BuildingControl.Web/obj
+
+  instrumentation:
+    build:
+      target: development
+    working_dir: /workspace
+    command: ["dotnet", "watch", "--project", "src/Devices.Instrumentation.Web", "run", "--no-launch-profile", "--urls", "http://0.0.0.0:8080"]
+    environment:
+      DOTNET_USE_POLLING_FILE_WATCHER: "1"
+      DOTNET_WATCH_RESTART_ON_RUDE_EDIT: "1"
+      DEV_VITE_WATCH: "1"
+    volumes:
+      - ./src:/workspace/src
+      - ./database:/workspace/database:ro
+      - instrumentation-dist:/workspace/src/Devices.Instrumentation.Web/wwwroot/dist
+      - instrumentation-contracts-bin:/workspace/src/Devices.Contracts/bin
+      - instrumentation-contracts-obj:/workspace/src/Devices.Contracts/obj
+      - instrumentation-app-bin:/workspace/src/Devices.Instrumentation.Web/bin
+      - instrumentation-app-obj:/workspace/src/Devices.Instrumentation.Web/obj
+
+  simulator-frontend:
+    image: node:22-bookworm-slim
+    working_dir: /workspace
+    command: ["sh", "-c", "npm ci && npm exec vite -- build --watch --mode simulator"]
+    environment:
+      DEV_VITE_USE_POLLING: "1"
+    volumes:
+      - ./package.json:/workspace/package.json:ro
+      - ./package-lock.json:/workspace/package-lock.json:ro
+      - ./vite.config.js:/workspace/vite.config.js:ro
+      - ./tsconfig.json:/workspace/tsconfig.json:ro
+      - ./src/Devices.BuildingControl.Web/frontend:/workspace/src/Devices.BuildingControl.Web/frontend:ro
+      - simulator-node-modules:/workspace/node_modules
+      - simulator-dist:/workspace/src/Devices.BuildingControl.Web/wwwroot/dist
+
+  instrumentation-frontend:
+    image: node:22-bookworm-slim
+    working_dir: /workspace
+    command: ["sh", "-c", "npm ci && npm exec vite -- build --watch --mode instrumentation"]
+    environment:
+      DEV_VITE_USE_POLLING: "1"
+    volumes:
+      - ./package.json:/workspace/package.json:ro
+      - ./package-lock.json:/workspace/package-lock.json:ro
+      - ./vite.config.js:/workspace/vite.config.js:ro
+      - ./tsconfig.json:/workspace/tsconfig.json:ro
+      - ./src/Devices.Instrumentation.Web/frontend:/workspace/src/Devices.Instrumentation.Web/frontend:ro
+      - instrumentation-node-modules:/workspace/node_modules
+      - instrumentation-dist:/workspace/src/Devices.Instrumentation.Web/wwwroot/dist
+
+volumes:
+  simulator-node-modules:
+  instrumentation-node-modules:
+  simulator-dist:
+  instrumentation-dist:
+  simulator-contracts-bin:
+  simulator-contracts-obj:
+  simulator-connector-bin:
+  simulator-connector-obj:
+  simulator-app-bin:
+  simulator-app-obj:
+  instrumentation-contracts-bin:
+  instrumentation-contracts-obj:
+  instrumentation-app-bin:
+  instrumentation-app-obj:

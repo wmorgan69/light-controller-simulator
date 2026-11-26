@@ -132,9 +132,9 @@ The editor offers an SVG plan and forms for building dimensions, floors, rooms, 
 
 The toolbar's right-aligned desktop **Building menu** contains **Edit building**; on narrow screens its overflow trigger is named **Open building menu** and remains opposite the navigation hamburger. The item is disabled until server-backed editor access is confirmed, with an access explanation next to the trigger and in the menu. Floor and scenario controls remain available through the navigation drawer on narrow screens. Opening the editor closes the menu and moves keyboard focus to its heading. Escape closes the menu, and returning from the editor moves focus to the menu trigger even if access became unavailable.
 
-Editor endpoints are available **only** in the Development environment on a directly connected loopback server and client. Every configured listening address and the request host must be loopback; the request scheme and port must match a listener. Forwarding headers are rejected. Mutations require a same-origin `Origin`; GET/HEAD may omit it. No authentication is provided. Non-loopback listeners, proxies, and the supplied Compose deployment cannot use the editor.
+In direct-host Development, editor endpoints require a directly connected loopback client and listener; both the remote TCP peer and local socket address must be loopback, the request host, scheme and port must match, forwarding headers are rejected, and mutations require a same-origin `Origin` (GET/HEAD may omit it). The local Compose stack instead routes browser access through NGINX on `localhost`, without a browser login, using a private development proxy credential. This is a local development boundary, not application user authentication or production authorization. See the [development environment guide](development-environment.md#local-access-and-limitations).
 
-**Deployment warning:** other simulator API mutations reject forwarding headers, non-loopback Host values, cross-origin or malformed `Origin` headers, and `Sec-Fetch-Site` values other than `same-origin`. Originless command-line requests are allowed. These checks do not authenticate callers or verify the TCP peer; they rely on loopback-bound deployment. `Simulator:AllowHttpMutations` defaults to `true`; Compose sets it to `false`, disabling HTTP simulator controls as well as editor access while retaining read-only viewing and telemetry. This also blocks mutations from Compose-network peers. The browser checks `/api/capabilities` periodically, reports view-only or unavailable access, and disables mutation controls until access is confirmed. These UI flags are not authorization; the server checks every mutation. MQTT commands are separate and require a trusted broker with its own access controls. Compose publishes both application ports on `127.0.0.1`; instrumentation APIs remain unauthenticated. Do not expose these services through proxies or non-loopback bindings. Local users and processes share access.
+**Deployment warning:** direct-host simulator mutations keep `Simulator:AllowHttpMutations` enabled by default, but require both the remote TCP peer address and local socket address to be loopback. The Host must be `localhost` or a loopback IP; forwarding headers are rejected, and same-origin/fetch-metadata checks apply. Originless local requests remain allowed. The Compose proxy sets a separate internal credential and only accepts the configured `localhost` host and public port. Compose enables simulator HTTP mutations only through the Development proxy; NGINX strips client-supplied forwarding and authorization headers but does not authenticate browser requests. NGINX also adds `Content-Security-Policy: frame-ancestors 'none'` and `X-Frame-Options: DENY` to both sites. PostgreSQL, MQTT and application ports are not host-published; NGINX ports bind to `127.0.0.1`. Local users and processes share the trust boundary. MQTT uses separate control and telemetry credentials with topic ACLs. The local credentials are not production secret storage. Do not expose these services through tunnels, non-loopback bindings or another proxy.
 
 | Method | Editor endpoint | Request / result |
 |---|---|---|
@@ -165,20 +165,17 @@ After activation removes a controller, a persistent cleanup item causes an empty
 
 ## Persistence and backup
 
-The simulator stores saved and active designs, the edit revision, retired IDs and controller cleanup work in its own SQLite database. `BuildingDesign:SqlitePath` defaults to `building-design.db` relative to the simulator content root (`src/Devices.BuildingControl.Web/building-design.db` with the normal project run). A fresh database is seeded once. Schema version 4 migrates versions 1–3, retaining saved and active designs and revisions; versions 1–2 stored drafts are discarded. Unknown versions and nonempty unversioned databases are rejected. A version 1 migration can retire IDs visible in its active design but cannot reconstruct earlier deleted IDs. The table definitions are in the [building editor guide's schema](building-editor.md#persistence-and-activation); the separate instrumentation telemetry schema is in the [instrumentation guide](building-instrumentation.md#persistence).
+The simulator stores saved and active designs, the edit revision, retired IDs and controller cleanup work in the PostgreSQL `control` schema of the shared `devices` database. It connects using the separate `control_app` role. PostgreSQL 18 or later supplies UUIDv7 primary-key defaults; stable design entity and controller IDs are stored separately. Schema version 1 is defined in [`database/control/001_initial.sql`](../../database/control/001_initial.sql). Fresh control data is seeded once. Instrumentation uses the distinct `telemetry` schema and `telemetry_app` role; see the [instrumentation persistence guide](building-instrumentation.md#persistence) and [telemetry ERD](../../database/telemetry/erd.mmd).
 
-The project directory was renamed; a database at an old `src/Devices.Simulator.Web/building-design.db` or `src/Devices.BuildingConfigurator.Web/building-design.db` path is not automatically moved or loaded. To keep it, use a validated backup or set `BuildingDesign:SqlitePath` explicitly. Compose uses its existing named volume and is unaffected by the project directory rename.
+The [version 1 schema](../plans/building-editor-spec.md#control-schema-version-1) and its [ERD](../../database/control/erd.mmd) retain a single-building runtime and use immutable design versions with same-building saved and active pointers. It is fresh-only: incompatible earlier development schemas are rejected without modification; it does not automatically migrate existing data.
+
+This PostgreSQL-only environment does not import, migrate, or delete existing SQLite databases or volumes. Older SQLite files remain untouched but are not read by the current applications. Applications reject incomplete or incompatible PostgreSQL schemas instead of creating an empty SQLite database. See the [development environment guide](development-environment.md#postgresql-and-fresh-data) for initialization and [backup and restore](development-environment.md#backup-and-restore).
+
+Building Control holds a PostgreSQL advisory owner lease on a dedicated connection and monitors it. If that connection fails, the process stops rather than continuing as an owner. This is fail-stop single-instance protection, not distributed fencing or high availability.
 
 Save transactionally stores the saved design. Activation is separate: retained device IDs preserve compatible in-memory state, removed devices are dropped, and removed-controller cleanup is queued only when activation succeeds. On startup the last active design is restored, then a different saved revision is retried; a failed retry leaves the old active design. Activation failure status is recomputed by the startup attempt, rather than stored as a durable failure record. After a runtime activation failure, use the editor retry action or restart; there is no separate periodic activation retry. Cleanup state is durable and retried asynchronously.
 
-For a consistent live backup, use SQLite's online backup API. From the repository root, with Python installed:
-
-```powershell
-python -c "import sqlite3; source=sqlite3.connect(r'src\Devices.BuildingControl.Web\building-design.db'); backup=sqlite3.connect('building-design-backup.db'); source.backup(backup); backup.close(); source.close()"
-python -c "import sqlite3; db=sqlite3.connect('building-design-backup.db'); print(db.execute('PRAGMA integrity_check').fetchone(), db.execute('PRAGMA user_version').fetchone()); db.close()"
-```
-
-Confirm integrity is `ok` and schema version is supported before restoring. Stop the simulator, retain a recovery copy, replace the database with the validated backup, and restart. For Compose, stop the simulator before copying or restoring the file in the `building-design-data` volume; do not copy a live SQLite database without its online backup API. Design and telemetry databases are separate: restoring an older design alone can make instrumentation reject its older revision or retired IDs; plan a consistent recovery of both stores. Automatic backups are not implemented.
+Automatic backups are not configured. Back up the entire `devices` database, not just `control`, so designs and revisions are recovered consistently with telemetry membership and tombstones. The [backup and restore procedure](development-environment.md#backup-and-restore) was exercised against a disposable Kiri Compose stack; validate your own backups and recovery process. A backup does not restore in-memory presence, faults or lighting state, nor MQTT retained messages.
 
 ## Source tree
 
@@ -193,7 +190,9 @@ src/Devices.BuildingControl.Web/
   Devices.BuildingControl.Web.csproj
   Program.cs                 application setup and HTTP endpoints
   Building/
-    BuildingDesignStore.cs   SQLite persistence, revision checks and cleanup
+    BuildingDesignStore.cs   PostgreSQL persistence, revision checks and cleanup
+    BuildingControlOwnerLease.cs single-process PostgreSQL lease monitor
+    BuildingEditorStartupService.cs editor-store initialization
   Editor/
     BuildingEditorService.cs editor operations and activation
     BuildingEditor.http      manual HTTP examples (writes replace data)
@@ -203,8 +202,10 @@ src/Devices.BuildingControl.Web/
     MqttCommandRouting.cs    command topic and ID validation
     MqttTelemetryPublisher.cs telemetry publishing and commands
   Security/
-    LocalMutationPolicy.cs   simulator mutation checks
-    SimulatorCapabilities.cs browser capability endpoint
+    LocalMutationPolicy.cs           direct-host mutation checks
+    ProxyDevelopmentAccessPolicy.cs  localhost proxy checks
+    SimulatorAccessPolicy.cs         policy selection and capabilities
+    SimulatorCapabilities.cs         browser capability endpoint
   appsettings.json
   Properties/launchSettings.json
   wwwroot/
@@ -224,21 +225,7 @@ Shared contracts and IDs are in [Devices.Contracts](../../src/Devices.Contracts/
 
 ## Configuration
 
-`appsettings.json`:
-
-```json
-{
-  "Mqtt": {
-    "Host": "localhost",
-    "Port": 1883
-  },
-  "Urls": "http://localhost:5080"
-}
-```
-
-An unavailable broker does not block HTTP simulation. MQTT status is exposed through `/api/status`.
-
-The default design path above may be overridden with `BuildingDesign:SqlitePath` or `BuildingDesign__SqlitePath`. Compose sets it to `/data/building-design.db` in the `building-design-data` volume; the container listens on `0.0.0.0:8080`, its host port is loopback-only, and editor access is disabled.
+Building Control requires `ConnectionStrings:Control`; Compose supplies it from the `control_app` password in `.env`. Compose also configures the MQTT `control` username/password, localhost proxy secret and public port. MQTT status is exposed through `/api/status`. Never commit connection strings or credentials. Direct-host runs require a separately reachable PostgreSQL database and configured connection string; see the [development environment guide](development-environment.md#direct-host-limitations).
 
 ## Running and testing
 
@@ -254,10 +241,12 @@ npm run build
 ```powershell
 dotnet run --project src\Devices.BuildingControl.Web\Devices.BuildingControl.Web.csproj --urls http://localhost:5080
 dotnet test tests\Devices.Simulator.Tests\Devices.Simulator.Tests.csproj
-node --import tsx --test tests\building-access.test.mjs tests\wiring-routes.test.mjs tests\floor-view.test.mjs tests\room-state.test.mjs tests\record-demo.test.mjs tests\localization-en.test.mjs tests\building-design-view.test.mjs tests\building-editor.test.mjs tests\building-editor-ui.test.mjs tests\simulator-react-model.test.mjs
+node --import tsx --test tests\building-control\building-access.test.mjs tests\building-control\placeable-access.test.mjs tests\building-control\wiring-routes.test.mjs tests\building-control\floor-view.test.mjs tests\building-control\room-state.test.mjs tests\shared\record-demo.test.mjs tests\building-control\localization-en.test.mjs tests\building-control\building-design-view.test.mjs tests\building-control\building-editor.test.mjs tests\building-control\building-editor-ui.test.mjs tests\building-control\simulator-react-model.test.mjs
 ```
 
 The simulator view-logic tests require Node.js.
+
+The direct `dotnet run` command requires `ConnectionStrings:Control` to be configured first. Direct-host editor access is limited to loopback Development. For the complete local stack, use the [Compose development environment](development-environment.md).
 
 The simulator test suite includes a broker-backed integration test of simulator publication, instrumentation ingestion, snapshot reconciliation and retained-message cleanup. It uses an isolated, anonymous Mosquitto container bound to a dynamic loopback port and skips if Docker or a locally cached `eclipse-mosquitto:2` image is unavailable. To make the image available and run that test from the repository root:
 

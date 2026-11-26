@@ -1,11 +1,15 @@
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Devices.Contracts;
-using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;
+using Npgsql;
 
 public sealed class TelemetryStore
 {
+    private const int SchemaVersion = 1;
+    private const long MigrationLockId = 75772026001;
+    private const string MigrationResourceName = "Devices.Instrumentation.Web.Migrations.001_initial.sql";
     private readonly object gate = new();
     private readonly ILogger<TelemetryStore> logger;
     private readonly string connectionString;
@@ -21,9 +25,11 @@ public sealed class TelemetryStore
     public TelemetryStore(IConfiguration configuration, ILogger<TelemetryStore>? logger = null)
     {
         this.logger = logger ?? NullLogger<TelemetryStore>.Instance;
-        var path = configuration["Telemetry:SqlitePath"] ?? "telemetry.db";
+        var connectionString = configuration.GetConnectionString("Telemetry");
+        if (string.IsNullOrWhiteSpace(connectionString))
+            throw new InvalidOperationException("ConnectionStrings:Telemetry must be configured.");
         staleAfter = TimeSpan.FromSeconds(configuration.GetValue("Telemetry:StaleAfterSeconds", 30));
-        connectionString = new SqliteConnectionStringBuilder { DataSource = path }.ToString();
+        this.connectionString = connectionString;
         Initialize();
     }
 
@@ -106,41 +112,57 @@ public sealed class TelemetryStore
                 .Distinct(StringComparer.Ordinal).ToArray();
             var observedAt = DateTimeOffset.UtcNow;
             var updates = PrepareHttpUpdates(snapshot.Controllers, observedAt);
-            using var connection = new SqliteConnection(connectionString);
-            connection.Open();
+            using var connection = OpenConnection();
             using var transaction = connection.BeginTransaction();
+
             using (var command = connection.CreateCommand())
             {
                 command.Transaction = transaction;
                 command.CommandText = """
-                    INSERT OR REPLACE INTO controller_design_revision (singleton, revision) VALUES (1, $revision);
-                    DELETE FROM controller_authoritative;
+                    INSERT INTO telemetry.controller_design_revision (singleton, revision)
+                    VALUES (true, @revision)
+                    ON CONFLICT (singleton) DO UPDATE SET revision = EXCLUDED.revision
                     """;
-                command.Parameters.AddWithValue("$revision", snapshot.Revision);
+                command.Parameters.AddWithValue("revision", snapshot.Revision);
                 command.ExecuteNonQuery();
-                foreach (var id in ids)
-                {
-                    command.CommandText = "INSERT INTO controller_authoritative (controller_id) VALUES ($id)";
-                    command.Parameters.Clear();
-                    command.Parameters.AddWithValue("$id", id);
-                    command.ExecuteNonQuery();
-                }
-                foreach (var id in removed)
-                {
-                    command.CommandText = """
-                        INSERT OR IGNORE INTO controller_tombstones (controller_id) VALUES ($id);
-                        DELETE FROM controller_latest WHERE controller_id = $id;
-                        DELETE FROM controller_observed WHERE controller_id = $id;
-                        """;
-                    command.Parameters.Clear();
-                    command.Parameters.AddWithValue("$id", id);
-                    command.ExecuteNonQuery();
-                }
             }
+            using (var command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = "DELETE FROM telemetry.controller_authoritative";
+                command.ExecuteNonQuery();
+            }
+
+            foreach (var id in removed)
+            {
+                using var command = connection.CreateCommand();
+                command.Transaction = transaction;
+                command.CommandText = """
+                    INSERT INTO telemetry.controller_tombstones (controller_id) VALUES (@id)
+                    ON CONFLICT (controller_id) DO NOTHING
+                    """;
+                command.Parameters.AddWithValue("id", id);
+                command.ExecuteNonQuery();
+
+                command.CommandText = "DELETE FROM telemetry.controller_latest WHERE controller_id = @id";
+                command.ExecuteNonQuery();
+            }
+
             foreach (var update in updates)
             {
                 if (update.Telemetry is not null) Persist(connection, transaction, update.Telemetry, observedAt);
                 else PersistObservation(connection, transaction, update.Controller.Id, observedAt);
+            }
+            foreach (var id in ids)
+            {
+                using var command = connection.CreateCommand();
+                command.Transaction = transaction;
+                command.CommandText = """
+                    INSERT INTO telemetry.controller_authoritative (controller_id) VALUES (@id)
+                    ON CONFLICT (controller_id) DO NOTHING;
+                    """;
+                command.Parameters.AddWithValue("id", id);
+                command.ExecuteNonQuery();
             }
             transaction.Commit();
 
@@ -170,8 +192,7 @@ public sealed class TelemetryStore
                 (designRevision is null || authoritativeIds.Contains(c.Id))).ToArray();
             var observedAt = DateTimeOffset.UtcNow;
             var updates = PrepareHttpUpdates(eligible, observedAt);
-            using var connection = new SqliteConnection(connectionString);
-            connection.Open();
+            using var connection = OpenConnection();
             using var transaction = connection.BeginTransaction();
             foreach (var update in updates)
             {
@@ -266,47 +287,144 @@ public sealed class TelemetryStore
 
     private void Initialize()
     {
-        using var connection = new SqliteConnection(connectionString);
-        connection.Open();
-        using var command = connection.CreateCommand();
-        command.CommandText = """
-            CREATE TABLE IF NOT EXISTS telemetry_events (
-                event_id TEXT PRIMARY KEY,
-                controller_id TEXT NOT NULL,
-                event_type TEXT NOT NULL,
-                timestamp TEXT NOT NULL,
-                payload TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS controller_latest (
-                controller_id TEXT PRIMARY KEY,
-                payload TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS controller_observed (
-                controller_id TEXT PRIMARY KEY,
-                timestamp TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS controller_design_revision (
-                singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
-                revision INTEGER NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS controller_authoritative (controller_id TEXT PRIMARY KEY);
-            CREATE TABLE IF NOT EXISTS controller_tombstones (controller_id TEXT PRIMARY KEY);
-            """;
-        command.ExecuteNonQuery();
+        using var connection = OpenConnection();
+        using var versionCommand = connection.CreateCommand();
+        versionCommand.CommandText = "SELECT current_setting('server_version_num')::integer";
+        var serverVersion = Convert.ToInt32(versionCommand.ExecuteScalar());
+        if (serverVersion < 180000)
+            throw new InvalidOperationException("Telemetry persistence requires PostgreSQL 18 or later.");
+        Migrate(connection);
+        LoadPersistedState(connection);
+    }
 
-        command.CommandText = "SELECT revision FROM controller_design_revision WHERE singleton = 1";
-        var revision = command.ExecuteScalar();
-        if (revision is not null) designRevision = Convert.ToInt64(revision);
-        command.CommandText = "SELECT controller_id FROM controller_authoritative";
-        using (var reader = command.ExecuteReader())
-            while (reader.Read()) authoritativeIds.Add(reader.GetString(0));
-        command.CommandText = "SELECT controller_id FROM controller_tombstones";
-        using (var reader = command.ExecuteReader())
-            while (reader.Read()) tombstones.Add(reader.GetString(0));
-
-        command.CommandText = "SELECT controller_id, payload FROM controller_latest";
-        using (var reader = command.ExecuteReader())
+    private static void Migrate(NpgsqlConnection connection)
+    {
+        using var transaction = connection.BeginTransaction();
+        using (var command = connection.CreateCommand())
         {
+            command.Transaction = transaction;
+            command.CommandText = "SELECT pg_advisory_xact_lock(@lockId)";
+            command.Parameters.AddWithValue("lockId", MigrationLockId);
+            command.ExecuteNonQuery();
+        }
+
+        using (var command = connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText = "SELECT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'telemetry')";
+            if (!(bool)command.ExecuteScalar()!)
+                throw new InvalidOperationException("The telemetry schema must be provisioned before the application starts.");
+        }
+
+        bool hasVersionTable;
+        using (var command = connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText = "SELECT to_regclass('telemetry.schema_version') IS NOT NULL";
+            hasVersionTable = (bool)command.ExecuteScalar()!;
+        }
+
+        using (var command = connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText = "SELECT to_regclass('telemetry.schema_migrations') IS NOT NULL";
+            if ((bool)command.ExecuteScalar()!)
+                throw new InvalidOperationException("The telemetry schema uses the legacy schema_migrations table; it requires an explicit reset before initialization.");
+        }
+
+        if (!hasVersionTable)
+        {
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = """
+                SELECT EXISTS (
+                    SELECT 1 FROM pg_class c
+                    JOIN pg_namespace n ON n.oid = c.relnamespace
+                    WHERE n.nspname = 'telemetry' AND c.relkind IN ('r', 'p', 'v', 'm', 'S', 'f')
+                )
+                """;
+            if ((bool)command.ExecuteScalar()!)
+                throw new InvalidOperationException("The telemetry schema contains unversioned objects; refusing to initialize it.");
+
+            using var migrationCommand = connection.CreateCommand();
+            migrationCommand.Transaction = transaction;
+            migrationCommand.CommandText = ReadMigration();
+            migrationCommand.ExecuteNonQuery();
+        }
+        else
+        {
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = "SELECT version FROM telemetry.schema_version WHERE singleton = true";
+            var version = command.ExecuteScalar();
+            if (version is null || version is DBNull)
+                throw new InvalidOperationException("The telemetry schema has no migration version; refusing to use an unversioned schema.");
+            if (Convert.ToInt32(version) != SchemaVersion)
+                throw new InvalidOperationException($"Unsupported telemetry schema version {version}; this application supports version {SchemaVersion}.");
+        }
+
+        EnsureSchemaShape(connection, transaction);
+        transaction.Commit();
+    }
+
+    private static string ReadMigration()
+    {
+        using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(MigrationResourceName)
+            ?? throw new InvalidOperationException($"Embedded telemetry migration '{MigrationResourceName}' was not found.");
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
+
+    private static void EnsureSchemaShape(NpgsqlConnection connection, NpgsqlTransaction transaction)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        foreach (var table in new[]
+        {
+            "schema_version", "telemetry_events", "controller_latest", "controller_observed",
+            "controller_design_revision", "controller_authoritative", "controller_tombstones"
+        })
+        {
+            command.CommandText = $"SELECT created_at, updated_at FROM telemetry.{table} LIMIT 0";
+            command.ExecuteNonQuery();
+            command.CommandText = """
+                SELECT (
+                    SELECT count(*) = 2 FROM information_schema.columns
+                    WHERE table_schema = 'telemetry' AND table_name = @table
+                      AND column_name IN ('created_at', 'updated_at')
+                      AND data_type = 'timestamp with time zone'
+                      AND is_nullable = 'NO' AND column_default = 'clock_timestamp()'
+                ) AND EXISTS (
+                    SELECT 1 FROM pg_trigger
+                    WHERE tgrelid = to_regclass('telemetry.' || @table)
+                      AND NOT tgisinternal AND tgtype = 19 AND tgenabled IN ('O', 'A')
+                      AND tgqual IS NULL AND cardinality(tgattr::smallint[]) = 0
+                      AND tgfoid = to_regprocedure('telemetry.set_updated_at()')
+                )
+                """;
+            command.Parameters.Clear();
+            command.Parameters.AddWithValue("table", table);
+            if (!(bool)command.ExecuteScalar()!)
+                throw new InvalidOperationException($"The telemetry schema has incomplete timestamp tracking on table '{table}'; an explicit reset is required.");
+        }
+    }
+
+    private void LoadPersistedState(NpgsqlConnection connection)
+    {
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "SELECT revision FROM telemetry.controller_design_revision WHERE singleton = true";
+            var revision = command.ExecuteScalar();
+            if (revision is not null && revision is not DBNull) designRevision = Convert.ToInt64(revision);
+        }
+
+        ReadIds(connection, "SELECT controller_id FROM telemetry.controller_authoritative", authoritativeIds);
+        ReadIds(connection, "SELECT controller_id FROM telemetry.controller_tombstones", tombstones);
+
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "SELECT controller_id, payload FROM telemetry.controller_latest";
+            using var reader = command.ExecuteReader();
             while (reader.Read())
             {
                 ControllerState? state;
@@ -322,27 +440,27 @@ public sealed class TelemetryStore
                     continue;
                 }
                 latest[state.Id] = state;
+                lastHttpStates[state.Id] = JsonSerializer.Serialize(state, JsonOptions);
             }
         }
 
-        command.CommandText = "SELECT controller_id, timestamp FROM controller_observed";
-        using (var reader = command.ExecuteReader())
+        using (var command = connection.CreateCommand())
         {
+            command.CommandText = "SELECT controller_id, observed_at FROM telemetry.controller_observed";
+            using var reader = command.ExecuteReader();
             while (reader.Read())
-            {
-                if (DateTimeOffset.TryParse(reader.GetString(1), out var observed))
-                    lastObserved[reader.GetString(0)] = observed;
-            }
+                lastObserved[reader.GetString(0)] = new DateTimeOffset(DateTime.SpecifyKind(reader.GetDateTime(1), DateTimeKind.Utc));
         }
 
-        command.CommandText = """
-            SELECT event_id, controller_id, payload
-            FROM telemetry_events
-            ORDER BY timestamp DESC
-            LIMIT 500
-            """;
-        using (var reader = command.ExecuteReader())
+        using (var command = connection.CreateCommand())
         {
+            command.CommandText = """
+                SELECT event_id, controller_id, payload
+                FROM telemetry.telemetry_events
+                ORDER BY timestamp DESC, id DESC
+                LIMIT 500
+                """;
+            using var reader = command.ExecuteReader();
             while (reader.Read())
             {
                 DeviceTelemetry? telemetry;
@@ -358,58 +476,71 @@ public sealed class TelemetryStore
                     logger.LogWarning("Rejected invalid persisted telemetry event");
                     continue;
                 }
-                events.Insert(0, telemetry);
+                events.Add(telemetry);
             }
-            events.Sort((left, right) => right.Timestamp.CompareTo(left.Timestamp));
         }
 
         foreach (var controllerId in latest.Keys)
             lastObserved.TryAdd(controllerId, DateTimeOffset.UtcNow);
     }
 
+    private static void ReadIds(NpgsqlConnection connection, string sql, HashSet<string> target)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        using var reader = command.ExecuteReader();
+        while (reader.Read()) target.Add(reader.GetString(0));
+    }
+
     private void PersistObservation(string controllerId, DateTimeOffset observedAt)
     {
-        using var connection = new SqliteConnection(connectionString);
-        connection.Open();
+        using var connection = OpenConnection();
         PersistObservation(connection, null, controllerId, observedAt);
     }
 
-    private static void PersistObservation(SqliteConnection connection, SqliteTransaction? transaction, string controllerId, DateTimeOffset observedAt)
+    private static void PersistObservation(NpgsqlConnection connection, NpgsqlTransaction? transaction,
+        string controllerId, DateTimeOffset observedAt)
     {
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = """
-            INSERT OR REPLACE INTO controller_observed (controller_id, timestamp)
-            VALUES ($controllerId, $timestamp)
+            INSERT INTO telemetry.controller_observed (controller_id, observed_at)
+            VALUES (@controllerId, @observedAt)
+            ON CONFLICT (controller_id) DO UPDATE SET observed_at = EXCLUDED.observed_at
             """;
-        command.Parameters.AddWithValue("$controllerId", controllerId);
-        command.Parameters.AddWithValue("$timestamp", observedAt.ToString("O"));
+        command.Parameters.AddWithValue("controllerId", controllerId);
+        command.Parameters.AddWithValue("observedAt", observedAt);
         command.ExecuteNonQuery();
     }
 
     private void Persist(DeviceTelemetry telemetry, DateTimeOffset observedAt)
     {
-        using var connection = new SqliteConnection(connectionString);
-        connection.Open();
+        using var connection = OpenConnection();
         using var transaction = connection.BeginTransaction();
         Persist(connection, transaction, telemetry, observedAt);
         transaction.Commit();
     }
 
-    private static void Persist(SqliteConnection connection, SqliteTransaction transaction, DeviceTelemetry telemetry, DateTimeOffset observedAt)
+    private static void Persist(NpgsqlConnection connection, NpgsqlTransaction transaction,
+        DeviceTelemetry telemetry, DateTimeOffset observedAt)
     {
         using (var command = connection.CreateCommand())
         {
             command.Transaction = transaction;
             command.CommandText = """
-                INSERT OR REPLACE INTO telemetry_events (event_id, controller_id, event_type, timestamp, payload)
-                VALUES ($eventId, $controllerId, $eventType, $timestamp, $payload)
+                INSERT INTO telemetry.telemetry_events (event_id, controller_id, event_type, timestamp, payload)
+                VALUES (@eventId, @controllerId, @eventType, @timestamp, @payload)
+                ON CONFLICT (event_id) DO UPDATE SET
+                    controller_id = EXCLUDED.controller_id,
+                    event_type = EXCLUDED.event_type,
+                    timestamp = EXCLUDED.timestamp,
+                    payload = EXCLUDED.payload
                 """;
-            command.Parameters.AddWithValue("$eventId", telemetry.EventId);
-            command.Parameters.AddWithValue("$controllerId", telemetry.ControllerId);
-            command.Parameters.AddWithValue("$eventType", telemetry.EventType);
-            command.Parameters.AddWithValue("$timestamp", telemetry.Timestamp.ToString("O"));
-            command.Parameters.AddWithValue("$payload", JsonSerializer.Serialize(telemetry, JsonOptions));
+            command.Parameters.AddWithValue("eventId", telemetry.EventId);
+            command.Parameters.AddWithValue("controllerId", telemetry.ControllerId);
+            command.Parameters.AddWithValue("eventType", telemetry.EventType);
+            command.Parameters.AddWithValue("timestamp", telemetry.Timestamp.ToUniversalTime());
+            command.Parameters.AddWithValue("payload", JsonSerializer.Serialize(telemetry, JsonOptions));
             command.ExecuteNonQuery();
         }
 
@@ -417,28 +548,26 @@ public sealed class TelemetryStore
         {
             command.Transaction = transaction;
             command.CommandText = """
-                INSERT OR REPLACE INTO controller_latest (controller_id, payload)
-                VALUES ($controllerId, $payload)
+                INSERT INTO telemetry.controller_latest (controller_id, payload)
+                VALUES (@controllerId, @payload)
+                ON CONFLICT (controller_id) DO UPDATE SET payload = EXCLUDED.payload
                 """;
-            command.Parameters.AddWithValue("$controllerId", telemetry.ControllerId);
-            command.Parameters.AddWithValue("$payload", JsonSerializer.Serialize(telemetry.State, JsonOptions));
+            command.Parameters.AddWithValue("controllerId", telemetry.ControllerId);
+            command.Parameters.AddWithValue("payload", JsonSerializer.Serialize(telemetry.State, JsonOptions));
             command.ExecuteNonQuery();
         }
 
-        using (var command = connection.CreateCommand())
-        {
-            command.Transaction = transaction;
-            command.CommandText = """
-                INSERT OR REPLACE INTO controller_observed (controller_id, timestamp)
-                VALUES ($controllerId, $timestamp)
-                """;
-            command.Parameters.AddWithValue("$controllerId", telemetry.ControllerId);
-            command.Parameters.AddWithValue("$timestamp", observedAt.ToString("O"));
-            command.ExecuteNonQuery();
-        }
+        PersistObservation(connection, transaction, telemetry.ControllerId, observedAt);
     }
 
     private static readonly JsonSerializerOptions JsonOptions = CreateJsonOptions();
+
+    private NpgsqlConnection OpenConnection()
+    {
+        var connection = new NpgsqlConnection(connectionString);
+        connection.Open();
+        return connection;
+    }
 
     private static JsonSerializerOptions CreateJsonOptions()
     {
@@ -450,4 +579,3 @@ public sealed class TelemetryStore
         return options;
     }
 }
-

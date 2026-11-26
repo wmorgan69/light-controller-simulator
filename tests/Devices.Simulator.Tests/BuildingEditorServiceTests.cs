@@ -1,12 +1,13 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Data.Sqlite;
 using System.Text.Json;
 
-public sealed class BuildingEditorServiceTests : IDisposable
+public sealed class BuildingEditorServiceTests
 {
-    private readonly string path = Path.GetFullPath($"building-editor-{Guid.NewGuid():N}.db");
+    private readonly string path = ControlTestDatabase.ConnectionString;
+
+    public BuildingEditorServiceTests() => ControlTestDatabase.Reset();
 
     [Fact]
     public void SaveActivatesPersistedDesignAndRestartRestoresIt()
@@ -85,7 +86,14 @@ public sealed class BuildingEditorServiceTests : IDisposable
         var store = new BuildingDesignStore(path);
         var initial = store.Read();
         var pending = store.Save(initial.EditRevision, initial.Saved with { Width = 25 });
-        ExecuteSql("CREATE TRIGGER reject_activation BEFORE UPDATE OF active ON building_design BEGIN SELECT RAISE(ABORT, 'activation failed'); END;");
+        ControlTestDatabase.Execute("""
+            CREATE FUNCTION control.test_reject_activation() RETURNS trigger
+            LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'activation failed'; END; $$
+            """);
+        ControlTestDatabase.Execute("""
+            CREATE TRIGGER reject_activation BEFORE UPDATE OF active_design_id ON control.building
+            FOR EACH ROW EXECUTE FUNCTION control.test_reject_activation()
+            """);
 
         var (editor, simulator) = Create();
         Assert.Equal("failed", editor.Read().ActivationStatus);
@@ -94,7 +102,8 @@ public sealed class BuildingEditorServiceTests : IDisposable
         Assert.Equal("failed", editor.ReadStatus().ActivationStatus);
         Assert.Equal(initial.Active.Revision, editor.ReadStatus().RunningRevision);
 
-        ExecuteSql("DROP TRIGGER reject_activation;");
+        ControlTestDatabase.Execute("DROP TRIGGER reject_activation ON control.building");
+        ControlTestDatabase.Execute("DROP FUNCTION control.test_reject_activation()");
         Assert.Equal(200, ((IStatusCodeHttpResult)editor.Retry()).StatusCode);
         Assert.Equal("active", editor.Read().ActivationStatus);
         Assert.Equal(pending.Snapshot.Saved.Revision, simulator.GetControllerSnapshot().Revision);
@@ -107,15 +116,6 @@ public sealed class BuildingEditorServiceTests : IDisposable
         Assert.Equal(202, ((IStatusCodeHttpResult)editor.RetryCleanup()).StatusCode);
     }
 
-    private void ExecuteSql(string sql)
-    {
-        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = path, Pooling = false }.ToString());
-        connection.Open();
-        using var command = connection.CreateCommand();
-        command.CommandText = sql;
-        command.ExecuteNonQuery();
-    }
-
     private (BuildingEditorService Editor, BuildingSimulator Simulator) Create()
     {
         var store = new BuildingDesignStore(path);
@@ -123,12 +123,5 @@ public sealed class BuildingEditorServiceTests : IDisposable
         var mqtt = new MqttTelemetryPublisher(NullLogger<MqttTelemetryPublisher>.Instance,
             new ConfigurationBuilder().Build(), simulator, store);
         return (new BuildingEditorService(store, simulator, mqtt, NullLogger<BuildingEditorService>.Instance), simulator);
-    }
-
-    public void Dispose()
-    {
-        File.Delete(path);
-        File.Delete(path + "-wal");
-        File.Delete(path + "-shm");
     }
 }

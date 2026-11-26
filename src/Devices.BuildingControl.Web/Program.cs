@@ -11,26 +11,39 @@ builder.Services.AddSingleton<IBuildingDeviceConnector>(provider => provider.Get
 builder.Services.AddSingleton(provider =>
 {
     var configuration = provider.GetRequiredService<IConfiguration>();
-    var environment = provider.GetRequiredService<IWebHostEnvironment>();
-    var path = configuration["BuildingDesign:SqlitePath"] ?? "building-design.db";
-    return new BuildingDesignStore(Path.GetFullPath(path, environment.ContentRootPath));
+    var connectionString = configuration.GetConnectionString("Control");
+    if (string.IsNullOrWhiteSpace(connectionString))
+        throw new InvalidOperationException("ConnectionStrings:Control must be configured for Building Control.");
+    return new BuildingDesignStore(connectionString);
 });
+builder.Services.AddSingleton(provider =>
+{
+    var configuration = provider.GetRequiredService<IConfiguration>();
+    var connectionString = configuration.GetConnectionString("Control");
+    if (string.IsNullOrWhiteSpace(connectionString))
+        throw new InvalidOperationException("ConnectionStrings:Control must be configured for Building Control.");
+    return new BuildingControlOwnerLease(connectionString,
+        provider.GetRequiredService<IHostApplicationLifetime>(),
+        provider.GetRequiredService<ILogger<BuildingControlOwnerLease>>());
+});
+builder.Services.AddHostedService(provider => provider.GetRequiredService<BuildingControlOwnerLease>());
+builder.Services.AddHostedService<BuildingEditorStartupService>();
 builder.Services.AddSingleton<MqttTelemetryPublisher>();
 builder.Services.AddSingleton<BuildingEditorService>();
 builder.Services.AddHostedService(provider => provider.GetRequiredService<MqttTelemetryPublisher>());
 
 var app = builder.Build();
 var allowHttpMutations = builder.Configuration.GetValue<bool?>("Simulator:AllowHttpMutations") ?? true;
-app.Services.GetRequiredService<BuildingEditorService>();
+var access = new SimulatorAccessPolicy(allowHttpMutations, app.Environment.IsDevelopment(), builder.Configuration);
 app.UseWhen(context => context.Request.Path.StartsWithSegments("/api/building-editor"), branch =>
     branch.Use(async (context, next) =>
     {
         var addresses = context.RequestServices.GetRequiredService<IServer>().Features
             .Get<IServerAddressesFeature>()?.Addresses ?? [];
-        if (!EditorAccessPolicy.IsAllowed(context, addresses, app.Environment.IsDevelopment()))
+        if (!access.CanEdit(context, addresses))
         {
             await Results.Problem(statusCode: StatusCodes.Status403Forbidden,
-                detail: "The building editor is available only on a direct loopback development host.")
+                detail: "The building editor requires an authorized local development connection.")
                 .ExecuteAsync(context);
             return;
         }
@@ -41,11 +54,11 @@ app.UseWhen(context => context.Request.Path.StartsWithSegments("/api") &&
       HttpMethods.IsOptions(context.Request.Method)), branch =>
     branch.Use(async (context, next) =>
     {
-        if (!LocalMutationPolicy.IsAllowed(context.Request, allowHttpMutations))
+        if (!access.CanMutate(context))
         {
             await Results.Problem(statusCode: StatusCodes.Status403Forbidden,
                 detail: allowHttpMutations
-                    ? "Simulator mutations require a direct local host and same-origin browser request."
+                    ? "Simulator mutations require an authorized local same-origin request."
                     : "Simulator HTTP mutations are disabled for this deployment.")
                 .ExecuteAsync(context);
             return;
@@ -59,7 +72,7 @@ app.MapGet("/api/controllers", (IBuildingDeviceConnector simulator) => Results.O
 app.MapGet("/api/controller-snapshot", (IBuildingDeviceConnector simulator) => Results.Ok(simulator.GetControllerSnapshot()));
 app.MapGet("/api/building-view", (IBuildingDeviceConnector simulator) => Results.Ok(simulator.GetBuildingView()));
 app.MapGet("/api/building-design-status", (BuildingEditorService editor) => Results.Ok(editor.ReadStatus()));
-SimulatorCapabilities.Map(app, allowHttpMutations);
+SimulatorCapabilities.Map(app, allowHttpMutations, access);
 app.MapGet("/api/building-editor", (BuildingEditorService editor) => Results.Ok(editor.Read()));
 app.MapGet("/api/building-editor/default-design", () => Results.Ok(BuildingDesignSeed.Create()));
 app.MapPost("/api/building-editor/save", (BuildingEditorWriteRequest request, BuildingEditorService editor) => editor.Save(request));

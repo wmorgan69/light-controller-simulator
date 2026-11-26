@@ -5,6 +5,9 @@ export default defineConfig(({ mode }) => {
   const project = mode === 'simulator' ? 'Devices.BuildingControl.Web' : 'Devices.Instrumentation.Web';
   return {
     build: {
+      watch: process.env.DEV_VITE_USE_POLLING === '1'
+        ? { chokidar: { usePolling: true, interval: 1000 } }
+        : null,
       outDir: resolve(`src/${project}/wwwroot/dist`),
       emptyOutDir: true,
       cssCodeSplit: false,

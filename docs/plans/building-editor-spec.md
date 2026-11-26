@@ -1,6 +1,6 @@
 # Building editor specification
 
-**Status: implemented, with limitations below.** This describes current behavior rather than a claim that every original acceptance goal is complete.
+**Status: implemented, with limitations below.** This describes current behavior.
 
 ## Table of contents
 
@@ -8,6 +8,7 @@
 - [Current workflow](#current-workflow)
 - [Building design and validation](#building-design-and-validation)
 - [Persistence and runtime integration](#persistence-and-runtime-integration)
+  - [Control schema version 1](#control-schema-version-1)
 - [Access and API](#access-and-api)
 - [Failure and conflict handling](#failure-and-conflict-handling)
 - [Remaining gaps](#remaining-gaps)
@@ -15,7 +16,7 @@
 
 ## Purpose and scope
 
-The simulator supports editing one building's dimensions, floors, rooms, doors, lights, sensors and controller connections, with a saved design in SQLite. This is a local-development simulator, not an electrical engineering or code-compliance tool. Instrumentation has a separate telemetry database. See the [editor technical guide](../technical/building-editor.md), [simulator guide](../technical/building-control.md) and [instrumentation guide](../technical/building-instrumentation.md).
+The simulator supports editing one building's dimensions, floors, rooms, doors, lights, sensors and controller connections, with saved design state in PostgreSQL. This is a local-development simulator, not an electrical engineering or code-compliance tool. Instrumentation uses a separate PostgreSQL schema. See the [editor technical guide](../technical/building-editor.md), [simulator guide](../technical/building-control.md) and [instrumentation guide](../technical/building-instrumentation.md).
 
 ## Current workflow
 
@@ -82,9 +83,9 @@ Unsaved in-memory edits may temporarily be invalid. A save request must be struc
 
 ## Persistence and runtime integration
 
-`BuildingDesign:SqlitePath` defaults to `building-design.db` relative to the simulator content root. Compose sets `BuildingDesign__SqlitePath=/data/building-design.db` and mounts `building-design-data` at `/data`; instrumentation uses its own `telemetry-data` volume. Fresh databases receive the seed only once. Schema version 4 migrates versions 1–3 while retaining saved and active designs and revision. An unsupported version or nonempty unversioned database is rejected. Migration cannot recover IDs deleted before version 1, except IDs still visible in the old active design. See [backup and restore](../technical/building-control.md#persistence-and-backup).
+Building Control stores saved and active designs, edit revision, retired IDs and cleanup work in PostgreSQL's `control` schema. Instrumentation stores telemetry in the `telemetry` schema of the same `devices` database. Each application uses its own database role. PostgreSQL 18 or later supplies UUIDv7 primary-key defaults; externally meaningful design, controller and event IDs remain separate. The Compose database volume is shared across the container/release and live-development modes. A fresh schema is initialized and seeded once; this environment does not import or migrate prior SQLite files. See the [development environment guide](../technical/development-environment.md) for setup, data retention and recovery notes.
 
-The database stores saved and last active designs, edit revision, retired IDs and cleanup status. Save compares the client's observed edit revision and atomically replaces the saved design, then separately attempts activation. Activation retains compatible live state for retained device IDs and drops removed devices; state itself is not restored across process restart. Removed controllers are enqueued for cleanup only as part of successful activation. Older active work is fenced by saved or active revision and retired IDs cannot be reused.
+The database stores saved and last active designs, edit revision, retired IDs and cleanup status. Save compares the client's observed edit revision and atomically creates a new design version and advances the saved pointer, then separately attempts activation. Activation retains compatible live state for retained device IDs and drops removed devices; state itself is not restored across process restart. Removed controllers are enqueued for cleanup only as part of successful activation. Older active work is fenced by saved or active revision and retired IDs cannot be reused.
 
 Older designs with absent or null access arrays retain their legacy generated geometry. Opening one in the editor creates editable access objects in the browser; saving persists those objects with stable IDs. Empty arrays explicitly remove that floor's corresponding generated objects. Session undo includes changes to access objects.
 
@@ -105,7 +106,7 @@ config:
 ---
 flowchart LR
     Editor("Local editor") -->|save with expected revision| API("Simulator editor API")
-    API -->|transactional saved design| DB[("Design SQLite")]
+    API -->|transactional saved design| DB[("PostgreSQL<br/>control schema")]
     API -->|activate saved revision| Runtime("Simulator runtime")
     Runtime -->|commit active and enqueue removals| DB
     Runtime -->|building view and design status| Browser("Simulator browser")
@@ -113,7 +114,7 @@ flowchart LR
     DB -->|restore active; retry saved on startup| Runtime
     DB -->|pending or failed cleanup| Publisher("MQTT publisher")
     Publisher -->|empty retained payload| Broker("MQTT broker")
-    Dashboard --> Telemetry[("Instrumentation telemetry SQLite")]
+    Dashboard --> Telemetry[("PostgreSQL<br/>telemetry schema")]
     classDef default fill:#1E293B,stroke:#60A5FA,color:#F8FAFC;
 ```
 
@@ -121,11 +122,27 @@ The publisher tries pending and failed cleanup while MQTT is connected, normally
 
 Instrumentation polls `/api/controller-snapshot`, containing the active design revision and controllers. It persists membership, removes absent controllers' current state and observation timestamps, preserves historical events, and tombstones removed IDs to reject late telemetry. Equal revisions must have equal membership; stale revisions and reused tombstones are rejected. Only a `404` falls back to legacy `/api/controllers`, which cannot establish removals.
 
+### Control schema version 1
+
+Control schema version 1 initializes only fresh schemas. See its [ERD](../../database/control/erd.mmd) and [initial SQL](../../database/control/001_initial.sql). Runtime remains single-building; this redesign introduces no UI or API.
+
+| Table | Fields and constraints |
+| --- | --- |
+| `building` | UUIDv7 `id`; unique `singleton_key` constrained to 1; `name`, `saved_design_id`, `active_design_id`, `edit_revision`, `created_at`, `updated_at`. |
+| `building_design` | UUIDv7 `id`; `building_id`, JSONB `design`, `revision`, `created_at`, `updated_at`. Revisions are unique within a building. |
+| `retired_design_entity_id` | UUIDv7 `id`; `building_id`, globally unique `external_id`, `entity_type`, `retired_at`, `created_at`, `updated_at`. |
+| `controller_mqtt_retained_cleanup` | UUIDv7 `id`; `building_id`, globally unique `controller_id`, `active_design_revision`, `status`, `created_at`, `updated_at`. |
+| `schema_version` | Retains UUIDv7 `id`, singleton key, `version`, `seeded` and `applied_at`; adds `created_at` and `updated_at`. |
+
+Design, retired-ID and cleanup rows belong to a building. Both required design pointers must reference design rows owned by that same building, even if they point to the same row. The store treats saved design content and revision as immutable: saving edits creates a new version row and moves the saved pointer; successful activation moves the active pointer separately. All tables automatically set creation and update timestamps and automatically update `updated_at` on changes; `applied_at` remains the schema application time. External IDs and controller IDs retain global uniqueness, independently of building ownership.
+
+Version 1 initializes only a fresh control schema and does not automatically migrate earlier development schemas. The previous version 2 and the older, differently shaped version 1 schemas are rejected without changing their data. See [reset and version behavior](../technical/development-environment.md#postgresql-and-fresh-data) before discarding data.
+
 ## Access and API
 
-Editor access has no authentication and is limited to a directly connected loopback host in the Development environment. The client and local connection addresses, request host and every server listener must be loopback; the request scheme and port must match a listener. Forwarding headers are rejected. Mutations require an exact same-origin `Origin`; GET/HEAD may omit it. Compose publishes its ports on host loopback, but the container listener binds `0.0.0.0`, so editor endpoints are disabled there.
+In direct-host Development, editor access has no authentication and is limited to a directly connected loopback client and listener; both the TCP peer and local socket address must be loopback, the request host/scheme/port must match, forwarding headers are rejected, and mutations require an exact same-origin `Origin` (GET/HEAD may omit it). Simulator mutations retain their enabled-by-default setting but also require loopback peer/local addresses plus same-origin and fetch-metadata checks. The local Compose stack instead routes browser access through NGINX on `localhost`, without a browser login, using a private development proxy credential; the proxy enables editor and simulator HTTP mutations only in the Development environment. This is a local development boundary, not application user authentication or production authorization. See the [development environment guide](../technical/development-environment.md#local-access-and-limitations).
 
-Other simulator API mutations reject forwarding headers, non-loopback Host values, cross-origin or malformed `Origin` headers, and `Sec-Fetch-Site` values other than `same-origin`. Originless local command-line requests remain supported. These checks do not authenticate callers or check the TCP peer; they rely on a loopback-bound deployment. Compose sets `Simulator:AllowHttpMutations` to `false` so HTTP mutations are disabled even from its internal network; the default is `true` for direct local development. Compose therefore supports viewing and telemetry polling, but not simulator HTTP controls or editor mutations. MQTT commands are separate and require a trusted broker with its own access controls. Instrumentation APIs are unauthenticated. The Compose ports are bound to `127.0.0.1`; do not expose them through proxies or non-loopback bindings. Local processes and users share access.
+Other simulator API mutations reject forwarding headers, non-loopback Host values, cross-origin or malformed `Origin` headers, and `Sec-Fetch-Site` values other than `same-origin`. Originless local command-line requests remain supported on direct-host Development. The Compose proxy sets a separate internal credential and only accepts the configured `localhost` host and public port. Compose binds NGINX ports to `127.0.0.1`; applications, PostgreSQL and MQTT are not host-published. MQTT control and telemetry clients use separate credentials and topic ACLs. The proxy does not authenticate browser requests or protect the sites from local users or processes. Do not expose the ports remotely or through another proxy.
 
 The browser periodically reads `GET /api/capabilities`, which returns non-cached `mutationsAllowed` and `editorAllowed` flags for the current request. Until access is confirmed, or if the check fails, mutation controls are disabled and access status is shown. These flags guide the UI; server policies still enforce each request.
 
@@ -149,13 +166,14 @@ The read-only `GET /api/building-design-status` is not editor-restricted. It ret
 - Concurrent editors can open independently; stale saves return a conflict rather than overwriting newer designs.
 - A persistence failure leaves local edits in memory; closing or reloading the browser loses unsaved edits.
 - A saved revision can remain pending or failed while the previous active design runs. Cleanup remains pending or failed until a successful broker publish; retry and status are separate from activation.
-- SQLite failures do not replace the database with an empty design. Online backup or a stopped-server copy is required for a consistent backup.
+- PostgreSQL connection or schema failures prevent normal store initialization; the application does not fall back to SQLite or an empty design. Backups are not automatic; follow the [database recovery notes](../technical/development-environment.md#backup-and-restore).
 
 ## Remaining gaps
 
 - Access objects and room geometry are illustrative and do not guarantee a connected or accessible route from each interior door. The seed approximates the baseline room geometry.
-- Authentication, authorization and safe editor access for non-loopback, proxy or Compose deployments are not implemented.
+- Remote, non-development authentication and authorization are not implemented. Local Compose has no browser login; its service credentials are not production secret storage.
 - Automatic backups and a periodic activation retry are not implemented.
+- The PostgreSQL owner lease is fail-stop protection for a single Building Control process; it is not distributed fencing or high availability.
 - Cleanup indicates broker publication, not acknowledgement by every subscriber. A [broker-backed test](../technical/building-control.md#running-and-testing) covers ingestion, direct snapshot reconciliation and retained-message cleanup; it does not cover HTTP polling, disconnects or process restarts. Accessibility and desktop/mobile verification remain broader than this test.
 - Legacy UX and design documents remain design references and may describe proposed behavior beyond the current implementation.
 

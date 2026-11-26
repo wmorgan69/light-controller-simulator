@@ -5,8 +5,8 @@ export default defineConfig({
     environment: 'jsdom',
     include: [
       'tests/**/*.component.test.jsx',
-      'tests/simulator-react-model.test.mjs',
-      'tests/instrumentation-react-telemetry.test.mjs'
+      'tests/building-control/simulator-react-model.test.mjs',
+      'tests/instrumentation/instrumentation-react-telemetry.test.mjs'
     ],
     coverage: {
       provider: 'v8',

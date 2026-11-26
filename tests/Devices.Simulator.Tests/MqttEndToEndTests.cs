@@ -5,7 +5,6 @@ using System.Net.Sockets;
 using System.Text;
 using Devices.Contracts;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using MQTTnet;
@@ -17,17 +16,17 @@ public sealed class MqttEndToEndTests
     public async Task PublishedStateIsIngestedAndRemovedControllerRetainedStateIsCleared()
     {
         await using var broker = await LocalMqttBroker.StartOrSkipAsync();
-        var designPath = Path.GetFullPath($"mqtt-e2e-design-{Guid.NewGuid():N}.db");
-        var telemetryPath = Path.GetFullPath($"mqtt-e2e-telemetry-{Guid.NewGuid():N}.db");
+        ControlTestDatabase.Reset();
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["Mqtt:Host"] = "127.0.0.1",
             ["Mqtt:Port"] = broker.Port.ToString(),
-            ["BuildingDesign:SqlitePath"] = designPath,
-            ["Telemetry:SqlitePath"] = telemetryPath,
+            ["ConnectionStrings:Control"] = ControlTestDatabase.ConnectionString,
+            ["ConnectionStrings:Telemetry"] = SimulatorTelemetryTestDatabase.ConnectionString,
             ["Telemetry:SimulatorBaseUrl"] = "http://127.0.0.1:1"
         }).Build();
-        var designStore = new BuildingDesignStore(designPath);
+        SimulatorTelemetryTestDatabase.Reset(configuration);
+        var designStore = new BuildingDesignStore(ControlTestDatabase.ConnectionString);
         var simulator = new BuildingSimulator();
         var publisher = new MqttTelemetryPublisher(NullLogger<MqttTelemetryPublisher>.Instance,
             configuration, simulator, designStore);
@@ -84,9 +83,6 @@ public sealed class MqttEndToEndTests
         {
             await publisher.StopAsync(CancellationToken.None);
             await subscriber.StopAsync(CancellationToken.None);
-            SqliteConnection.ClearAllPools();
-            DeleteDatabase(designPath);
-            DeleteDatabase(telemetryPath);
         }
     }
 
@@ -138,12 +134,6 @@ public sealed class MqttEndToEndTests
                 await client.DisconnectAsync();
             client.Dispose();
         }
-    }
-
-    private static void DeleteDatabase(string path)
-    {
-        foreach (var suffix in new[] { "", "-wal", "-shm" })
-            File.Delete(path + suffix);
     }
 
     private sealed class LocalMqttBroker : IAsyncDisposable

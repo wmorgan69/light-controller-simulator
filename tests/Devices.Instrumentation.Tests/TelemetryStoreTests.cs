@@ -2,15 +2,18 @@ using Devices.Contracts;
 using Microsoft.Extensions.Configuration;
 using Xunit;
 
+[Collection(TelemetryDatabaseCollection.Name)]
 public class TelemetryStoreTests
 {
+    public TelemetryStoreTests() => TelemetryTestDatabase.Reset();
+
     [Fact]
     public void StoreKeepsLatestControllerAndRecentEvent()
     {
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
         var controller = DeviceIds.CreateBuilding().First();
         var telemetry = new DeviceTelemetry("event-1", controller.Id, "state.changed",
@@ -28,7 +31,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db"),
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString,
                 ["Telemetry:StaleAfterSeconds"] = "0"
             }).Build());
         var controller = DeviceIds.CreateBuilding().First();
@@ -44,7 +47,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
         var controller = DeviceIds.CreateBuilding().First();
         var newer = controller with
@@ -69,7 +72,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db"),
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString,
                 ["Telemetry:StaleAfterSeconds"] = "30"
             }).Build());
         var controller = DeviceIds.CreateBuilding().First();
@@ -84,11 +87,11 @@ public class TelemetryStoreTests
     [Fact]
     public void StoreRestoresPersistedRecentEvents()
     {
-        var sqlitePath = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db");
+        var connectionString = TelemetryTestDatabase.ConnectionString;
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = sqlitePath
+                ["ConnectionStrings:Telemetry"] = connectionString
             }).Build();
         var controller = DeviceIds.CreateBuilding().First();
         var telemetry = new DeviceTelemetry("event-persisted", controller.Id, "state.changed",
@@ -108,7 +111,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
         var controller = DeviceIds.CreateBuilding().First();
         var changed = controller with
@@ -130,7 +133,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
         var controller = DeviceIds.CreateBuilding().First();
         var persisted = controller with { Revision = 100, Status = ControllerStatus.Faulted };
@@ -151,7 +154,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
         var controller = DeviceIds.CreateBuilding().First();
         var state1 = controller with { Revision = 1, Status = ControllerStatus.Healthy };
@@ -169,7 +172,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
         var controller = DeviceIds.CreateBuilding().First();
 
@@ -185,7 +188,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
         var controller = DeviceIds.CreateBuilding().First();
 
@@ -205,7 +208,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
         var controller = DeviceIds.CreateBuilding().First();
         var higher = controller with { Revision = 100, Status = ControllerStatus.Faulted };
@@ -225,7 +228,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
         var controllers = DeviceIds.CreateBuilding().Take(2).ToList();
 
@@ -244,7 +247,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
 
         Assert.Empty(store.GetEvents());
@@ -256,7 +259,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
 
         Assert.Empty(store.GetSnapshot());
@@ -265,11 +268,11 @@ public class TelemetryStoreTests
     [Fact]
     public void PersistencePreservesMultipleEventsOnRestart()
     {
-        var sqlitePath = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db");
+        var connectionString = TelemetryTestDatabase.ConnectionString;
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = sqlitePath
+                ["ConnectionStrings:Telemetry"] = connectionString
             }).Build();
 
         var controller1 = DeviceIds.CreateBuilding().First();
@@ -290,7 +293,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
 
         store.Observe("unknown-id");
@@ -304,7 +307,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
 
         var controller = store.GetController("unknown-id");
@@ -317,7 +320,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
         var controller = DeviceIds.CreateBuilding().First();
 
@@ -334,7 +337,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
         var controller = DeviceIds.CreateBuilding().First();
         var state2 = controller with { Revision = 2, Status = ControllerStatus.Faulted };
@@ -354,7 +357,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
         var controllers = DeviceIds.CreateBuilding().ToArray();
 
@@ -373,13 +376,13 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
         var controller = DeviceIds.CreateBuilding().First();
 
-        store.IngestFallbackChange(new DeviceTelemetry("e1", controller.Id, "state", DateTimeOffset.UtcNow, controller));
-        System.Threading.Thread.Sleep(10);
-        store.IngestFallbackChange(new DeviceTelemetry("e2", controller.Id, "fault", DateTimeOffset.UtcNow, controller));
+        var timestamp = DateTimeOffset.UtcNow;
+        store.IngestFallbackChange(new DeviceTelemetry("e1", controller.Id, "state", timestamp, controller));
+        store.IngestFallbackChange(new DeviceTelemetry("e2", controller.Id, "fault", timestamp.AddSeconds(1), controller));
 
         var events = store.GetEvents();
         Assert.Equal(2, events.Count);
@@ -393,7 +396,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
         var controller = DeviceIds.CreateBuilding().First();
 
@@ -412,7 +415,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
         var controller = DeviceIds.CreateBuilding().First();
 
@@ -430,7 +433,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
         var controller = DeviceIds.CreateBuilding().First();
         var state1 = controller with { Status = ControllerStatus.Healthy };
@@ -451,7 +454,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
         var controllers = DeviceIds.CreateBuilding().ToList();
 
@@ -471,7 +474,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
         var controller = DeviceIds.CreateBuilding().First();
         var healthy = controller with { Status = ControllerStatus.Healthy };
@@ -492,7 +495,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
         var controller = DeviceIds.CreateBuilding().First();
 
@@ -510,7 +513,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
         var controllers = DeviceIds.CreateBuilding().ToList();
 
@@ -529,7 +532,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
 
         var controller = store.GetController("invalid-controller-id");
@@ -542,7 +545,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
 
         store.Observe("unknown-controller-id");
@@ -557,7 +560,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
         var controller = DeviceIds.CreateBuilding().First();
         var newer = controller with { Revision = 10 };
@@ -576,7 +579,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
         var controller = DeviceIds.CreateBuilding().First();
         var now = DateTimeOffset.UtcNow;
@@ -598,7 +601,7 @@ public class TelemetryStoreTests
     [Fact]
     public void PersistenceRestoresEventsAfterRestart()
     {
-        var dbPath = Path.Combine(Path.GetTempPath(), $"telemetry-persist-{Guid.NewGuid():N}.db");
+        var connectionString = TelemetryTestDatabase.ConnectionString;
         var controller = DeviceIds.CreateBuilding().First();
 
         // First instance: create and ingest
@@ -606,7 +609,7 @@ public class TelemetryStoreTests
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["Telemetry:SqlitePath"] = dbPath
+                    ["ConnectionStrings:Telemetry"] = connectionString
                 }).Build();
             var store1 = new TelemetryStore(config);
             store1.IngestFallbackChange(new DeviceTelemetry("persisted1", controller.Id, "state",
@@ -620,7 +623,7 @@ public class TelemetryStoreTests
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["Telemetry:SqlitePath"] = dbPath
+                    ["ConnectionStrings:Telemetry"] = connectionString
                 }).Build();
             var store2 = new TelemetryStore(config);
             var events = store2.GetEvents();
@@ -636,7 +639,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
         var controller = DeviceIds.CreateBuilding().First();
 
@@ -656,7 +659,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
 
         var snapshot = store.GetSnapshot();
@@ -669,7 +672,7 @@ public class TelemetryStoreTests
         var store = new TelemetryStore(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Telemetry:SqlitePath"] = Path.Combine(Path.GetTempPath(), $"telemetry-{Guid.NewGuid():N}.db")
+                ["ConnectionStrings:Telemetry"] = TelemetryTestDatabase.ConnectionString
             }).Build());
 
         var events = store.GetEvents();

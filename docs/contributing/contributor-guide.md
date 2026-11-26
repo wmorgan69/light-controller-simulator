@@ -79,14 +79,17 @@ dotnet test Devices.slnx --no-build --no-restore --collect:"XPlat Code Coverage"
 
 Coverage XML files appear in: `tests/**/TestResults/*/coverage.cobertura.xml`
 
-The CI workflow adds simulator view-logic and recording-helper Node tests and a Docker Compose smoke test. To run a focused subset of the Node tests and start the Compose services locally:
+Persistence tests require isolated PostgreSQL 18 databases. Set `DEVICES_TEST_CONTROL_CONNECTION`, `DEVICES_TEST_TELEMETRY_CONNECTION` and `INSTRUMENTATION_TEST_CONNECTION_STRING` to the appropriate test databases; the test helpers enforce database-name prefixes and reset data. Never point them at the local development database. CI provisions these test databases before running the suite.
 
-```powershell
-node --import tsx --test tests/building-access.test.mjs tests/wiring-routes.test.mjs tests/floor-view.test.mjs tests/room-state.test.mjs tests/record-demo.test.mjs
-docker compose up --build -d
+The CI workflow adds simulator view-logic and recording-helper Node tests and a Docker Compose smoke test. To run a focused subset of the Node tests and start the local Compose services:
+
+```bash
+node --import tsx --test tests/building-control/building-access.test.mjs tests/building-control/wiring-routes.test.mjs tests/building-control/floor-view.test.mjs tests/building-control/room-state.test.mjs tests/shared/record-demo.test.mjs
+bash deploy/docker-dev-setup.sh
+docker compose --project-directory . -p devices -f deploy/docker/compose.yaml up --build -d
 ```
 
-The Compose command above only starts the services; it does not run the [CI smoke-test checks](../../.github/workflows/ci.yml). Stop local services with `docker compose down` when finished. The CI smoke test verifies the simulator controller count and confirms that a room-presence mutation is rejected with HTTP 403. It checks that instrumentation receives the initial unoccupied room state over HTTP while MQTT is disconnected, then stops both services and recreates only instrumentation to verify that state is restored from SQLite while the simulator is offline. Readiness GET requests have bounded retries, including connection resets; the rejected POST is not retried. The CI job cleans up its disposable Compose resources after the check.
+The Compose command above only starts the services; it does not run the [CI smoke-test checks](../../.github/workflows/ci.yml). The setup script generates local service credentials without overwriting an existing `.env`; see the [development environment guide](../technical/development-environment.md) for shutdown and local overrides. If WSL only exposes the Windows CLI, use `docker.exe compose` with the same options from a repository path accessible to that CLI. CI verifies access to both sites without a browser login, the controller count, a same-origin simulator mutation and rejection of a cross-origin mutation with `403`. It then checks MQTT/HTTP telemetry and recreates Instrumentation alone before querying state while the simulator is offline. Since the broker remains running, that last check does not isolate PostgreSQL restoration from retained broker messages. Readiness GET requests have bounded retries, including connection resets; the rejected POST is not retried. The CI job cleans up its disposable Compose resources after the check.
 
 ### 2. Check Focused Tests and Coverage
 

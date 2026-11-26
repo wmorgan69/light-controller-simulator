@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.AspNetCore.Http;
 
 public class LocalMutationPolicyTests
@@ -64,9 +65,24 @@ public class LocalMutationPolicyTests
         Assert.False(LocalMutationPolicy.IsAllowed(context.Request, allowMutations: true));
     }
 
+    [Fact]
+    public void RejectsNonLoopbackOrUnknownPeersEvenWithLocalHostHeader()
+    {
+        var context = CreateContext();
+        context.Connection.RemoteIpAddress = IPAddress.Parse("192.0.2.1");
+        Assert.False(LocalMutationPolicy.IsAllowed(context.Request, allowMutations: true));
+        context.Connection.RemoteIpAddress = IPAddress.Loopback;
+        context.Connection.LocalIpAddress = IPAddress.Parse("192.0.2.2");
+        Assert.False(LocalMutationPolicy.IsAllowed(context.Request, allowMutations: true));
+        context.Connection.LocalIpAddress = null;
+        Assert.False(LocalMutationPolicy.IsAllowed(context.Request, allowMutations: true));
+    }
+
     private static DefaultHttpContext CreateContext()
     {
         var context = new DefaultHttpContext();
+        context.Connection.RemoteIpAddress = IPAddress.Loopback;
+        context.Connection.LocalIpAddress = IPAddress.Loopback;
         context.Request.Method = "POST";
         context.Request.Scheme = "http";
         context.Request.Host = new HostString("localhost", 5080);

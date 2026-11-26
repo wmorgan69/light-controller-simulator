@@ -8,93 +8,72 @@ public sealed class BuildingEditorApiTests
     [Fact]
     public async Task SimulatedMutationAndBuildingViewUseTheSameConnectorState()
     {
-        var path = Path.GetFullPath($"building-editor-api-{Guid.NewGuid():N}.db");
-        try
-        {
-            using var server = await StartServer(path, "Development", allowMutations: true);
-            using var client = new HttpClient { BaseAddress = server.Address };
-            var before = JsonNode.Parse(await client.GetStringAsync("/api/building-view"))!;
-            var roomId = before["controllers"]![0]!["rooms"]![0]!["id"]!.GetValue<string>();
-            using var response = await client.PostAsync($"/api/rooms/{roomId}/sensor/trigger", null);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        ControlTestDatabase.Reset();
+        using var server = await StartServer("Development", allowMutations: true);
+        using var client = new HttpClient { BaseAddress = server.Address };
+        var before = JsonNode.Parse(await client.GetStringAsync("/api/building-view"))!;
+        var roomId = before["controllers"]![0]!["rooms"]![0]!["id"]!.GetValue<string>();
+        using var response = await client.PostAsync($"/api/rooms/{roomId}/sensor/trigger", null);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-            var returned = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
-            var view = JsonNode.Parse(await client.GetStringAsync("/api/building-view"))!;
-            var controllerId = returned["id"]!.GetValue<string>();
-            var observed = view["controllers"]!.AsArray()
-                .Single(controller => controller!["id"]!.GetValue<string>() == controllerId);
-            Assert.True(JsonNode.DeepEquals(returned, observed));
-            Assert.True(observed!["rooms"]!.AsArray()
-                .Single(room => room!["id"]!.GetValue<string>() == roomId)!["presence"]!.GetValue<bool>());
-            Assert.Equal(view["design"]!["revision"]!.GetValue<long>(),
-                JsonNode.Parse(await client.GetStringAsync("/api/controller-snapshot"))!["revision"]!.GetValue<long>());
-        }
-        finally
-        {
-            DeleteDatabase(path);
-        }
+        var returned = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
+        var view = JsonNode.Parse(await client.GetStringAsync("/api/building-view"))!;
+        var controllerId = returned["id"]!.GetValue<string>();
+        var observed = view["controllers"]!.AsArray()
+            .Single(controller => controller!["id"]!.GetValue<string>() == controllerId);
+        Assert.True(JsonNode.DeepEquals(returned, observed));
+        Assert.True(observed!["rooms"]!.AsArray()
+            .Single(room => room!["id"]!.GetValue<string>() == roomId)!["presence"]!.GetValue<bool>());
+        Assert.Equal(view["design"]!["revision"]!.GetValue<long>(),
+            JsonNode.Parse(await client.GetStringAsync("/api/controller-snapshot"))!["revision"]!.GetValue<long>());
     }
 
     [Fact]
     public async Task DefaultDesignReturnsSeedWithoutChangingSavedOrRunningState()
     {
-        var path = Path.GetFullPath($"building-editor-api-{Guid.NewGuid():N}.db");
-        try
-        {
-            var store = new BuildingDesignStore(path);
-            var initial = store.Read();
-            var saved = store.Save(initial.EditRevision, initial.Saved with { Width = 25 });
-            Assert.Equal(BuildingDesignStoreStatus.Success, saved.Status);
-            Assert.Equal(BuildingDesignStoreStatus.Success, store.ActivateSaved(saved.Snapshot.Saved.Revision).Status);
+        ControlTestDatabase.Reset();
+        var store = new BuildingDesignStore(ControlTestDatabase.ConnectionString);
+        var initial = store.Read();
+        var saved = store.Save(initial.EditRevision, initial.Saved with { Width = 25 });
+        Assert.Equal(BuildingDesignStoreStatus.Success, saved.Status);
+        Assert.Equal(BuildingDesignStoreStatus.Success, store.ActivateSaved(saved.Snapshot.Saved.Revision).Status);
 
-            using var server = await StartServer(path, "Development");
-            using var client = new HttpClient { BaseAddress = server.Address };
-            var beforeEditor = await client.GetStringAsync("/api/building-editor");
-            var beforeView = await client.GetStringAsync("/api/building-view");
-            using var response = await client.GetAsync("/api/building-editor/default-design");
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
-            var actual = JsonNode.Parse(await response.Content.ReadAsStringAsync());
-            var expected = JsonSerializer.SerializeToNode(BuildingDesignSeed.Create(),
-                new JsonSerializerOptions(JsonSerializerDefaults.Web));
-            Assert.True(JsonNode.DeepEquals(expected, actual));
-            Assert.Equal(4, actual!["floors"]!.AsArray().Count);
-            Assert.True(JsonNode.DeepEquals(JsonNode.Parse(beforeEditor),
-                JsonNode.Parse(await client.GetStringAsync("/api/building-editor"))));
-            Assert.True(JsonNode.DeepEquals(JsonNode.Parse(beforeView),
-                JsonNode.Parse(await client.GetStringAsync("/api/building-view"))));
-            Assert.Equal(25, store.Read().Saved.Width);
-            Assert.Equal(25, store.Read().Active.Width);
+        using var server = await StartServer("Development");
+        using var client = new HttpClient { BaseAddress = server.Address };
+        var beforeEditor = await client.GetStringAsync("/api/building-editor");
+        var beforeView = await client.GetStringAsync("/api/building-view");
+        using var response = await client.GetAsync("/api/building-editor/default-design");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+        var actual = JsonNode.Parse(await response.Content.ReadAsStringAsync());
+        var expected = JsonSerializer.SerializeToNode(BuildingDesignSeed.Create(),
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        Assert.True(JsonNode.DeepEquals(expected, actual));
+        Assert.Equal(4, actual!["floors"]!.AsArray().Count);
+        Assert.True(JsonNode.DeepEquals(JsonNode.Parse(beforeEditor),
+            JsonNode.Parse(await client.GetStringAsync("/api/building-editor"))));
+        Assert.True(JsonNode.DeepEquals(JsonNode.Parse(beforeView),
+            JsonNode.Parse(await client.GetStringAsync("/api/building-view"))));
+        Assert.Equal(25, store.Read().Saved.Width);
+        Assert.Equal(25, store.Read().Active.Width);
 
-            using var forwarded = new HttpRequestMessage(HttpMethod.Get, "/api/building-editor/default-design");
-            forwarded.Headers.Add("X-Forwarded-For", "127.0.0.1");
-            using var denied = await client.SendAsync(forwarded);
-            Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
-        }
-        finally
-        {
-            DeleteDatabase(path);
-        }
+        using var forwarded = new HttpRequestMessage(HttpMethod.Get, "/api/building-editor/default-design");
+        forwarded.Headers.Add("X-Forwarded-For", "127.0.0.1");
+        using var denied = await client.SendAsync(forwarded);
+        Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
     }
 
     [Fact]
     public async Task DefaultDesignIsForbiddenOutsideDevelopment()
     {
-        var path = Path.GetFullPath($"building-editor-api-{Guid.NewGuid():N}.db");
-        try
-        {
-            using var server = await StartServer(path, "Production");
-            using var client = new HttpClient { BaseAddress = server.Address };
-            using var response = await client.GetAsync("/api/building-editor/default-design");
-            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-        }
-        finally
-        {
-            DeleteDatabase(path);
-        }
+        ControlTestDatabase.Reset();
+        using var server = await StartServer("Production");
+        using var client = new HttpClient { BaseAddress = server.Address };
+        using var response = await client.GetAsync("/api/building-editor/default-design");
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
-    private static async Task<TestServer> StartServer(string path, string environment, bool allowMutations = false)
+    private static async Task<TestServer> StartServer(string environment, bool allowMutations = false)
     {
         var start = new ProcessStartInfo("dotnet")
         {
@@ -106,7 +85,7 @@ public sealed class BuildingEditorApiTests
         start.ArgumentList.Add("--urls");
         start.ArgumentList.Add("http://127.0.0.1:0");
         start.Environment["ASPNETCORE_ENVIRONMENT"] = environment;
-        start.Environment["BuildingDesign__SqlitePath"] = path;
+        start.Environment["ConnectionStrings__Control"] = ControlTestDatabase.ConnectionString;
         start.Environment["Simulator__AllowHttpMutations"] = allowMutations ? "true" : "false";
         start.Environment["Mqtt__Host"] = "127.0.0.1";
         start.Environment["Mqtt__Port"] = "0";
@@ -131,13 +110,6 @@ public sealed class BuildingEditorApiTests
             process.Dispose();
             throw;
         }
-    }
-
-    private static void DeleteDatabase(string path)
-    {
-        File.Delete(path);
-        File.Delete(path + "-wal");
-        File.Delete(path + "-shm");
     }
 
     private sealed class TestServer(Process process, Uri address) : IDisposable

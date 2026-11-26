@@ -3,17 +3,42 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Devices.Contracts;
-using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Npgsql;
 
-public sealed class ControllerSnapshotTests : IDisposable
+[Collection(TelemetryDatabaseCollection.Name)]
+public sealed class ControllerSnapshotTests
 {
-    private readonly string path = Path.GetFullPath($"snapshot-test-{Guid.NewGuid():N}.db");
     private readonly ControllerState[] controllers = DeviceIds.CreateBuilding().Take(2).ToArray();
-    private TelemetryStore CreateStore() => new(new ConfigurationBuilder().AddInMemoryCollection(
-        new Dictionary<string, string?> { ["Telemetry:SqlitePath"] = path }).Build());
+    private TelemetryStore CreateStore() => new(TelemetryTestDatabase.Configuration());
+
+    public ControllerSnapshotTests() => TelemetryTestDatabase.Reset();
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RestartDoesNotRecordUnchangedHttpStateAsNewEvent(bool legacy)
+    {
+        var original = CreateStore();
+        original.ApplySnapshot(new(1, controllers));
+        var eventsBefore = original.GetEvents().Count;
+
+        var restarted = CreateStore();
+        if (legacy)
+            restarted.ApplyLegacyControllers(controllers);
+        else
+            Assert.True(restarted.ApplySnapshot(new(1, controllers)));
+        Assert.Equal(eventsBefore, restarted.GetEvents().Count);
+
+        var changed = new[] { controllers[0] with { Revision = controllers[0].Revision + 1 }, controllers[1] };
+        if (legacy)
+            restarted.ApplyLegacyControllers(changed);
+        else
+            Assert.True(restarted.ApplySnapshot(new(1, changed)));
+        Assert.Equal(eventsBefore + 1, restarted.GetEvents().Count);
+    }
 
     [Fact]
     public void RemovalIsDurableAndRejectsLateMessagesAndStaleSnapshots()
@@ -54,12 +79,37 @@ public sealed class ControllerSnapshotTests : IDisposable
         using (var command = connection.CreateCommand())
         {
             command.CommandText = """
-                CREATE TRIGGER reject_snapshot BEFORE INSERT ON controller_tombstones
-                BEGIN SELECT RAISE(ABORT, 'rejected'); END;
+                CREATE FUNCTION telemetry.reject_snapshot_tombstone() RETURNS trigger
+                LANGUAGE plpgsql AS $body$
+                BEGIN
+                    RAISE EXCEPTION 'rejected';
+                END;
+                $body$
                 """;
             command.ExecuteNonQuery();
         }
-        Assert.Throws<SqliteException>(() => store.ApplySnapshot(new(2, [controllers[0]])));
+        using (var connection = Open())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                CREATE TRIGGER reject_snapshot BEFORE INSERT ON telemetry.controller_tombstones
+                FOR EACH ROW EXECUTE FUNCTION telemetry.reject_snapshot_tombstone()
+                """;
+            command.ExecuteNonQuery();
+        }
+        try
+        {
+            Assert.Throws<PostgresException>(() => store.ApplySnapshot(new(2, [controllers[0]])));
+        }
+        finally
+        {
+            using var connection = Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "DROP TRIGGER reject_snapshot ON telemetry.controller_tombstones";
+            command.ExecuteNonQuery();
+            command.CommandText = "DROP FUNCTION telemetry.reject_snapshot_tombstone()";
+            command.ExecuteNonQuery();
+        }
         Assert.NotNull(store.GetController(controllers[1].Id));
         var restarted = CreateStore();
         Assert.NotNull(restarted.GetController(controllers[1].Id));
@@ -239,20 +289,25 @@ public sealed class ControllerSnapshotTests : IDisposable
         using (var connection = Open())
         using (var command = connection.CreateCommand())
         {
+            command.CommandText = "UPDATE telemetry.controller_latest SET payload = @state WHERE controller_id = @id";
+            command.Parameters.AddWithValue("state", badState);
+            command.Parameters.AddWithValue("id", controllers[0].Id);
+            command.ExecuteNonQuery();
+            command.Parameters.Clear();
+            command.CommandText = "UPDATE telemetry.telemetry_events SET payload = @event WHERE controller_id = @id";
+            command.Parameters.AddWithValue("event", badEvent.ToJsonString());
+            command.Parameters.AddWithValue("id", controllers[0].Id);
+            command.ExecuteNonQuery();
+            command.Parameters.Clear();
             command.CommandText = """
-                UPDATE controller_latest SET payload = $state WHERE controller_id = $id;
-                UPDATE telemetry_events SET payload = $event WHERE controller_id = $id;
-                INSERT INTO telemetry_events (event_id, controller_id, event_type, timestamp, payload)
-                VALUES ('broken-json', $id, 'state', '9999-01-01', '{');
+                INSERT INTO telemetry.telemetry_events (event_id, controller_id, event_type, timestamp, payload)
+                VALUES ('broken-json', @id, 'state', '9999-01-01'::timestamptz, '{')
                 """;
-            command.Parameters.AddWithValue("$state", badState);
-            command.Parameters.AddWithValue("$event", badEvent.ToJsonString());
-            command.Parameters.AddWithValue("$id", controllers[0].Id);
+            command.Parameters.AddWithValue("id", controllers[0].Id);
             command.ExecuteNonQuery();
         }
         var logger = new CaptureLogger();
-        var configuration = new ConfigurationBuilder().AddInMemoryCollection(
-            new Dictionary<string, string?> { ["Telemetry:SqlitePath"] = path }).Build();
+        var configuration = TelemetryTestDatabase.Configuration();
 
         var restarted = new TelemetryStore(configuration, logger);
 
@@ -329,22 +384,16 @@ public sealed class ControllerSnapshotTests : IDisposable
     {
         using var connection = Open();
         using var command = connection.CreateCommand();
-        command.CommandText = $"SELECT COUNT(*) FROM {table} WHERE controller_id = $id";
-        command.Parameters.AddWithValue("$id", id);
+        command.CommandText = $"SELECT COUNT(*) FROM telemetry.{table} WHERE controller_id = @id";
+        command.Parameters.AddWithValue("id", id);
         return (long)command.ExecuteScalar()!;
     }
 
-    private SqliteConnection Open()
+    private static NpgsqlConnection Open()
     {
-        var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = path }.ToString());
+        var connection = new NpgsqlConnection(TelemetryTestDatabase.ConnectionString);
         connection.Open();
         return connection;
-    }
-
-    public void Dispose()
-    {
-        SqliteConnection.ClearAllPools();
-        File.Delete(path);
     }
 
     private sealed class Handler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler

@@ -1,10 +1,6 @@
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
-var configuredSqlitePath = builder.Configuration["Telemetry:SqlitePath"] ?? "telemetry.db";
-builder.Configuration["Telemetry:SqlitePath"] = Path.IsPathRooted(configuredSqlitePath)
-    ? configuredSqlitePath
-    : Path.Combine(builder.Environment.ContentRootPath, configuredSqlitePath);
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddSingleton<TelemetryStore>();

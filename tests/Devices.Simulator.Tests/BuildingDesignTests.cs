@@ -1,11 +1,13 @@
 using Devices.Contracts;
-using Microsoft.Data.Sqlite;
+using Npgsql;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-public class BuildingDesignTests : IDisposable
+public class BuildingDesignTests
 {
-    private readonly string path = Path.Combine(AppContext.BaseDirectory, $"building-design-test-{Guid.NewGuid():N}.db");
+    private readonly string path = ControlTestDatabase.ConnectionString;
+
+    public BuildingDesignTests() => ControlTestDatabase.Reset();
 
     [Fact]
     public void SeedPreservesExistingIdentitiesAndIsSavable()
@@ -191,23 +193,40 @@ public class BuildingDesignTests : IDisposable
         var activeJson = JsonSerializer.Serialize(legacy, options);
         var savedJson = JsonSerializer.Serialize(legacy with { Revision = 9, Width = 23 }, options);
         _ = new BuildingDesignStore(path);
-        using var connection = new SqliteConnection($"Data Source={path};Pooling=False");
+        using var connection = new NpgsqlConnection(path);
         connection.Open();
         using var command = connection.CreateCommand();
-        command.CommandText = "UPDATE building_design SET saved = $saved, active = $active, edit_revision = 9 WHERE id = 1";
-        command.Parameters.AddWithValue("$saved", savedJson);
-        command.Parameters.AddWithValue("$active", activeJson);
+        command.CommandText = """
+            UPDATE control.building_design SET design = @active::jsonb
+            WHERE id = (SELECT active_design_id FROM control.building WHERE singleton_key = 1);
+            WITH new_design AS (
+                INSERT INTO control.building_design (building_id, design, revision)
+                SELECT id, @saved::jsonb, 9 FROM control.building WHERE singleton_key = 1 RETURNING id
+            )
+            UPDATE control.building SET saved_design_id = (SELECT id FROM new_design), edit_revision = 9 WHERE singleton_key = 1
+            """;
+        command.Parameters.AddWithValue("saved", savedJson);
+        command.Parameters.AddWithValue("active", activeJson);
         command.ExecuteNonQuery();
 
         var reopened = new BuildingDesignStore(path).Read();
         Assert.Equal(savedJson, JsonSerializer.Serialize(reopened.Saved, options));
         Assert.Equal(activeJson, JsonSerializer.Serialize(reopened.Active, options));
         Assert.Equal(9, reopened.EditRevision);
-        command.CommandText = "SELECT saved, active FROM building_design WHERE id = 1";
+        command.CommandText = """
+            SELECT saved.design::text, active.design::text FROM control.building b
+            JOIN control.building_design saved ON saved.id = b.saved_design_id
+            JOIN control.building_design active ON active.id = b.active_design_id
+            WHERE b.singleton_key = 1
+            """;
         using var reader = command.ExecuteReader();
         Assert.True(reader.Read());
-        Assert.Equal(savedJson, reader.GetString(0));
-        Assert.Equal(activeJson, reader.GetString(1));
+        Assert.True(JsonNode.DeepEquals(
+            JsonSerializer.SerializeToNode(legacy with { Revision = 9, Width = 23 }, options),
+            JsonNode.Parse(reader.GetString(0))));
+        Assert.True(JsonNode.DeepEquals(
+            JsonSerializer.SerializeToNode(legacy, options),
+            JsonNode.Parse(reader.GetString(1))));
     }
 
     [Fact]
@@ -232,6 +251,66 @@ public class BuildingDesignTests : IDisposable
         var restarted = new BuildingDesignStore(path).Read();
         Assert.Equal(21, restarted.Saved.Width);
         Assert.Equal(21, restarted.Active.Width);
+    }
+
+    [Fact]
+    public void DesignReferencesAndRetirementDiagnosticsReflectSaveAndActivation()
+    {
+        var store = new BuildingDesignStore(path);
+        var initial = store.Read();
+        var saved = store.Save(initial.EditRevision, initial.Saved with
+        {
+            Floors = initial.Saved.Floors.Take(3).ToArray()
+        });
+        Assert.Equal(BuildingDesignStoreStatus.Success, saved.Status);
+        Assert.True((bool)ControlTestDatabase.Scalar("""
+            SELECT b.saved_design_id <> b.active_design_id
+              AND saved.building_id = b.id AND active.building_id = b.id
+              AND saved.revision = b.edit_revision AND active.revision < saved.revision
+            FROM control.building b
+            JOIN control.building_design saved ON saved.id = b.saved_design_id
+            JOIN control.building_design active ON active.id = b.active_design_id
+            WHERE b.singleton_key = 1
+            """)!);
+        Assert.True((bool)ControlTestDatabase.Scalar("""
+            SELECT EXISTS (
+                SELECT 1 FROM control.retired_design_entity_id r
+                JOIN control.building b ON b.id = r.building_id
+                WHERE r.entity_type = 'controller' AND r.retired_at IS NOT NULL
+            )
+            """)!);
+
+        Assert.Equal(BuildingDesignStoreStatus.Success, store.ActivateSaved(saved.Snapshot.Saved.Revision).Status);
+        Assert.True((bool)ControlTestDatabase.Scalar("""
+            SELECT b.saved_design_id = b.active_design_id
+              AND EXISTS (SELECT 1 FROM control.controller_mqtt_retained_cleanup c
+                          WHERE c.building_id = b.id AND c.active_design_revision = b.edit_revision)
+            FROM control.building b WHERE b.singleton_key = 1
+            """)!);
+    }
+
+    [Fact]
+    public void ControlTimestampsAdvanceOnUpdates()
+    {
+        var store = new BuildingDesignStore(path);
+        var initial = store.Read();
+        var saved = store.Save(initial.EditRevision, initial.Saved with { Floors = initial.Saved.Floors.Take(3).ToArray() });
+        store.ActivateSaved(saved.Snapshot.Saved.Revision);
+        foreach (var table in new[] { "schema_version", "building", "building_design", "retired_design_entity_id", "controller_mqtt_retained_cleanup" })
+        {
+            Assert.True((bool)ControlTestDatabase.Scalar($"""
+                SELECT bool_and(created_at IS NOT NULL AND updated_at IS NOT NULL)
+                FROM control.{table}
+                """)!);
+            Assert.True((bool)ControlTestDatabase.Scalar($"""
+                WITH before_update AS MATERIALIZED (SELECT clock_timestamp() AS checked_at),
+                changed AS (
+                    UPDATE control.{table} AS target SET created_at = target.created_at
+                    FROM before_update RETURNING target.updated_at, before_update.checked_at
+                )
+                SELECT bool_and(updated_at >= checked_at) FROM changed
+                """)!);
+        }
     }
 
     [Fact]
@@ -279,13 +358,15 @@ public class BuildingDesignTests : IDisposable
             return root.ToJsonString(options);
         }
 
-        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
+        using (var connection = new NpgsqlConnection(path))
         {
             connection.Open();
             using var command = connection.CreateCommand();
-            command.CommandText = "UPDATE building_design SET saved = $saved, active = $active WHERE id = 1";
-            command.Parameters.AddWithValue("$saved", LegacyJson(initial.Saved));
-            command.Parameters.AddWithValue("$active", LegacyJson(initial.Active));
+            command.CommandText = """
+                UPDATE control.building_design SET design = @design::jsonb
+                WHERE id = (SELECT saved_design_id FROM control.building WHERE singleton_key = 1)
+                """;
+            command.Parameters.AddWithValue("design", LegacyJson(initial.Saved));
             command.ExecuteNonQuery();
         }
 
@@ -557,142 +638,183 @@ public class BuildingDesignTests : IDisposable
     }
 
     [Fact]
-    public void RejectsUnknownAndNonemptyUnversionedSchemas()
+    public void UnsupportedOrUnversionedSchemasFailExplicitly()
     {
-        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
-        {
-            connection.Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = "CREATE TABLE unrelated (id INTEGER)";
-            command.ExecuteNonQuery();
-        }
-        Assert.Throws<InvalidOperationException>(() => new BuildingDesignStore(path));
-        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
-        {
-            connection.Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = "PRAGMA user_version = 5";
-            command.ExecuteNonQuery();
-        }
-        Assert.Throws<InvalidOperationException>(() => new BuildingDesignStore(path));
+        ControlTestDatabase.Execute("UPDATE control.schema_version SET version = 2 WHERE singleton_key = 1");
+        var old = Assert.Throws<InvalidOperationException>(() => new BuildingDesignStore(path));
+        Assert.Contains("version 2", old.Message);
+        Assert.Equal(2, ControlTestDatabase.Scalar("SELECT version FROM control.schema_version WHERE singleton_key = 1"));
+
+        ControlTestDatabase.Execute("UPDATE control.schema_version SET version = 3 WHERE singleton_key = 1");
+        var unsupported = Assert.Throws<InvalidOperationException>(() => new BuildingDesignStore(path));
+        Assert.Contains("Unsupported", unsupported.Message);
+
+        ControlTestDatabase.Execute("UPDATE control.schema_version SET version = 1 WHERE singleton_key = 1");
+        ControlTestDatabase.Execute("DROP TABLE control.schema_version");
+        var unversioned = Assert.Throws<InvalidOperationException>(() => new BuildingDesignStore(path));
+        Assert.Contains("unversioned non-empty", unversioned.Message);
     }
 
     [Fact]
-    public void VersionOneDatabaseIsMigratedWithoutReseeding()
+    public void IncompleteSeedAndMissingTablesFailWithoutChangingExistingData()
     {
-        var active = BuildingDesignSeed.Create() with { Width = 20, Depth = 20 };
-        var old = active with { Revision = 7, Width = 25, Floors = active.Floors.Take(3).ToArray() };
-        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
-        {
-            connection.Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = """
-                CREATE TABLE building_design (
-                    id INTEGER PRIMARY KEY, saved TEXT NOT NULL, active TEXT NOT NULL, draft TEXT,
-                    edit_revision INTEGER NOT NULL, lease_token TEXT, lease_expiry INTEGER
-                );
-                INSERT INTO building_design (id, saved, active, draft, edit_revision) VALUES (1, $design, $active, $draft, 7);
-                PRAGMA user_version = 1;
-                """;
-            command.Parameters.AddWithValue("$design", JsonSerializer.Serialize(old, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
-            command.Parameters.AddWithValue("$active", JsonSerializer.Serialize(active, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
-            command.Parameters.AddWithValue("$draft", JsonSerializer.Serialize(active with { Width = 30 }, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
-            command.ExecuteNonQuery();
-        }
-        var store = new BuildingDesignStore(path);
-        Assert.Equal(25, store.Read().Saved.Width);
-        Assert.Equal(20, store.Read().Active.Width);
-        Assert.Equal(4, store.Read().Active.Floors.Count);
-        Assert.Equal(7, store.Read().EditRevision);
-        Assert.Empty(store.ReadCleanup());
-        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
-        {
-            connection.Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = "SELECT count(*) FROM pragma_table_info('building_design') WHERE name = 'draft'";
-            Assert.Equal(0L, (long)command.ExecuteScalar()!);
-        }
-        Assert.Equal(BuildingDesignStoreStatus.InvalidDesign, store.Save(7, active).Status);
-        Assert.Equal(BuildingDesignStoreStatus.Success, store.Save(7, old).Status);
+        ControlTestDatabase.Execute("UPDATE control.schema_version SET seeded = false");
+        var incomplete = Assert.Throws<InvalidOperationException>(() => new BuildingDesignStore(path));
+        Assert.Contains("without a completed initial seed marker", incomplete.Message);
+        Assert.Equal(1L, (long)ControlTestDatabase.Scalar("SELECT count(*) FROM control.building")!);
+
+        ControlTestDatabase.Execute("UPDATE control.schema_version SET seeded = true; DROP TABLE control.retired_design_entity_id");
+        var missing = Assert.Throws<InvalidOperationException>(() => new BuildingDesignStore(path));
+        Assert.Contains("retired_design_entity_id", missing.Message);
+        Assert.Equal(1L, (long)ControlTestDatabase.Scalar("SELECT count(*) FROM control.building")!);
     }
 
     [Fact]
-    public void VersionTwoMigrationDiscardsDraftAndPreservesSavedActiveAndRevision()
+    public void LegacyVersionOneSchemaIsRejectedWithoutChangingItsData()
     {
-        var store = new BuildingDesignStore(path);
+        ControlTestDatabase.Execute("""
+            DROP TABLE control.controller_mqtt_retained_cleanup, control.retired_design_entity_id;
+            DROP TABLE control.building, control.building_design CASCADE;
+            DROP TABLE control.schema_version;
+            CREATE TABLE control.schema_version (
+                id uuid PRIMARY KEY DEFAULT uuidv7(), singleton_key smallint NOT NULL UNIQUE CHECK (singleton_key = 1),
+                version integer NOT NULL CHECK (version > 0), seeded boolean NOT NULL DEFAULT false,
+                applied_at timestamptz NOT NULL DEFAULT clock_timestamp()
+            );
+            CREATE TABLE control.building_design (
+                id uuid PRIMARY KEY DEFAULT uuidv7(), singleton_key smallint NOT NULL UNIQUE CHECK (singleton_key = 1),
+                saved jsonb NOT NULL, active jsonb NOT NULL, edit_revision bigint NOT NULL CHECK (edit_revision > 0)
+            );
+            CREATE TABLE control.retired_design_id (id uuid PRIMARY KEY DEFAULT uuidv7(), external_id text NOT NULL UNIQUE);
+            CREATE TABLE control.controller_cleanup (
+                id uuid PRIMARY KEY DEFAULT uuidv7(), controller_id text NOT NULL UNIQUE,
+                active_revision bigint NOT NULL CHECK (active_revision > 0),
+                status smallint NOT NULL CHECK (status BETWEEN 0 AND 3)
+            );
+            INSERT INTO control.schema_version (singleton_key, version, seeded) VALUES (1, 1, true);
+            INSERT INTO control.building_design (singleton_key, saved, active, edit_revision)
+                VALUES (1, '{"marker":"saved"}', '{"marker":"active"}', 7);
+            """);
+        var error = Assert.Throws<InvalidOperationException>(() => new BuildingDesignStore(path));
+        Assert.Contains("missing required table 'building'", error.Message);
+        Assert.True((bool)ControlTestDatabase.Scalar("""
+            SELECT version = 1 AND seeded AND saved = '{"marker":"saved"}'::jsonb
+                AND active = '{"marker":"active"}'::jsonb AND edit_revision = 7
+            FROM control.schema_version CROSS JOIN control.building_design
+            """)!);
+        Assert.False((bool)ControlTestDatabase.Scalar("SELECT to_regclass('control.building') IS NOT NULL")!);
+    }
+
+    [Fact]
+    public async Task WaitingSaveReadsNewDesignAfterBuildingLockIsReleased()
+    {
+        var applicationName = $"waiting-save-{Guid.NewGuid():N}";
+        var waitingPath = new NpgsqlConnectionStringBuilder(path) { ApplicationName = applicationName }.ConnectionString;
+        var store = new BuildingDesignStore(waitingPath);
         var initial = store.Read();
-        var saved = store.Save(initial.EditRevision, initial.Saved with { Width = 21 });
-        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
-        {
-            connection.Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = """
-                ALTER TABLE building_design ADD COLUMN draft TEXT;
-                ALTER TABLE building_design ADD COLUMN lease_token TEXT;
-                ALTER TABLE building_design ADD COLUMN lease_expiry INTEGER;
-                UPDATE building_design SET draft = $draft WHERE id = 1;
-                PRAGMA user_version = 2;
-                """;
-            command.Parameters.AddWithValue("$draft", JsonSerializer.Serialize(initial.Saved with { Width = 30 }, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
-            command.ExecuteNonQuery();
-        }
+        using var connection = new NpgsqlConnection(path);
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "SELECT id FROM control.building WHERE singleton_key = 1 FOR UPDATE";
+        command.ExecuteScalar();
 
-        var migrated = new BuildingDesignStore(path);
-        Assert.Equal(21, migrated.Read().Saved.Width);
-        Assert.Equal(initial.Active.Width, migrated.Read().Active.Width);
-        Assert.Equal(saved.Snapshot.EditRevision, migrated.Read().EditRevision);
-        Assert.Equal(BuildingDesignStoreStatus.Success, migrated.Save(saved.Snapshot.EditRevision, saved.Snapshot.Saved).Status);
-        using var check = new SqliteConnection($"Data Source={path};Pooling=False");
-        check.Open();
-        using var query = check.CreateCommand();
-        query.CommandText = "SELECT count(*) FROM pragma_table_info('building_design') WHERE name = 'draft'";
-        Assert.Equal(0L, (long)query.ExecuteScalar()!);
+        var waiting = Task.Run(() => store.Save(initial.EditRevision, initial.Saved with { Width = 21 }));
+        var committed = false;
+        try
+        {
+            Assert.True(SpinWait.SpinUntil(() => (bool)ControlTestDatabase.Scalar($"""
+                SELECT EXISTS (SELECT 1 FROM pg_stat_activity
+                               WHERE application_name = '{applicationName}' AND wait_event_type = 'Lock')
+                """)!, TimeSpan.FromSeconds(15)), "Save did not wait for the building lock.");
+
+            command.CommandText = """
+                WITH new_design AS (
+                    INSERT INTO control.building_design (building_id, design, revision)
+                    SELECT d.building_id, jsonb_set(d.design, '{revision}', to_jsonb(d.revision + 1)), d.revision + 1
+                    FROM control.building_design d JOIN control.building b ON b.saved_design_id = d.id
+                    WHERE b.singleton_key = 1 RETURNING id, revision
+                )
+                UPDATE control.building SET saved_design_id = new_design.id, edit_revision = new_design.revision
+                FROM new_design WHERE singleton_key = 1
+                """;
+            command.ExecuteNonQuery();
+            transaction.Commit();
+            committed = true;
+        }
+        finally
+        {
+            try
+            {
+                if (!committed) transaction.Rollback();
+            }
+            finally
+            {
+                await waiting;
+            }
+        }
+        var result = await waiting;
+        Assert.Equal(BuildingDesignStoreStatus.RevisionConflict, result.Status);
+        Assert.Equal(initial.EditRevision + 1, result.Snapshot.EditRevision);
     }
 
     [Fact]
-    public void VersionThreeMigrationRemovesLeaseAndPreservesAllDurableState()
+    public void SchemaUsesUuidV7PrimaryKeysAndEnforcesSingletonAndStableIds()
     {
         var store = new BuildingDesignStore(path);
         var initial = store.Read();
         var reduced = initial.Saved with { Floors = initial.Saved.Floors.Take(3).ToArray() };
-        var removed = store.Save(initial.EditRevision, reduced);
-        store.ActivateSaved(removed.Snapshot.Saved.Revision);
-        var cleanup = Assert.Single(store.ReadCleanup());
-        Assert.Equal(BuildingDesignStoreStatus.Success, store.MarkCleanupFailed(cleanup.ControllerId, cleanup.ActiveRevision));
-        var pending = store.Save(removed.Snapshot.EditRevision, reduced with { Width = 25 });
-        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
-        {
-            connection.Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = """
-                ALTER TABLE building_design ADD COLUMN lease_token TEXT;
-                ALTER TABLE building_design ADD COLUMN lease_expiry INTEGER;
-                UPDATE building_design SET lease_token = 'old-token', lease_expiry = 9999999999999;
-                PRAGMA user_version = 3;
-                """;
-            command.ExecuteNonQuery();
-        }
+        var saved = store.Save(initial.EditRevision, reduced);
+        Assert.Equal(BuildingDesignStoreStatus.Success, saved.Status);
+        store.ActivateSaved(saved.Snapshot.Saved.Revision);
 
-        var migrated = new BuildingDesignStore(path);
-        var snapshot = migrated.Read();
-        Assert.Equal(pending.Snapshot.EditRevision, snapshot.EditRevision);
-        Assert.Equal(25, snapshot.Saved.Width);
-        Assert.Equal(initial.Active.Width, snapshot.Active.Width);
-        Assert.Equal(removed.Snapshot.Saved.Revision, snapshot.Active.Revision);
-        var preservedCleanup = Assert.Single(migrated.ReadCleanup());
-        Assert.Equal(cleanup.ControllerId, preservedCleanup.ControllerId);
-        Assert.Equal(cleanup.ActiveRevision, preservedCleanup.ActiveRevision);
-        Assert.Equal(BuildingDesignCleanupStatus.Failed, preservedCleanup.Status);
-        Assert.Equal(BuildingDesignStoreStatus.InvalidDesign, migrated.Save(snapshot.EditRevision, initial.Saved).Status);
-        Assert.Equal(BuildingDesignStoreStatus.Success, migrated.ActivateSaved(snapshot.Saved.Revision).Status);
+        var nonV7Count = (long)ControlTestDatabase.Scalar("""
+            SELECT count(*) FROM (
+                SELECT id FROM control.schema_version
+                UNION ALL SELECT id FROM control.building
+                UNION ALL SELECT id FROM control.building_design
+                UNION ALL SELECT id FROM control.retired_design_entity_id
+                UNION ALL SELECT id FROM control.controller_mqtt_retained_cleanup
+            ) ids WHERE uuid_extract_version(id) <> 7
+            """)!;
+        Assert.Equal(0, nonV7Count);
+        Assert.False((bool)ControlTestDatabase.Scalar("""
+            SELECT EXISTS (
+                SELECT 1 FROM pg_namespace n
+                WHERE n.nspname = 'telemetry'
+                  AND has_schema_privilege(current_user, n.oid, 'USAGE')
+            )
+            """)!);
 
-        using var check = new SqliteConnection($"Data Source={path};Pooling=False");
-        check.Open();
-        using var query = check.CreateCommand();
-        query.CommandText = "SELECT count(*) FROM pragma_table_info('building_design') WHERE name IN ('lease_token', 'lease_expiry')";
-        Assert.Equal(0L, (long)query.ExecuteScalar()!);
-        query.CommandText = "PRAGMA user_version";
-        Assert.Equal(4L, (long)query.ExecuteScalar()!);
+        var duplicateSingleton = Assert.Throws<PostgresException>(() =>
+            ControlTestDatabase.Execute("""
+                INSERT INTO control.building (singleton_key, name, saved_design_id, active_design_id, edit_revision)
+                SELECT singleton_key, name, saved_design_id, active_design_id, edit_revision FROM control.building
+                """));
+        Assert.Equal("23505", duplicateSingleton.SqlState);
+        var duplicateExternalId = Assert.Throws<PostgresException>(() =>
+            ControlTestDatabase.Execute("""
+                INSERT INTO control.retired_design_entity_id (building_id, external_id, entity_type)
+                SELECT building_id, external_id, entity_type FROM control.retired_design_entity_id LIMIT 1
+                """));
+        Assert.Equal("23505", duplicateExternalId.SqlState);
+        var duplicateController = Assert.Throws<PostgresException>(() =>
+            ControlTestDatabase.Execute("""
+                INSERT INTO control.controller_mqtt_retained_cleanup (building_id, controller_id, active_design_revision, status)
+                SELECT building_id, controller_id, active_design_revision, status
+                FROM control.controller_mqtt_retained_cleanup LIMIT 1
+                """));
+        Assert.Equal("23505", duplicateController.SqlState);
+        var invalidDesign = Assert.Throws<PostgresException>(() =>
+            ControlTestDatabase.Execute("UPDATE control.building SET active_design_id = uuidv7() WHERE singleton_key = 1"));
+        Assert.Equal("23503", invalidDesign.SqlState);
+        var duplicateRevision = Assert.Throws<PostgresException>(() =>
+            ControlTestDatabase.Execute("""
+                INSERT INTO control.building_design (building_id, design, revision)
+                SELECT building_id, design, revision FROM control.building_design LIMIT 1
+                """));
+        Assert.Equal("23505", duplicateRevision.SqlState);
     }
 
     [Fact]
@@ -763,28 +885,23 @@ public class BuildingDesignTests : IDisposable
     {
         var store = new BuildingDesignStore(path);
         var initial = store.Read();
-        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
-        {
-            connection.Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = """
-                CREATE TRIGGER reject_save BEFORE UPDATE OF saved ON building_design
-                BEGIN SELECT RAISE(ABORT, 'simulated failure'); END
-                """;
-            command.ExecuteNonQuery();
-        }
+        ControlTestDatabase.Execute("""
+            CREATE FUNCTION control.test_reject_design_write() RETURNS trigger
+            LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'simulated failure'; END; $$
+            """);
+        ControlTestDatabase.Execute("""
+            CREATE TRIGGER reject_save BEFORE UPDATE OF saved_design_id ON control.building
+            FOR EACH ROW EXECUTE FUNCTION control.test_reject_design_write()
+            """);
         var removed = initial.Saved with { Floors = initial.Saved.Floors.Take(3).ToArray() };
-        Assert.Throws<SqliteException>(() => store.Save(initial.EditRevision, removed));
+        Assert.Throws<PostgresException>(() => store.Save(initial.EditRevision, removed));
         var unchanged = store.Read();
         Assert.Equal(initial.EditRevision, unchanged.EditRevision);
         Assert.Equal(4, unchanged.Saved.Floors.Count);
-        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
-        {
-            connection.Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = "DROP TRIGGER reject_save; SELECT count(*) FROM retired_design_id";
-            Assert.Equal(0L, (long)command.ExecuteScalar()!);
-        }
+        ControlTestDatabase.Execute("DROP TRIGGER reject_save ON control.building");
+        ControlTestDatabase.Execute("DROP FUNCTION control.test_reject_design_write()");
+        Assert.Equal(0L, (long)ControlTestDatabase.Scalar("SELECT count(*) FROM control.retired_design_entity_id")!);
+        Assert.Equal(1L, (long)ControlTestDatabase.Scalar("SELECT count(*) FROM control.building_design")!);
         Assert.Equal(BuildingDesignStoreStatus.Success, store.Save(initial.EditRevision, initial.Saved).Status);
     }
 
@@ -794,20 +911,23 @@ public class BuildingDesignTests : IDisposable
         var store = new BuildingDesignStore(path);
         var initial = store.Read();
         var saved = store.Save(initial.EditRevision, initial.Saved with { Floors = initial.Saved.Floors.Take(3).ToArray() });
-        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
-        {
-            connection.Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = """
-                CREATE TRIGGER reject_activation BEFORE UPDATE OF active ON building_design
-                BEGIN SELECT RAISE(ABORT, 'simulated failure'); END
-                """;
-            command.ExecuteNonQuery();
-        }
-        Assert.Throws<SqliteException>(() => store.ActivateSaved(saved.Snapshot.Saved.Revision));
+        ControlTestDatabase.Execute("""
+            CREATE FUNCTION control.test_reject_activation() RETURNS trigger
+            LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'simulated failure'; END; $$
+            """);
+        ControlTestDatabase.Execute("""
+            CREATE TRIGGER reject_activation BEFORE UPDATE OF active_design_id ON control.building
+            FOR EACH ROW EXECUTE FUNCTION control.test_reject_activation()
+            """);
+        Assert.Throws<PostgresException>(() => store.ActivateSaved(saved.Snapshot.Saved.Revision));
         Assert.Empty(store.ReadCleanup());
         Assert.Equal(4, store.Read().Active.Floors.Count);
         Assert.Equal(3, store.Read().Saved.Floors.Count);
+        ControlTestDatabase.Execute("DROP TRIGGER reject_activation ON control.building");
+        ControlTestDatabase.Execute("DROP FUNCTION control.test_reject_activation()");
+        var restarted = new BuildingDesignStore(path);
+        Assert.Equal(BuildingDesignStoreStatus.Success, restarted.ActivateSaved(saved.Snapshot.Saved.Revision).Status);
+        Assert.Equal(3, new BuildingDesignStore(path).Read().Active.Floors.Count);
     }
 
     [Fact]
@@ -835,12 +955,6 @@ public class BuildingDesignTests : IDisposable
     {
         var floor = design.Floors[0];
         return design with { Floors = [floor with { Rooms = [room, .. floor.Rooms.Skip(1)] }, .. design.Floors.Skip(1)] };
-    }
-
-    public void Dispose()
-    {
-        foreach (var suffix in new[] { "", "-journal", "-wal", "-shm" })
-            if (File.Exists(path + suffix)) File.Delete(path + suffix);
     }
 
 }

@@ -42,12 +42,35 @@ The project demonstrates:
 - An interactive Three.js building with floor selection and room-level controls.
 - A building editor with blank and default starting layouts, plan tools, drag-to-move, and save and activation.
 - React and TypeScript frontends using Material UI and Vite.
-- Live controller health, occupancy, lighting activity, faults, events, and SQLite persistence.
+- Live controller health, occupancy, lighting activity, faults, events, and PostgreSQL persistence.
 - Unit-tested state transitions, revision handling, stale/offline behavior, and event persistence.
 
-![System architecture: browser users access the simulator and dashboard; HTTP polling and optional MQTT telemetry feed the telemetry store and SQLite.](docs/assets/diagrams/architecture.svg)
+```mermaid
+---
+config:
+  theme: base
+  themeVariables:
+    darkMode: true
+    primaryColor: '#1E293B'
+    primaryTextColor: '#F8FAFC'
+    primaryBorderColor: '#60A5FA'
+    lineColor: '#60A5FA'
+    edgeLabelBackground: '#1E293B'
+    textColor: '#F8FAFC'
+---
+flowchart LR
+  Browser("Local browser") -->|localhost:5080 / :5081| Proxy("NGINX<br/>loopback ingress")
+  Proxy -->|Building Control| Control("Building Control")
+  Proxy -->|Instrumentation| Instrumentation("Lighting Instrumentation")
+  Instrumentation -->|HTTP snapshot polling| Control
+  Control -->|control_app| Database[("PostgreSQL 18+ · devices<br/>control + telemetry schemas")]
+  Instrumentation -->|telemetry_app| Database
+  Control -->|control credentials| Broker("MQTT broker<br/>topic ACLs")
+  Broker -->|telemetry credentials| Instrumentation
+  classDef default fill:#1E293B,stroke:#60A5FA,color:#F8FAFC;
+```
 
-The instrumentation service polls simulator state over HTTP and can also ingest MQTT telemetry; both inputs feed the telemetry store, which persists data in SQLite.
+The two applications share one PostgreSQL database with separate `control` and `telemetry` schemas and roles. PostgreSQL UUIDv7 primary keys are distinct from stable protocol IDs. Instrumentation polls Building Control over HTTP and can also ingest authenticated MQTT telemetry. Both schemas and the broker state use Compose volumes.
 
 For a proposed production deployment connected to physical IoT devices, see the [production infrastructure proposal](docs/infrastructure/production-iot-architecture.md). It is not implemented. For end users, production also requires [user accounts, account management and login](docs/infrastructure/production-iot-architecture.md#user-accounts-and-sign-in), which the current applications do not have.
 
@@ -84,40 +107,18 @@ The demo page contains two walkthroughs: building navigation and live instrument
 
 ## Quick start
 
-Install the .NET 11 SDK and Node.js with npm. Use Node.js 22.18 or later in the 22.x line, or Node.js 24.11 or later; CI uses Node.js 22.
+The local environment is configured as a Docker Compose project with PostgreSQL, MQTT and an NGINX localhost proxy. Kiri is the intended Windows Compose interface, but Kiri/Windows behavior is still being validated; command examples use Docker Compose CLI. The [development environment guide](docs/technical/development-environment.md) covers credential setup, release-build and live-development modes, port overrides, and recovery. This is a local development environment, not a production deployment.
 
-Build both browser frontends once before running the .NET applications directly. This installs the locked Node dependencies, runs the strict TypeScript check, and creates the local bundles used by each web app:
+From Linux or WSL at the repository root, provision credentials and start the release-build mode:
 
-```powershell
-npm ci
-npm run build
+```bash
+bash deploy/docker-dev-setup.sh
+bash deploy/docker-dev-start.sh
 ```
 
-Run the simulator:
+If WSL only exposes the Windows CLI, use `docker.exe compose` with the same options from a repository path accessible to that CLI.
 
-```powershell
-dotnet run --project src/Devices.BuildingControl.Web/Devices.BuildingControl.Web.csproj --urls http://localhost:5080
-```
-
-Run the instrumentation dashboard:
-
-```powershell
-dotnet run --project src/Devices.Instrumentation.Web/Devices.Instrumentation.Web.csproj --urls http://localhost:5081
-```
-
-The default simulator startup view selects Floor 3 and its Collaboration Space. MQTT is optional; the instrumentation service polls the simulator over HTTP and can also ingest MQTT telemetry.
-
-### Docker Compose
-
-With Docker and Docker Compose available, start both applications from the repository root:
-
-```powershell
-docker compose up --build
-```
-
-Open `http://localhost:5080/` for the simulator and `http://localhost:5081/` for the dashboard. Compose publishes both ports on host loopback only and disables simulator HTTP mutations: the simulator is view-only and its editor and HTTP controls are unavailable. Use the direct loopback Development quick start for interactive editing and controls. These services do not authenticate local users or processes; do not expose them through proxies or non-loopback bindings. The dashboard polls `http://simulator:8080` over the Compose network and can also ingest MQTT telemetry; no MQTT broker is required. MQTT commands are separate; external brokers require access controls. Its SQLite database is stored in the `telemetry-data` named volume and persists when the containers are stopped or recreated. Stop the applications with `docker compose down`.
-
-Remote or forwarded deployments are outside this local-only configuration.
+Open `http://localhost:5080/` for Building Control and `http://localhost:5081/` for Lighting Instrumentation. There is no browser login; local users and processes can access the sites and controls. The script creates fresh local secrets and does not overwrite an existing `.env`. The host ports are loopback-only; do not expose them remotely. Use the same Compose options with `down` to stop containers without deleting data. See the guide for local overrides, changing credentials, switching modes, resetting volumes, or connecting directly to host applications.
 
 ## Documentation
 
@@ -128,13 +129,18 @@ Remote or forwarded deployments are outside this local-only configuration.
 - [Building Control](docs/technical/building-control.md)
 - [Simulated device connector](docs/technical/simulated-device-connector.md)
 - [Building Instrumentation guide](docs/technical/building-instrumentation.md)
+- [Development environment: setup and recovery](docs/technical/development-environment.md)
 - [Production infrastructure proposal](docs/infrastructure/production-iot-architecture.md) - proposed AWS and Azure deployments, IoT integration and scaling
 
 ## Source layout
 
 ```text
-Dockerfile                       Container build stages for both applications
-compose.yaml                     Local two-service deployment
+Dockerfile                       Release-build, development, and proxy container stages
+database/                        PostgreSQL control and telemetry schemas/migrations
+deploy/docker/                   Compose stack, live-development overlay and local service setup
+deploy/kubernetes/               Placeholder for a future Kubernetes deployment
+deploy/docker-dev-setup.sh       Local development credential setup
+deploy/docker-dev-start.sh       Build and start the local Compose stack
 .dockerignore                    Container build exclusions
 package.json                     Frontend scripts and pinned dependencies
 package-lock.json                Reproducible npm dependency lock
@@ -152,7 +158,10 @@ src/
     frontend/                    React, TypeScript dashboard UI
     wwwroot/                     Static entry point and assets
 tests/
-  *.test.mjs                     Simulator view-logic and recording-helper tests
+  building-control/              Building Control browser and component tests
+  instrumentation/              Instrumentation browser and component tests
+  deployment/                   Docker setup and Compose tests
+  shared/                       Shared tooling and recording-helper tests
   Devices.Simulator.Tests/       Simulator state-transition tests
   Devices.Instrumentation.Tests/ Telemetry store tests
 docs/                            Project and application documentation
@@ -167,5 +176,7 @@ AGENTS.md                        Repository-wide agent instructions
 dotnet build Devices.slnx
 dotnet test Devices.slnx --no-build --no-restore
 npm run test:components
-node --import tsx --test tests\building-access.test.mjs tests\wiring-routes.test.mjs tests\floor-view.test.mjs tests\room-state.test.mjs tests\record-demo.test.mjs tests\building-design-view.test.mjs tests\building-editor.test.mjs tests\building-editor-ui.test.mjs tests\localization-en.test.mjs tests\simulator-react-model.test.mjs tests\instrumentation-localization.test.mjs tests\instrumentation-react-telemetry.test.mjs
+node --import tsx --test tests\building-control\building-access.test.mjs tests\building-control\placeable-access.test.mjs tests\building-control\wiring-routes.test.mjs tests\building-control\floor-view.test.mjs tests\building-control\room-state.test.mjs tests\shared\record-demo.test.mjs tests\building-control\building-design-view.test.mjs tests\building-control\building-editor.test.mjs tests\building-control\building-editor-ui.test.mjs tests\building-control\localization-en.test.mjs tests\building-control\simulator-react-model.test.mjs tests\instrumentation\instrumentation-localization.test.mjs tests\instrumentation\instrumentation-react-telemetry.test.mjs
 ```
+
+The PostgreSQL persistence tests require isolated PostgreSQL 18 test databases and connection-string environment variables; never point them at development data. See the [contributor guide](docs/contributing/contributor-guide.md#working-on-code-changes) for the variable names and isolation requirements.

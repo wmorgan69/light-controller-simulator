@@ -17,6 +17,10 @@ devices/
   tests/
     Devices.Simulator.Tests/
     Devices.Instrumentation.Tests/
+    building-control/
+    instrumentation/
+    deployment/
+    shared/
   docs/
     README.md
     plans/
@@ -43,7 +47,7 @@ devices/
 - `Devices.Contracts` supplies shared controller, room, sensor, light, fault, telemetry, command, and acknowledgement records.
 - The simulator publishes retained MQTT state and accepts MQTT commands.
 - The instrumentation application polls the simulator HTTP API and can also consume MQTT telemetry; both inputs feed the same telemetry store.
-- Separate SQLite databases store simulator designs and instrumentation controller state and recent events.
+- PostgreSQL 18 or later stores both applications' data in one `devices` database, with separate `control` and `telemetry` schemas and application roles. Application-owned primary keys use PostgreSQL UUIDv7; protocol and stable entity IDs remain separate.
 - Instrumentation polls the active design's revisioned controller snapshot to reconcile removals; MQTT cleanup is asynchronous.
 - HTTP mutation responses return current authoritative controller state.
 
@@ -77,20 +81,21 @@ These phases record the original implementation sequence, not outstanding work. 
 2. **Fault scope:** sensor, light-strip, and controller fault targets are supported.
 3. **MQTT:** an external broker is configurable; HTTP polling remains active and supports operation without a broker.
 4. **3D:** Three.js is bundled locally for the building visualization.
-5. **Persistence:** Separate SQLite stores hold simulator designs and instrumentation latest state and events.
+5. **Persistence:** PostgreSQL stores simulator designs and instrumentation latest state and events in separate schemas of one database. The schemas are initialized from versioned SQL; this development setup starts fresh and does not import prior SQLite data.
 6. **Startup:** The baseline selects Floor 3 and Collaboration Space; edited designs need not contain them.
 7. **Occupancy demo:** 1–2 random rooms are occupied per floor, up to the number available.
 
 ## Building editor and remaining work
 
-- The [building editor](building-editor-spec.md) is implemented for direct loopback Development hosts, with local unsaved edits, revision-checked saves, validation, activation and cleanup. Current editing interactions, including drag-to-move, are implemented; broader accessibility and desktop/mobile verification remain open.
+- The [building editor](building-editor-spec.md) is implemented for direct loopback Development hosts and the local Compose development proxy, with local unsaved edits, revision-checked saves, validation, activation and cleanup. Compose exposes the editor through NGINX on localhost without a browser login. Current editing interactions, including drag-to-move, are implemented; broader accessibility and desktop/mobile verification remain open.
 - Walkways and stairs are editable access objects; legacy designs retain generated geometry until edited and saved. They do not guarantee routes from interior doors.
-- Editor access beyond direct loopback Development hosts, automatic backups and periodic activation retry remain unimplemented.
+- Remote or non-development editor access, automatic backups and periodic activation retry remain unimplemented. The Compose proxy and its local service credentials are development-only, not production authentication or secret storage.
+- Building Control holds a PostgreSQL advisory owner lease and stops if its lease connection fails. This is fail-stop single-instance protection, not distributed fencing or high availability.
 - MQTT command replay protection is not implemented; duplicate command IDs and command timestamps are not tracked.
 - Decide whether to add inactivity timers.
 - Historical utilization charts are not implemented; decide whether to add them.
 - The optional broker-backed MQTT integration test requires Docker and a cached Mosquitto image; provisioning it in CI and covering disconnects and restarts remain open.
-- Decide whether to add authentication and TLS for broker deployments.
+- The local Compose broker uses separate control and telemetry credentials with topic ACLs. External broker deployments still require a separately designed authentication, authorization and TLS posture.
 
 ## Agent workflow
 
@@ -113,3 +118,4 @@ Follow the [bounded agent workflow](../contributing/contributor-guide.md#bounded
 - [Documentation home](../README.md)
 - [Building Control](../technical/building-control.md)
 - [Lighting Instrumentation](../technical/building-instrumentation.md)
+- [Development environment: setup and recovery](../technical/development-environment.md)
