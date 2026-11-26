@@ -84,7 +84,7 @@ The demo page contains two walkthroughs: building navigation and live instrument
 
 ## Quick start
 
-Install the .NET 11 SDK and Node.js with npm. Use Node.js 22.18 or later in the 22.x line, or Node.js 24.11 or later; CI uses Node.js 22.
+Install the .NET 11 SDK and Node.js with npm. Use Node.js 22.18 or later in the 22.x line, Node.js 24.11 or later in the 24.x line, or Node.js 26 or later; CI uses Node.js 22.
 
 Build both browser frontends once before running the .NET applications directly. This installs the locked Node dependencies, runs the strict TypeScript check, and creates the local bundles used by each web app:
 

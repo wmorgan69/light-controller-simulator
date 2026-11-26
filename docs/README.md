@@ -190,7 +190,7 @@ The [bounded agent workflow](contributing/contributor-guide.md#bounded-agent-wor
 
 ## Frontend build and tests
 
-Use Node.js 22.18 or later in the 22.x line, or Node.js 24.11 or later, and npm from the Node installation. CI uses Node.js 22. From the repository root, install the locked dependencies and build both applications:
+Use Node.js 22.18 or later in the 22.x line, Node.js 24.11 or later in the 24.x line, or Node.js 26 or later, and npm from the Node installation. CI uses Node.js 22. From the repository root, install the locked dependencies and build both applications:
 
 ```powershell
 npm ci
