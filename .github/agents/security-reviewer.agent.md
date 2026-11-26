@@ -1,6 +1,6 @@
 ---
 name: security-reviewer
-description: Review implemented code for OWASP Top 10 UI and API vulnerabilities. Use after implementation and before merge.
+description: Review implemented code for OWASP Top 10 UI and API vulnerabilities and dependency supply-chain risks. Use after implementation and before merge.
 tools: ['read', 'search']
 ---
 
@@ -95,6 +95,18 @@ Review for these critical UI vulnerabilities:
 5. **A02:2021 – Cryptographic Failures (UI)**
    - Is sensitive data (passwords, tokens) transmitted only over HTTPS?
    - Are API keys exposed in browser memory or storage?
+
+## Dependency Supply Chain
+
+For new or materially changed dependencies, review available evidence for:
+
+- **Source and provenance:** Are the package name, publisher, registry, and source repository expected? Check for typosquatting, ownership changes, maintenance activity, and provenance or signatures where available. Popularity alone does not establish trust.
+- **Dependency changes:** Are direct and transitive additions, versions, lockfile changes, and registry configuration understood? Are npm lifecycle scripts and NuGet build targets inspected for unexpected commands or downloads?
+- **Known vulnerabilities:** Are npm and NuGet advisory results available for direct and transitive dependencies? Are relevant findings addressed or explicitly accepted with a reason?
+- **Isolated testing:** Request evidence that installation and tests ran in a disposable, unprivileged environment without secrets or host mounts and with network access restricted to what is needed. Prefer a disposable VM for untrusted packages; containers are defense in depth, not a complete security boundary. Isolation and clean scans do not prove a package is safe.
+- **Automation:** Check whether dependency review, advisory scanning, static analysis, and secret scanning cover the change. Consider an SBOM for dependency inventory. When workflows change, check GitHub Actions permissions and recommend pinning actions to full commit SHAs verified against the intended upstream releases.
+
+Use supplied scan results and repository evidence; do not run commands or install packages. Report unavailable results, unverified isolation, and checks that cannot be confirmed as limitations rather than passes. Recommend follow-up scanning or isolated testing where evidence is missing.
 
 ## Checklist
 

@@ -6,7 +6,7 @@ The repository currently provides these quality and security mechanisms:
 
 1. **Code Coverage Phase 1 Enforcement (≥50%)**
 2. **Security Review Agent Guidance (OWASP Top 10 UI & API)**
-3. **Dependency Update Configuration (Dependabot)**
+3. **Dependency Updates and Security Scanning**
 
 ## Files Created/Modified
 
@@ -15,7 +15,7 @@ The repository currently provides these quality and security mechanisms:
 | File | Purpose |
 |---|---|
 | `.github/agents/security-reviewer.agent.md` | Security review agent definition (OWASP Top 10 checklist) |
-| `.github/dependabot.yml` | Dependabot configuration for NuGet and npm packages |
+| `.github/dependabot.yml` | Dependabot configuration for NuGet, npm, and GitHub Actions |
 | `docs/contributing/branch-protection.md` | Setup guide for GitHub branch protection and CI status checks |
 
 ### Modified
@@ -23,6 +23,7 @@ The repository currently provides these quality and security mechanisms:
 | File | Changes |
 |---|---|
 | `.github/workflows/ci.yml` | Collects coverage, enforces the current ≥50% Phase 1 threshold, and attempts a Codecov upload |
+| `.github/workflows/security.yml` | Audits dependencies, reviews dependency changes, and runs CodeQL |
 | `.github/PULL_REQUEST_TEMPLATE.md` | Added security review, coverage, and Dependabot checklists |
 | `AGENTS.md` | Updated workflow to include security-reviewer agent for security-sensitive changes |
 | `docs/README.md` | Added Quality and security section; linked branch protection guide |
@@ -109,7 +110,7 @@ This is an alternative proposal, not the current CI behavior. CI currently enfor
 - [ ] Authentication/authorization checks are present where required.
 ```
 
-## Dependency Scanning (Dependabot)
+## Dependency Updates and Security Scanning
 
 ### Configuration
 
@@ -117,19 +118,51 @@ This is an alternative proposal, not the current CI behavior. CI currently enfor
 
 **What it does**:
 - Configures NuGet update PRs for the repository root
-- Configures npm update PRs for `/tests`
+- Configures npm update PRs for the repository root
+- Configures GitHub Actions update PRs for pinned workflow actions
 - Opens update PRs automatically; GitHub security alerts are a separate feature
 - Runs on the configured weekly Monday 4 AM UTC schedules
 
 **To activate**:
 1. The `.github/dependabot.yml` file is already created
 2. GitHub must read and enable the configuration for the repository
-3. The npm entry needs a supported npm manifest in `/tests` before it can produce npm updates
-4. Enable Dependabot alerts and security updates separately if the repository should receive vulnerability alerts
+3. Enable Dependabot alerts and security updates separately if the repository should receive vulnerability alerts
 
 **To monitor**:
 - Go to your GitHub repo → Security → Dependabot alerts
 - Review and merge Dependabot PRs like normal PRs (they'll run full CI)
+
+### CI Security Checks
+
+The security workflow runs on pull requests, pushes to `main`, weekly on Monday at 05:00 UTC, and on manual dispatch. The npm and NuGet audits include direct and transitive dependencies and fail on moderate or higher advisories; NuGet audit-source errors also fail the audit. Dependency review runs on pull requests and checks runtime, development, and unknown dependency scopes. CodeQL analyzes C# and JavaScript/TypeScript without building the repository. A clean result does not prove a package or code is safe.
+
+Dependency review requires GitHub's dependency graph and is available for public repositories or private repositories with the required GitHub security license. CodeQL requires code scanning to be available and enabled; use advanced setup rather than an overlapping default setup. Verify these settings and the first workflow run in GitHub. The workflow does not silently skip unavailable checks. Configure branch protection separately if these jobs must block merges.
+
+The build and security jobs run on separate GitHub-hosted runners. Checkout does not persist Git credentials, the build job does not receive the Codecov token, and the optional upload runs on a separate runner only after a successful build, using the generated coverage artifact. Pull-request uploads are tokenless and may fail if Codecov requires a token; the token is supplied only for manual runs on `main`. The artifact and checked-out PR contents remain untrusted; this separation is not a guarantee against malicious inputs. Hosted runners have runtime credentials and network access, and the build and Docker smoke test execute dependency scripts. For an unfamiliar or untrusted package, separately inspect install scripts and test in a disposable, unprivileged VM without secrets or host mounts and with restricted network access. Docker containers alone are not a complete security boundary.
+
+```mermaid
+---
+config:
+  theme: base
+  themeVariables:
+    darkMode: true
+    primaryColor: '#1E293B'
+    primaryTextColor: '#F8FAFC'
+    primaryBorderColor: '#60A5FA'
+    lineColor: '#60A5FA'
+    edgeLabelBackground: '#1E293B'
+    textColor: '#F8FAFC'
+---
+flowchart TD
+  Event("GitHub event") --> Build("Build and test runner")
+  Event --> Scan("Separate security runners")
+  Build --> Artifact("Coverage artifact")
+  Artifact --> Upload("Separate Codecov upload runner")
+  Scan --> Audit("npm and NuGet audits")
+  Scan --> Review("PR dependency review")
+  Scan --> CodeQL("CodeQL analysis")
+  classDef default fill:#1E293B,stroke:#60A5FA,color:#F8FAFC;
+```
 
 ## GitHub Branch Protection Setup
 
@@ -162,7 +195,7 @@ This is an alternative proposal, not the current CI behavior. CI currently enfor
 5. Add to GitHub: Settings → Secrets and variables → Repository secrets
 6. Create secret: `CODECOV_TOKEN` = (paste token)
 
-The workflow currently requests `./coverage.cobertura.xml`, but dotnet-test writes reports under `tests/**/TestResults/*/coverage.cobertura.xml`. A reliable setup should change the Codecov `files` setting or copy the reports to the expected path; the existing upload is non-blocking.
+The build uploads reports from `tests/**/TestResults/*/coverage.cobertura.xml` as a GitHub Actions artifact. After a successful build, a separate job downloads the artifact and attempts a non-blocking Codecov upload. Pull-request uploads are tokenless; only manual runs on `main` receive the configured token. Verify the upload in a real run before relying on Codecov results.
 
 ### Benefits
 
@@ -199,7 +232,7 @@ The workflow currently requests `./coverage.cobertura.xml`, but dotnet-test writ
    
 2. **Monitor Dependabot PRs**
    - NuGet updates will follow the Monday 4 AM UTC schedule once GitHub accepts the configuration
-   - npm updates require a `/tests/package.json`
+   - npm updates use the root `package.json` and lockfile
    - Merge security updates promptly
 
 3. **Plan coverage improvement**

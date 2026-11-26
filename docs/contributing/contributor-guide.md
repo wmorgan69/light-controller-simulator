@@ -7,7 +7,7 @@ This guide shows you how to work with the new code coverage and security review 
 Make sure you understand:
 - **Code coverage ≥ 50%** is enforced on the first report discovered by CI; higher thresholds are proposed, not scheduled.
 - **Security review** is requested for changes touching APIs, authentication, or external inputs; repository rules determine what is enforced.
-- **Dependabot** is configured for weekly NuGet and npm version updates; npm updates require a manifest in `tests/`. Security alerts are configured separately.
+- **Dependabot** is configured for weekly NuGet, npm, and GitHub Actions version updates at the repository root. Security alerts are configured separately.
 
 ## Working on Code Changes
 

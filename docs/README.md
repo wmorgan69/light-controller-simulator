@@ -179,7 +179,8 @@ The project combines automated checks with guidance for manual reviews:
 
 - **Code coverage**: CI checks that the first collected coverage report meets the current 50% threshold. A 90% threshold is a future goal, not the current enforced threshold; this check does not calculate combined solution coverage.
 - **Security review (OWASP Top 10)**: Repository instructions call for a `security-reviewer` agent review for changes to external inputs, API endpoints, or authentication logic; the CI workflow does not enforce that review.
-- **Dependency updates**: Dependabot is configured for NuGet and npm; it requires supported manifests and the relevant GitHub features to operate.
+- **Dependency updates**: Dependabot is configured for NuGet, npm, and GitHub Actions; it requires supported manifests and the relevant GitHub features to operate.
+- **Automated security checks**: CI audits npm and NuGet dependencies, reviews dependency changes on pull requests, and runs CodeQL; GitHub security feature availability and branch protection must be configured separately.
 - **Branch protection**: Required status checks and approvals depend on repository rules configured in GitHub; agent instructions alone do not enforce them.
 
 See [Branch Protection Configuration](contributing/branch-protection.md) and [Quality & Security Implementation Guide](contributing/quality-and-security.md) for setup instructions, recommended approaches for reaching 90% coverage, and troubleshooting.
